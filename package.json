@@ -1,0 +1,31 @@
+{
+  "name": "relascale",
+  "version": "1.0.0",
+  "description": "A searchable database of psychological measures and constructs for relationship researchers.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "psychology",
+    "relationships",
+    "measures",
+    "constructs",
+    "research"
+  ],
+  "author": "James Marchment and Samantha Joel",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "nodemailer": "^9.0.1"
+  }
+}

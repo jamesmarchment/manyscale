@@ -1,0 +1,429 @@
+<%- include("partials/header", { title: "Constructs | ManyScale" }) %>
+
+<body class="portfolio-details-page pt-5">
+
+  <nav class="navbar navbar-expand-xl navbar-light fixed-top py-3" id="mainNav">
+    <div class="container px-4 px-lg-5">
+<%- include("partials/nav") %>
+    </div>
+  </nav>
+
+
+  <main class="main pt-5 my-5">
+
+    <!-- Page Title -->
+    <div class="page-title">
+      <div class="breadcrumbs">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="bi bi-house"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="/constructs/">Constructs</a></li>
+            <li class="breadcrumb-item active current">Index</li>
+          </ol>
+        </nav>
+      </div>
+    </div><!-- End Page Title -->
+
+
+    <!-- Constructs Index Section -->
+    <div class="container section-title" data-aos="fade-up">
+      <h2>Construct Index</h2>
+    </div>
+
+    <!-- Filters -->
+    <%
+      const allLanguages = new Set();
+      constructs.forEach(g => {
+        g.items.forEach(item => {
+          (item.fields["Language(s)"] || []).forEach(l => allLanguages.add(l));
+          (item.fields.translations || []).forEach(tr => { if (tr["Language"]) allLanguages.add(tr["Language"]); });
+        });
+      });
+      const sortedLanguages = [...allLanguages].sort();
+    %>
+    <div class="container" data-aos="fade-up">
+      <div class="construct-filter-and-results" style="display:flex; gap:1rem; flex-wrap:wrap;">
+
+        <div class="construct-filter-wrapper">
+          <button class="filter-toggle-btn" id="filter-toggle-btn" type="button">
+            <span id="filter-label">All Constructs</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div class="filter-tags-bar" id="filter-tags-bar"></div>
+          <div class="filter-panel" id="filter-panel">
+            <input type="text" class="filter-search" id="filter-search" placeholder="Search constructs…" autocomplete="off">
+            <ul class="portfolio-filters" id="construct-filter-list">
+              <li data-filter="*" class="filter-active">All Constructs</li>
+              <% constructs.forEach(g => { %>
+                <li data-filter=".<%= g.name.toLowerCase().replace(/\s+/g, '-') %>"><%= g.name %></li>
+              <% }) %>
+            </ul>
+          </div>
+        </div>
+
+        <div class="construct-filter-wrapper">
+          <button class="filter-toggle-btn" id="lang-filter-toggle-btn" type="button">
+            <span id="lang-filter-label">All Languages</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div class="filter-tags-bar" id="lang-filter-tags-bar"></div>
+          <div class="filter-panel" id="lang-filter-panel">
+            <input type="text" class="filter-search" id="lang-filter-search" placeholder="Search languages…" autocomplete="off">
+            <ul class="portfolio-filters" id="lang-filter-list">
+              <li data-lang-filter="*" class="filter-active">All Languages</li>
+              <% sortedLanguages.forEach(lang => { %>
+                <li data-lang-filter=".<%= lang.toLowerCase().replace(/\s+/g, '-') %>"><%= lang %></li>
+              <% }) %>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- End Filters -->
+
+    <nav class="alphabet-nav" id="alphabet-nav" aria-label="Jump to letter">
+      <div class="container">
+        <% const presentLetters = new Set(constructs.map(g => g.name.charAt(0).toUpperCase())); %>
+        <% for (let i = 65; i <= 90; i++) { const letter = String.fromCharCode(i); %>
+          <% if (presentLetters.has(letter)) { %>
+            <a href="constructs/#letter-<%= letter %>" class="alpha-link"><%= letter %></a>
+          <% } else { %>
+            <span class="alpha-link disabled"><%= letter %></span>
+          <% } %>
+        <% } %>
+      </div>
+    </nav>
+
+    <div class="align-left construct-index container">
+      <%
+        let currentLetter = null;
+        constructs.forEach(group => {
+          const firstLetter = group.name.charAt(0).toUpperCase();
+          const groupSlug = group.name.toLowerCase().replace(/\s+/g, '-');
+      %>
+
+        <% if (firstLetter !== currentLetter) { %>
+          <!-- Alphabet Header -->
+          <div class="alphabet-block" id="letter-<%= firstLetter %>">
+            <h4><%= firstLetter %></h4>
+            <hr>
+          </div>
+          <% currentLetter = firstLetter; %>
+        <% } %>
+
+        <div id="<%= group.name %>" class="mb-5 container construct-group" data-construct-slug="<%= groupSlug %>">
+          <span class="subtitle construct-group-toggle" role="button" tabindex="0" aria-expanded="false">
+            <h4>
+              <span class="construct-group-name"><%= group.name %></span>
+              <span class="construct-count">(<%= group.items.length %>)</span>
+            </h4>
+            <i class="bi bi-chevron-down construct-toggle-icon rotated" aria-hidden="true"></i>
+          </span>
+
+          <div class="list-group-collapsible list-collapsed">
+            <ul class="list-group">
+              <% group.items.forEach(item => {
+                const itemSlugs = (item.fields["Construct(s)"] || []).map(c => c.toLowerCase().replace(/\s+/g, '-')).join(' ');
+                const itemLangSlugs = [
+                  ...(item.fields["Language(s)"] || []),
+                  ...(item.fields.translations || []).map(tr => tr["Language"]).filter(Boolean)
+                ].map(l => l.toLowerCase().replace(/\s+/g, '-')).join(' ');
+              %>
+                <li class="list-group-item <%= item.fields['MeasureID'] %>" data-construct-slugs="<%= itemSlugs %>" data-language-slugs="<%= itemLangSlugs %>">
+                  <a href="/details/<%= item.fields['MeasureID'] %>">
+                    <p class="measurename"><%= item.fields["Measure Name"] %></p>
+                    <p class="primaryreference"><%= item.fields["Primary Reference"] %></p>
+                    <p class="construct-tags-list"><% (item.fields["Construct(s)"] || []).forEach(c => { %><span class="construct-tag"><%= c %></span><% }) %></p>
+                  </a>
+                </li>
+              <% }) %>
+            </ul>
+          </div>
+        </div>
+
+      <% }) %>
+    </div>
+
+    <div id="filter-no-results" style="display:none" class="container text-center py-5">
+      <p class="text-muted">No measures found for the selected combination of constructs.</p>
+    </div>
+
+    </section><!-- /Constructs Index Section -->
+
+  </main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  // -- State --
+  const selectedFilters  = new Set();  // construct slugs
+  const selectedLanguages = new Set(); // language slugs
+
+  // -- Construct filter elements --
+  const toggleBtn    = document.getElementById("filter-toggle-btn");
+  const filterPanel  = document.getElementById("filter-panel");
+  const filterSearch = document.getElementById("filter-search");
+  const filterList   = document.getElementById("construct-filter-list");
+  const tagsBar      = document.getElementById("filter-tags-bar");
+  const filterLabel  = document.getElementById("filter-label");
+
+  // -- Language filter elements --
+  const langToggleBtn = document.getElementById("lang-filter-toggle-btn");
+  const langPanel     = document.getElementById("lang-filter-panel");
+  const langSearch    = document.getElementById("lang-filter-search");
+  const langList      = document.getElementById("lang-filter-list");
+  const langTagsBar   = document.getElementById("lang-filter-tags-bar");
+  const langLabel     = document.getElementById("lang-filter-label");
+
+  const alphabetNav = document.getElementById("alphabet-nav");
+  const noResults   = document.getElementById("filter-no-results");
+
+  // -- Construct panel open/close --
+  toggleBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    const isOpen = filterPanel.classList.toggle("open");
+    toggleBtn.classList.toggle("open", isOpen);
+    if (isOpen) { langPanel.classList.remove("open"); langToggleBtn.classList.remove("open"); filterSearch.focus(); }
+  });
+
+  // -- Language panel open/close --
+  langToggleBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    const isOpen = langPanel.classList.toggle("open");
+    langToggleBtn.classList.toggle("open", isOpen);
+    if (isOpen) { filterPanel.classList.remove("open"); toggleBtn.classList.remove("open"); langSearch.focus(); }
+  });
+
+  // Close both panels when clicking outside
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".construct-filter-wrapper")) {
+      filterPanel.classList.remove("open");
+      toggleBtn.classList.remove("open");
+      langPanel.classList.remove("open");
+      langToggleBtn.classList.remove("open");
+    }
+  });
+
+  // -- Search within construct dropdown --
+  filterSearch.addEventListener("input", () => {
+    const q = filterSearch.value.toLowerCase();
+    filterList.querySelectorAll("li").forEach(li => {
+      if (li.dataset.filter === "*") return;
+      li.style.display = (!q || li.textContent.toLowerCase().includes(q)) ? "" : "none";
+    });
+  });
+
+  // -- Search within language dropdown --
+  langSearch.addEventListener("input", () => {
+    const q = langSearch.value.toLowerCase();
+    langList.querySelectorAll("li").forEach(li => {
+      if (li.dataset.langFilter === "*") return;
+      li.style.display = (!q || li.textContent.toLowerCase().includes(q)) ? "" : "none";
+    });
+  });
+
+  // -- Collapse/expand helpers --
+  function collapseGroup(g) {
+    g.querySelector('.list-group-collapsible')?.classList.add('list-collapsed');
+    const t = g.querySelector('.construct-group-toggle');
+    if (t) { t.querySelector('.construct-toggle-icon')?.classList.add('rotated'); t.setAttribute('aria-expanded', 'false'); }
+  }
+  function expandGroup(g) {
+    g.querySelector('.list-group-collapsible')?.classList.remove('list-collapsed');
+    const t = g.querySelector('.construct-group-toggle');
+    if (t) { t.querySelector('.construct-toggle-icon')?.classList.remove('rotated'); t.setAttribute('aria-expanded', 'true'); }
+  }
+
+  // -- Apply both filters to DOM --
+  function applyFilters() {
+    const groups = document.querySelectorAll(".construct-group");
+    const alphabetBlocks = document.querySelectorAll(".alphabet-block");
+    const hasConstruct = selectedFilters.size > 0;
+    const hasLanguage  = selectedLanguages.size > 0;
+    const hasAnyFilter = hasConstruct || hasLanguage;
+
+    if (!hasAnyFilter) {
+      document.querySelectorAll('.construct-group-toggle').forEach(t => t.style.display = "");
+      groups.forEach(g => {
+        g.style.display = "";
+        g.querySelectorAll(".list-group-item").forEach(li => li.style.display = "");
+        collapseGroup(g);
+      });
+      alphabetBlocks.forEach(b => b.style.display = "");
+      alphabetNav.style.display = "";
+      noResults.style.display = "none";
+      return;
+    }
+
+    alphabetBlocks.forEach(b => b.style.display = "none");
+    alphabetNav.style.display = "none";
+    document.querySelectorAll('.construct-group-toggle').forEach(t => t.style.display = "none");
+
+    // Step 1: apply construct + language filters to each item
+    groups.forEach(g => {
+      if (hasConstruct && !selectedFilters.has(g.dataset.constructSlug)) {
+        g.style.display = "none";
+        g.querySelectorAll(".list-group-item").forEach(li => li.style.display = "none");
+        return;
+      }
+
+      g.querySelectorAll(".list-group-item").forEach(li => {
+        const constructSlugs = (li.dataset.constructSlugs || "").split(" ").filter(Boolean);
+        const langSlugs      = (li.dataset.languageSlugs  || "").split(" ").filter(Boolean);
+        const matchesConstruct = !hasConstruct || [...selectedFilters].every(f => constructSlugs.includes(f));
+        const matchesLanguage  = !hasLanguage  || [...selectedLanguages].some(l => langSlugs.includes(l));
+        li.style.display = (matchesConstruct && matchesLanguage) ? "" : "none";
+      });
+
+      g.style.display = "";
+      expandGroup(g);
+    });
+
+    // Step 2: deduplicate — for each MeasureID, keep only the first visible item across all groups
+    const seenIds = new Set();
+    document.querySelectorAll(".list-group-item").forEach(li => {
+      if (li.style.display === "none") return;
+      const measureId = [...li.classList].find(c => c !== "list-group-item");
+      if (!measureId) return;
+      if (seenIds.has(measureId)) {
+        li.style.display = "none";
+      } else {
+        seenIds.add(measureId);
+      }
+    });
+
+    // Step 3: hide groups that have no visible items after deduplication
+    let visibleGroups = 0;
+    groups.forEach(g => {
+      if (g.style.display === "none") return;
+      let count = 0;
+      g.querySelectorAll(".list-group-item").forEach(li => { if (li.style.display !== "none") count++; });
+      if (count > 0) {
+        visibleGroups++;
+      } else {
+        g.style.display = "none";
+      }
+    });
+
+    noResults.style.display = visibleGroups === 0 ? "" : "none";
+  }
+
+  // -- Construct filter: label, active state, tags --
+  function updateFilterLabel() {
+    if (selectedFilters.size === 0) {
+      filterLabel.textContent = "All Constructs";
+    } else if (selectedFilters.size === 1) {
+      const li = filterList.querySelector(`li[data-filter=".${[...selectedFilters][0]}"]`);
+      filterLabel.textContent = li ? li.textContent : [...selectedFilters][0];
+    } else {
+      filterLabel.textContent = `${selectedFilters.size} constructs`;
+    }
+  }
+
+  function updateListActiveState() {
+    filterList.querySelectorAll("li").forEach(li => {
+      if (li.dataset.filter === "*") li.classList.toggle("filter-active", selectedFilters.size === 0);
+      else li.classList.toggle("filter-active", selectedFilters.has(li.dataset.filter.slice(1)));
+    });
+  }
+
+  function renderFilterTags() {
+    if (selectedFilters.size === 0) { tagsBar.innerHTML = ""; return; }
+    tagsBar.innerHTML = [...selectedFilters].map(cls => {
+      const li = filterList.querySelector(`li[data-filter=".${cls}"]`);
+      const name = li ? li.textContent.replace(/^✓\s*/, "") : cls;
+      return `<span class="filter-tag"><span class="filter-tag-label">${name}</span><button class="filter-tag-remove" data-remove="${cls}" aria-label="Remove ${name}">&times;</button></span>`;
+    }).join("");
+    tagsBar.querySelectorAll(".filter-tag-remove").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        selectedFilters.delete(btn.dataset.remove);
+        applyFilters(); renderFilterTags(); updateFilterLabel(); updateListActiveState();
+      });
+    });
+  }
+
+  filterList.addEventListener("click", e => {
+    const li = e.target.closest("li[data-filter]");
+    if (!li) return;
+    const filter = li.dataset.filter;
+    if (filter === "*") selectedFilters.clear();
+    else { const cls = filter.slice(1); if (selectedFilters.has(cls)) selectedFilters.delete(cls); else selectedFilters.add(cls); }
+    applyFilters(); renderFilterTags(); updateFilterLabel(); updateListActiveState();
+    filterSearch.value = "";
+    filterList.querySelectorAll("li").forEach(el => el.style.display = "");
+    if (filter === "*") { filterPanel.classList.remove("open"); toggleBtn.classList.remove("open"); }
+  });
+
+  // -- Language filter: label, active state, tags --
+  function updateLangLabel() {
+    if (selectedLanguages.size === 0) {
+      langLabel.textContent = "All Languages";
+    } else if (selectedLanguages.size === 1) {
+      const li = langList.querySelector(`li[data-lang-filter=".${[...selectedLanguages][0]}"]`);
+      langLabel.textContent = li ? li.textContent : [...selectedLanguages][0];
+    } else {
+      langLabel.textContent = `${selectedLanguages.size} languages`;
+    }
+  }
+
+  function updateLangListActiveState() {
+    langList.querySelectorAll("li").forEach(li => {
+      if (li.dataset.langFilter === "*") li.classList.toggle("filter-active", selectedLanguages.size === 0);
+      else li.classList.toggle("filter-active", selectedLanguages.has(li.dataset.langFilter.slice(1)));
+    });
+  }
+
+  function renderLangTags() {
+    if (selectedLanguages.size === 0) { langTagsBar.innerHTML = ""; return; }
+    langTagsBar.innerHTML = [...selectedLanguages].map(cls => {
+      const li = langList.querySelector(`li[data-lang-filter=".${cls}"]`);
+      const name = li ? li.textContent.replace(/^✓\s*/, "") : cls;
+      return `<span class="filter-tag"><span class="filter-tag-label">${name}</span><button class="lang-tag-remove" data-remove="${cls}" aria-label="Remove ${name}">&times;</button></span>`;
+    }).join("");
+    langTagsBar.querySelectorAll(".lang-tag-remove").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        selectedLanguages.delete(btn.dataset.remove);
+        applyFilters(); renderLangTags(); updateLangLabel(); updateLangListActiveState();
+      });
+    });
+  }
+
+  langList.addEventListener("click", e => {
+    const li = e.target.closest("li[data-lang-filter]");
+    if (!li) return;
+    const filter = li.dataset.langFilter;
+    if (filter === "*") selectedLanguages.clear();
+    else { const cls = filter.slice(1); if (selectedLanguages.has(cls)) selectedLanguages.delete(cls); else selectedLanguages.add(cls); }
+    applyFilters(); renderLangTags(); updateLangLabel(); updateLangListActiveState();
+    langSearch.value = "";
+    langList.querySelectorAll("li").forEach(el => el.style.display = "");
+    if (filter === "*") { langPanel.classList.remove("open"); langToggleBtn.classList.remove("open"); }
+  });
+
+  // -- Construct tag colors --
+  applyConstructTagColors();
+
+  // -- Construct group collapse/expand (manual toggle) --
+  document.querySelectorAll('.construct-group-toggle').forEach(toggle => {
+    toggle.addEventListener('click', e => {
+      const group = toggle.closest('.construct-group');
+      const list = group.querySelector('.list-group-collapsible');
+      const collapsed = list.classList.toggle('list-collapsed');
+      toggle.querySelector('.construct-toggle-icon').classList.toggle('rotated', collapsed);
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+    });
+    toggle.addEventListener('keydown', e => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target === toggle) {
+        e.preventDefault();
+        toggle.click();
+      }
+    });
+  });
+
+});
+</script>
+
+<%- include("partials/footer") %>

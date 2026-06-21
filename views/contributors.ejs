@@ -1,0 +1,123 @@
+<%- include("partials/header", { title: "Contributors | ManyScale" }) %>
+
+<body class="contributors-page pt-5">
+
+  <nav class="navbar navbar-expand-xl navbar-light fixed-top py-3" id="mainNav">
+    <div class="container px-4 px-lg-5">
+<%- include("partials/nav") %>
+    </div>
+  </nav>
+
+  <main class="main pt-5 my-5">
+
+    <!-- Page Title -->
+    <div class="page-title">
+      <div class="breadcrumbs">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="bi bi-house"></i> Home</a></li>
+            <li class="breadcrumb-item active current">Contributors</li>
+          </ol>
+        </nav>
+      </div>
+    </div><!-- End Page Title -->
+
+    <div class="container section-title" data-aos="fade-up">
+      <h2>Contributors</h2>
+      <p>ManyScale is built and maintained by researchers committed to open science and the advancement of relationship research.</p>
+    </div>
+
+    <div class="container" data-aos="fade-up">
+      <div class="row justify-content-center">
+        <div class="col-lg-9">
+          <%
+            function initials(name) {
+              return (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+            }
+          %>
+
+          <p class="text-muted small mb-4">Roles follow the <a href="https://credit.niso.org/" target="_blank" rel="noopener">CRediT taxonomy</a>.</p>
+
+          <!-- Core Team -->
+          <% if (coreTeam.length > 0) { %>
+          <h5 class="mb-3">Core team</h5>
+          <div class="row g-3 mb-5">
+            <% coreTeam.forEach(person => {
+              const name = person.fields["Name"] || "";
+              const contributions = [].concat(person.fields["Contribution(s)"] || []);
+            %>
+            <div class="col-sm-6">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                  <div class="contributor-av"><%= initials(name) %></div>
+                  <div class="fw-semibold"><%= name %></div>
+                </div>
+                <% if (contributions.length > 0) { %>
+                <div class="d-flex flex-wrap gap-1">
+                  <% contributions.forEach(c => { %><span class="construct-tag"><%= c %></span><% }) %>
+                </div>
+                <% } %>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+          <% } %>
+
+          <!-- Contributors -->
+          <% if (contributors.length > 0) { %>
+          <h5 class="mb-2">Contributors</h5>
+          <div class="border rounded mb-5">
+            <% contributors.forEach((person, i) => {
+              const name = person.fields["Name"] || "";
+              const contributions = [].concat(person.fields["Contribution(s)"] || []);
+              const measureCount = (person.fields["Measures"] || []).length;
+            %>
+            <div class="<%= i > 0 ? 'border-top ' : '' %>d-flex align-items-start gap-3 px-3 py-2">
+              <div class="contributor-av mt-1"><%= initials(name) %></div>
+              <div>
+                <div class="d-flex align-items-baseline gap-2">
+                  <span class="fw-semibold small"><%= name %></span>
+                  <% if (measureCount > 0) { %>
+                    <span class="small text-muted"><%= measureCount %> measure<%= measureCount !== 1 ? 's' : '' %></span>
+                  <% } %>
+                </div>
+                <% if (contributions.length > 0) { %>
+                <div class="d-flex flex-wrap gap-1 mt-1">
+                  <% contributions.forEach(c => { %><span class="construct-tag"><%= c %></span><% }) %>
+                </div>
+                <% } %>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+          <% } %>
+
+          <!-- Funding -->
+          <% if (funding.length > 0) { %>
+          <%
+            const fundingNames = funding.map(p => p.fields["Name"] || "").filter(Boolean);
+            let fundingStr;
+            if (fundingNames.length === 1) {
+              fundingStr = fundingNames[0];
+            } else if (fundingNames.length === 2) {
+              fundingStr = fundingNames[0] + " and " + fundingNames[1];
+            } else {
+              fundingStr = fundingNames.slice(0, -1).join(", ") + ", and " + fundingNames[fundingNames.length - 1];
+            }
+          %>
+          <h5 class="mb-2">Funding</h5>
+          <p>ManyScale is supported by <%= fundingStr %>.</p>
+          <% } %>
+
+          <!-- Acknowledgements -->
+          <h5 class="mb-2">Acknowledgements</h5>
+          <p>We are grateful to the researchers and labs who have shared their measures and contributed to the database. If you would like to contribute a measure or update an existing entry, please use the <a href="/#submit">submission form</a> on the home page.</p>
+
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+<script>applyConstructTagColors();</script>
+<%- include("partials/footer") %>

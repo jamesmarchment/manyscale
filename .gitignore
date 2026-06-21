@@ -1,0 +1,9 @@
+node_modules/
+.claude/
+.gstack/
+.env
+*.log
+server.pid
+cache/
+public/pdfs/
+public/cache-stats.js

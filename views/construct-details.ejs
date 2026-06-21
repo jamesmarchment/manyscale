@@ -1,0 +1,55 @@
+<%- include("partials/header", { title: name + " | ManyScale" }) %>
+
+<body class="portfolio-details-page pt-5">
+
+  <nav class="navbar navbar-expand-xl navbar-light fixed-top py-3" id="mainNav">
+    <div class="container px-4 px-lg-5">
+<%- include("partials/nav") %>
+    </div>
+  </nav>
+
+
+  <main class="main pt-5 my-5">
+
+    <!-- Page Title -->
+    <div class="page-title">
+      <div class="breadcrumbs">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="bi bi-house"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="/constructs/">Constructs</a></li>
+            <li class="breadcrumb-item active current"><%= name %></li>
+          </ol>
+        </nav>
+      </div>
+
+
+    </div><!-- End Page Title -->
+
+
+<!-- Construct Detail Header -->
+<div class="container section-title" data-aos="fade-up">
+  <h2 class="mb-2"><%= name %></h2>
+  <h6 class="mb-3" style="color: #999;"><%= items.length %> Measure(s)</h6>
+</div>
+
+<div class="align-left construct-index container">
+
+  <div id="<%= name %>" class="mb-5 container">
+    <ul class="list-group">
+      <% items.forEach(item => { %>
+        <li class="list-group-item">
+          <a href="/details/<%= item.fields['MeasureID'] %>">
+            <p class="measurename"><%= item.fields["Measure Name"] %></p>
+            <p class="primaryreference"><%= item.fields["Primary Reference"] %></p>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+
+</div>
+
+  </main>
+
+<%- include("partials/footer") %>

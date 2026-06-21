@@ -1,0 +1,984 @@
+<%- include("partials/header") %>
+
+<style>
+#pagination-controls { margin-top: 2rem; text-align: center; }
+.pagination-wrapper { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+.pagination-info { font-size: 0.875rem; color: #6c757d; margin: 0; }
+.pagination-list { list-style: none; display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; padding: 0; margin: 0; }
+.page-btn { border: 1px solid #dee2e6; background: #fff; color: #495057; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem; transition: all 0.2s; }
+.page-btn:hover { background: #f1f3f5; border-color: #adb5bd; }
+.page-btn.active { background: #2d6cdf; border-color: #2d6cdf; color: #fff; }
+.page-ellipsis { padding: 0.4rem 0.25rem; color: #6c757d; }
+.form-trap { position: absolute; left: -9999px; top: -9999px; opacity: 0; height: 0; overflow: hidden; }
+.form-trap input { height: 0; }
+@media (max-width: 576px) {
+  .page-btn { padding: 0.35rem 0.55rem; font-size: 0.8rem; min-width: 2rem; }
+  .pagination-info { font-size: 0.8rem; }
+  #pagination-controls { margin-top: 1.25rem; }
+  .pagination-list { gap: 0.25rem; }
+}
+</style>
+
+<script>
+// ****************************************************************************************************************************************
+// ***************** LOAD CONSTRUCTS
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  const container  = document.getElementById("construct-filter-list");
+  const toggleBtn  = document.getElementById("filter-toggle-btn");
+  const filterPanel = document.getElementById("filter-panel");
+  const filterSearch = document.getElementById("filter-search");
+  const filterLabel  = document.getElementById("filter-label");
+
+  // Populate construct list from data source
+  constructsToArray().then(function(array) {
+    array.sort((a, b) => a.name.localeCompare(b.name));
+    container.innerHTML = '<li data-filter="*" class="filter-active">All Constructs</li>';
+    array.forEach(c => {
+      container.innerHTML += `<li data-filter=".${c.name.toLowerCase().replace(/\s+/g, "-")}">${c.name}</li>`;
+    });
+  });
+
+  // Toggle panel open/close
+  toggleBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    const isOpen = filterPanel.classList.toggle("open");
+    toggleBtn.classList.toggle("open", isOpen);
+    if (isOpen) filterSearch.focus();
+  });
+
+  // Close panel when clicking outside the wrapper
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".construct-filter-wrapper")) {
+      filterPanel.classList.remove("open");
+      toggleBtn.classList.remove("open");
+    }
+  });
+
+  // Live search: hide non-matching constructs (always keep "All Constructs" visible)
+  filterSearch.addEventListener("input", () => {
+    const q = filterSearch.value.toLowerCase();
+    container.querySelectorAll("li").forEach(li => {
+      if (li.dataset.filter === "*") return;
+      li.style.display = (!q || li.textContent.toLowerCase().includes(q)) ? "" : "none";
+    });
+  });
+
+});
+</script>
+<script>
+// ****************************************************************************************************************************************
+// ************** LOAD Data (paginated)
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  // -- State ------------------------------------------------------------------
+  const PAGE_SIZE = 5;
+  let allRecords = [];
+  let currentPage = 1;
+  const selectedFilters = new Set();   // class names without leading "."
+
+  // -- Card accent bar gradients (top → bottom). Add more entries here. ------
+  const CARD_GRADIENTS = [
+    "linear-gradient(180deg, #c9d6f0, #b8a9d9)",  // periwinkle → soft purple
+    "linear-gradient(180deg, #f5c0d0, #f0a0b0)",  // blush → dusty rose
+    "linear-gradient(180deg, #aed4f5, #a0c8e8)",  // powder blue → slate blue
+    "linear-gradient(180deg, #b5e8c8, #9dd4c0)",  // sage → seafoam
+    "linear-gradient(180deg, #f5c8d8, #f5e0a0)",  // petal → buttercup
+    "linear-gradient(180deg, #d4c0e8, #f0c8e0)",  // lavender → lilac blush
+    "linear-gradient(180deg, #f5c8a8, #f5e0b0)",  // peach → cream
+    "linear-gradient(180deg, #b8ecd4, #b8ddf0)",  // mint → sky
+    "linear-gradient(180deg, #f0b8b0, #f0b8d0)",  // dusty coral → mauve
+    "linear-gradient(180deg, #a8d8b8, #a8c8d8)",  // celadon → mist
+    "linear-gradient(180deg, #d8c8f0, #c8d8f0)",  // wisteria → cornflower
+    "linear-gradient(180deg, #f5e0b0, #d8f0f0)",  // warm sand → cool mint
+  ];
+
+  // -- Filter helpers ---------------------------------------------------------
+
+  function getConstructClasses(rec) {
+    return (rec.fields["Construct(s)"] || []).map(c => c.toLowerCase().replace(/\s+/g, "-"));
+  }
+
+  function filteredRecords() {
+    if (selectedFilters.size === 0) return allRecords;
+    return allRecords.filter(rec =>
+      [...selectedFilters].every(cls => getConstructClasses(rec).includes(cls))
+    );
+  }
+
+  // -- Filter UI state --------------------------------------------------------
+
+  function updateFilterLabel() {
+    const label = document.getElementById("filter-label");
+    if (!label) return;
+    if (selectedFilters.size === 0) {
+      label.textContent = "All Constructs";
+    } else if (selectedFilters.size === 1) {
+      const cls = [...selectedFilters][0];
+      const li = document.querySelector(`#construct-filter-list li[data-filter=".${cls}"]`);
+      label.textContent = li ? li.textContent : cls;
+    } else {
+      label.textContent = `${selectedFilters.size} constructs`;
+    }
+  }
+
+  function updateListActiveState() {
+    const filterList = document.getElementById("construct-filter-list");
+    if (!filterList) return;
+    filterList.querySelectorAll("li").forEach(li => {
+      if (li.dataset.filter === "*") {
+        li.classList.toggle("filter-active", selectedFilters.size === 0);
+      } else {
+        li.classList.toggle("filter-active", selectedFilters.has(li.dataset.filter.slice(1)));
+      }
+    });
+  }
+
+  function renderFilterTags() {
+    const bar = document.getElementById("filter-tags-bar");
+    if (!bar) return;
+    if (selectedFilters.size === 0) { bar.innerHTML = ""; return; }
+
+    const filterList = document.getElementById("construct-filter-list");
+    bar.innerHTML = [...selectedFilters].map(cls => {
+      const li = filterList?.querySelector(`li[data-filter=".${cls}"]`);
+      const name = li ? li.textContent.replace(/^✓\s*/, "") : cls;
+      return `<span class="filter-tag"><span class="filter-tag-label">${name}</span><button class="filter-tag-remove" data-remove="${cls}" aria-label="Remove ${name}">&times;</button></span>`;
+    }).join("");
+
+    bar.querySelectorAll(".filter-tag-remove").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        selectedFilters.delete(btn.dataset.remove);
+        currentPage = 1;
+        renderPage();
+        renderFilterTags();
+        updateFilterLabel();
+        updateListActiveState();
+      });
+    });
+  }
+
+  // -- Render -----------------------------------------------------------------
+
+  function renderPage() {
+    const records = filteredRecords();
+    const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageRecords = records.slice(start, start + PAGE_SIZE);
+
+    const container = document.getElementById("records_output");
+    container.innerHTML = '';
+
+    pageRecords.forEach(rec => {
+      const barGradient = CARD_GRADIENTS[allRecords.indexOf(rec) % CARD_GRADIENTS.length];
+      const thisPdfPath = rec.fields?.["Final PDF"]?.[0]?.f_localPath;
+
+      let linkHTML = "";
+      if (thisPdfPath) {
+        linkHTML = `
+          <a href="${thisPdfPath}" class="view-project" target="_blank" aria-label="View full measure">
+            <i class="bi bi-file-pdf"></i>Measure (PDF)
+          </a>
+        `;
+      }
+
+      container.innerHTML += `
+        <div class="col-lg-12 portfolio-item isotope-item ${getConstructClasses(rec).join(" ")}">
+          <article class="portfolio-card">
+            <div class="card-body-flex">
+              <div class="project-accent-bar" style="background: ${barGradient}"></div>
+              <div class="project-details">
+                <div class="project-header">
+                  <span class="project-category">${rec.fields["Construct(s)"]?.join(", ")}</span>
+                  <time class="project-year">${rec.fields.Year}</time>
+                </div>
+                <a href="details/${rec.id}">
+                  <h3 class="project-title">${rec.fields["Measure Name"]}</h3>
+                </a>
+                <p class="project-description">${rec.fields["Primary Reference"]}</p>
+                <div class="overlay-content">
+                  <a href="details/${rec.id}">
+                    <i class="bi bi-chevron-double-right"></i>Details
+                  </a>
+                  ${linkHTML}
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>`;
+    });
+
+    if (typeof Isotope !== 'undefined') {
+      if (window._isoInstance) window._isoInstance.destroy();
+      window._isoInstance = new Isotope(container, {
+        itemSelector: '.isotope-item',
+        layoutMode: 'masonry',
+        filter: '*'
+      });
+      // Double rAF: waits for the browser to finish painting before Isotope measures heights.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (window._isoInstance) window._isoInstance.layout();
+      }));
+      // Re-layout after each lazy image loads so Isotope has correct item heights.
+      // Without this, images that load after initial layout push text into the next card.
+      container.querySelectorAll('img[loading="lazy"]').forEach(img => {
+        if (!img.complete) {
+          img.addEventListener('load', () => {
+            if (window._isoInstance) window._isoInstance.layout();
+          }, { once: true });
+        }
+      });
+    }
+
+    renderPaginationControls(records.length, totalPages);
+  }
+
+  // -- Pagination -------------------------------------------------------------
+
+  function renderPaginationControls(total, totalPages) {
+    const pager = document.getElementById("pagination-controls");
+    const pagerTop = document.getElementById("pagination-controls-top");
+    if (!pager) return;
+
+    if (totalPages <= 1) {
+      pager.innerHTML = '';
+      if (pagerTop) pagerTop.innerHTML = '';
+      return;
+    }
+
+    const rangeStart = (currentPage - 1) * PAGE_SIZE + 1;
+    const rangeEnd = Math.min(currentPage * PAGE_SIZE, total);
+
+    let html = '<div class="pagination-wrapper">';
+    html += `<p class="pagination-info">Showing ${rangeStart}–${rangeEnd} of ${total}</p>`;
+    html += '<ul class="pagination-list">';
+
+    const prevStyle = currentPage > 1 ? '' : ' style="opacity:0;pointer-events:none"';
+    html += `<li><button class="page-btn" data-page="${currentPage - 1}"${prevStyle}>&lsaquo; Prev</button></li>`;
+
+    const spread = 2;
+    const pageStart = Math.max(1, currentPage - spread);
+    const pageEnd = Math.min(totalPages, currentPage + spread);
+
+    if (pageStart > 1) {
+      html += `<li><button class="page-btn" data-page="1">1</button></li>`;
+      if (pageStart > 2) html += `<li><span class="page-ellipsis">&hellip;</span></li>`;
+    }
+
+    for (let p = pageStart; p <= pageEnd; p++) {
+      html += `<li><button class="page-btn${p === currentPage ? ' active' : ''}" data-page="${p}">${p}</button></li>`;
+    }
+
+    if (pageEnd < totalPages) {
+      if (pageEnd < totalPages - 1) html += `<li><span class="page-ellipsis">&hellip;</span></li>`;
+      html += `<li><button class="page-btn" data-page="${totalPages}">${totalPages}</button></li>`;
+    }
+
+    const nextStyle = currentPage < totalPages ? '' : ' style="opacity:0;pointer-events:none"';
+    html += `<li><button class="page-btn" data-page="${currentPage + 1}"${nextStyle}>Next &rsaquo;</button></li>`;
+
+    html += '</ul></div>';
+    pager.innerHTML = html;
+    if (pagerTop) pagerTop.innerHTML = html;
+
+    [pager, pagerTop].filter(Boolean).forEach(el => {
+      el.querySelectorAll('[data-page]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const p = parseInt(btn.dataset.page);
+          if (p >= 1 && p <= totalPages && p !== currentPage) {
+            currentPage = p;
+            renderPage();
+            document.getElementById('portfolio').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    });
+  }
+
+  dataToArray().then(records => {
+    allRecords = records;
+    renderPage();
+  });
+
+  // Intercept filter clicks — multi-select with tag UI
+  const filterList = document.getElementById("construct-filter-list");
+  filterList.addEventListener("click", e => {
+    const li = e.target.closest("li[data-filter]");
+    if (!li) return;
+
+    const filter = li.dataset.filter;
+
+    if (filter === "*") {
+      selectedFilters.clear();
+    } else {
+      const cls = filter.slice(1);
+      if (selectedFilters.has(cls)) selectedFilters.delete(cls);
+      else selectedFilters.add(cls);
+    }
+
+    currentPage = 1;
+    renderPage();
+    renderFilterTags();
+    updateFilterLabel();
+    updateListActiveState();
+
+    // Clear the search box so all items are visible again
+    const filterSearch = document.getElementById("filter-search");
+    if (filterSearch) {
+      filterSearch.value = "";
+      filterList.querySelectorAll("li").forEach(el => el.style.display = "");
+    }
+
+    // Close panel only on "All Constructs"; stay open so user can add more filters
+    if (filter === "*") {
+      const filterPanel  = document.getElementById("filter-panel");
+      const filterToggle = document.getElementById("filter-toggle-btn");
+      if (filterPanel)  filterPanel.classList.remove("open");
+      if (filterToggle) filterToggle.classList.remove("open");
+    }
+  });
+
+});
+</script>
+
+
+
+<body id="page-top">
+
+  <nav class="navbar navbar-expand-xl navbar-light fixed-top py-3" id="mainNav">
+    <div class="container px-4 px-lg-5">
+<%- include("partials/nav") %>
+    </div>
+  </nav>
+
+
+
+  <main class="main">
+
+    <!-- Hero / Masthead -->
+    <header class="masthead" id="hero" style="background: linear-gradient(180deg, #ffffff 0%, #f4f4f4 100%);">
+
+      <div class="container px-4 px-lg-5">
+
+        <div class="row gx-4 gx-lg-5 align-items-center">
+          <div class="col-lg-6">
+            <div class="hero-content">
+              <h1 data-aos="fade-up" data-aos-delay="200">Find the measure you need.</h1>
+			   
+              <p data-aos="fade-up" data-aos-delay="300">RelaScale is a searchable database of self-report measures for relationship science.</p>
+			  <div class="search-container">
+			  <form action="/search" method="get" id="index-search-form">
+			    <div class="search-wrapper" style="position: relative">
+              <input type="text" name="query" id="index-search-input" class="form-control search-input" placeholder="Search..." autocomplete="off"><i class="bi bi-search search-icon"></i>
+              <ul id="index-suggestions-list" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:1000; list-style:none; margin:0; padding:0; background:#fff; border:1px solid #ddd; border-radius:0 0 8px 8px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></ul>
+            </div>
+		  </form>
+      </div>
+	  
+                <p class="cta-intro" style="margin-bottom: 0.75em;margin-top: 2em;">Have a measure to share? We invite you to add it to the repository.</p>
+              <div class="hero-cta" data-aos="fade-up" data-aos-delay="400">
+                <a href="#submit" class="btn btn-primary btn-xl">Submit Your Measure</a>
+                <a href="#" class="btn btn-outline-secondary btn-xl" data-bs-toggle="modal" data-bs-target="#suggestModal">Suggest A Measure</a>
+              </div>
+
+              <div class="hero-stats" id="measurestats-output" data-aos="fade-up" data-aos-delay="500">
+                
+				<script>
+				const container = document.getElementById("measurestats-output");
+      container.innerHTML = `
+        <div class="stat-item">
+                  <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${MeasureStats.totalMeasures}" data-purecounter-duration="1"></div>
+                  <div class="stat-label">Measures</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${MeasureStats.totalConstructs}" data-purecounter-duration="1"></div>
+                  <div class="stat-label">Constructs</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${MeasureStats.totalItems}" data-purecounter-duration="1"></div>
+                  <div class="stat-label">Total Items</div>
+                </div>
+      `;				
+				</script>
+                
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="hero-image" id="bubblechart" data-aos="fade-left" data-aos-delay="300">
+                <script src="assets/vendor/d3/d3.v7.min.js"></script>
+				<script src="/cache-stats.js"></script>
+				  <script>
+			// ***************** BUBBLE CHART
+			drawBubbleChart();
+				  </script>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </header><!-- /Hero -->
+
+
+    <!-- Portfolio Section, aka Constructs and Measures -->
+    <section class="page-section portfolio" id="portfolio">
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up">
+        <h2 class="text-center mt-0">Constructs and Measures</h2>
+        <hr class="divider" />
+      </div>
+          <div id="pagination-controls-top"></div>
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up" data-aos-delay="100">
+
+        <div class="isotope-layout" data-default-filter="*" data-layout="masonry" data-sort="original-order">
+          <div class="construct-filter-wrapper" data-aos="fade-up" data-aos-delay="200">
+            <button class="filter-toggle-btn" id="filter-toggle-btn" type="button">
+              <span id="filter-label">All Constructs</span>
+              <i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="filter-tags-bar" id="filter-tags-bar"></div>
+            <div class="filter-panel" id="filter-panel">
+              <input type="text" class="filter-search" id="filter-search" placeholder="Search constructs…" autocomplete="off">
+              <ul class="portfolio-filters isotope-filters" id="construct-filter-list">
+                <li data-filter="*" class="filter-active">All Constructs</li>
+              </ul>
+            </div>
+          </div><!-- End Portfolio Filters -->
+
+          <div class="row gy-5 isotope-container" id="records_output" data-aos="fade-up" data-aos-delay="300">
+
+
+
+
+          </div><!-- End Portfolio Items Container -->
+
+          <div id="pagination-controls"></div>
+
+        </div>
+
+
+      </div>
+    </section><!-- /Portfolio Section -->
+
+    <!-- Why section -->
+    <section class="page-section bg-light" id="why">
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up">
+        <h2 class="text-center mt-0">Why Collect Measures?</h2>
+        <hr class="divider" />
+      </div>
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up" data-aos-delay="100">
+        <div class="row">
+          <div class="col-lg-6" data-aos="fade-right" data-aos-delay="200">
+            <div class="content why-content">
+              <p class="lead" style="margin-bottom:25px">Measurement standardization is an important part of a mature science.</p><p>RelaScale answers recent calls for the discipline of psychology to document and standardize its measures.<sup><a href="#fn-1">[1]</a></sup><sup><a href="#fn-2">[2]</a></sup> By curating a publicly available collection of measures for the field of relationship science, we hope that RelaScale can help to:</p>
+              <ol class="bracket-list">
+                <li>improve measurement consistency across studies</li>
+                <li>combat the proliferation of constructs and measures</li>
+                <li>facilitate meta-scientific projects</li>
+                <li>encourage the iterative improvement of the field’s measures</li>
+              </ol>
+              <p>Ultimately, the goal of RelaScale is to help make close relationships research more cumulative.</p>
+            </div>
+          </div>
+          <div class="col-lg-6" data-aos="fade-left" data-aos-delay="300">
+            <div class="image-wrapper">
+              <img src="assets/img/about/about-8.webp" alt="Professional team collaboration" class="img-fluid">
+            </div>
+          </div>
+        </div>
+
+        <div class="why-footnotes">
+          <ol>
+            <li id="fn-1">Anvari, F., Alsalti, T., Oehler, L.A., Marion, Z., Hussey, I., Elson, M., &amp; Arslan, R.C. (2025). A Fragmented Field: Construct and Measure Proliferation in Psychology. <em>Advances in Methods and Practices in Psychological Science</em>, 8(3). <a href="https://doi.org/10.1177/25152459251360642">https://doi.org/10.1177/25152459251360642</a></li>
+            <li id="fn-2">Elson, M., Hussey, I., Alsalti, T., &amp; Arslan, R. C. (2023). Psychological measures aren’t toothbrushes. <em>Communications Psychology</em>, 1(1), 25.</li>
+          </ol>
+        </div>
+      </div>
+
+    </section><!-- /Why Section -->
+
+    <!-- Submit Section -->
+    <section class="page-section" id="submit">
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up">
+        <h2 class="text-center mt-0">Submit A Measure</h2>
+        <hr class="divider" />
+        <div class="text-center mb-4">
+          <a href="https://airtable.com/appGk5sn74t5YKaG7/shrsVaevLCqMhtGAW" target="_blank" class="btn btn-primary btn-xl me-3">Access Form (Password Required)</a>
+          <a href="#contact" id="request-access-btn" data-subject="RelaScale Access Request" data-message="Hi! I’d like to request access to the measure upload form." class="btn btn-outline-secondary btn-xl">Request Access</a>
+        </div>
+        <p class="text-muted text-center mb-5">If you have a validated self-report measure pertaining to interpersonal relationships, we invite you to add it to the repository by completing a short form.</p>
+      </div>
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up" data-aos-delay="100">
+		
+        <div class="row align-items-center">
+          <div class="col-lg-8" data-aos="fade-right" data-aos-delay="200">
+            <div class="content">
+			
+              <h2>What’s in the form?</h2>
+              <p class="lead">The form will ask you for some basic information about your measure, such as the construct(s) it represents, its publication reference, its subscales or dimensions, and its number of items.</p>
+
+              <p>We will also ask you to grant other researchers permission to use your scale by selecting a copyright license option for it. Finally, we will require a document containing the verbatim wording of the scale (e.g., as a word doc or a pdf). This should be your own personal copy of the scale - the version you would use in your research, for example.</p>
+
+              <p>Once you have submitted the form, a moderator will review and approve your submission. Please note that at this time, only published self-report measures are eligible for inclusion in the repository.</p>
+			  
+			  <p>If you’ve already obtained the password from an administrator (e.g., at a conference presentation), you may <a href="https://airtable.com/appGk5sn74t5YKaG7/shrsVaevLCqMhtGAW">access the form using the direct link.</a> Otherwise, please <a href="#contact" id="request-access-link" data-subject="RelaScale Access Request" data-message="Hi! I’d like to request access to the measure upload form.">request access to the form.</a></p>
+            </div>
+          </div>
+
+          <div class="col-lg-4" data-aos="fade-left" data-aos-delay="300">
+            <div class="image-wrapper">
+              <img src="assets/img/about/about-square-12.webp" alt="About us" class="img-fluid">
+            </div>
+          </div>
+        </div>
+
+
+        <div class="row align-items-center" style="margin-top:3em">
+          <div class="col-lg-3" data-aos="fade-right" data-aos-delay="300">
+            <div class="image-wrapper">
+              <img src="assets/img/about/suggest-square-12.webp" alt="Suggest a measure" class="img-fluid">
+            </div>
+          </div>
+          <div class="col-lg-9" data-aos="fade-left" data-aos-delay="200">
+            <div class="content">
+              <h2>Suggest a measure</h2>
+              <p class="lead"></p>
+
+              <p>If there is a measure you'd like to see added to the database, let us know.</p>
+
+              <p>Include the name of the measure and the citation where it is published, and we'll do the rest.</p>
+              
+            <a href="#" class="btn btn-primary btn-xl" data-bs-toggle="modal" data-bs-target="#suggestModal">Suggest a measure</a>
+
+
+			   </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section><!-- /Submit Section -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("request-access-btn");
+
+  btn.addEventListener("click", () => {
+    // Optional slight delay so the scroll finishes cleanly
+    setTimeout(() => {
+      const subjectInput = document.querySelector('#contact input[name="subject"]');
+      const messageInput = document.querySelector('#contact textarea[name="message"]');
+
+      if (subjectInput) subjectInput.value = btn.dataset.subject || "";
+      if (messageInput) messageInput.value = btn.dataset.message || "";
+    }, 50);
+  });
+});
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const link = document.getElementById("request-access-link");
+
+  link.addEventListener("click", () => {
+    setTimeout(() => {
+      const subjectInput = document.querySelector('#contact input[name="subject"]');
+      const messageInput = document.querySelector('#contact textarea[name="message"]');
+
+      if (subjectInput) subjectInput.value = link.dataset.subject || "";
+      if (messageInput) messageInput.value = link.dataset.message || "";
+    }, 50);
+  });
+});
+</script>
+
+
+    <!-- Contact Section -->
+    <section class="page-section bg-light" id="contact">
+
+      <div class="container px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+          <div class="col-lg-8 col-xl-6 text-center">
+            <h2 class="mt-0">Contact Us</h2>
+            <hr class="divider" />
+            <p class="text-muted mb-5">We welcome any questions about the repository, as well as any feedback you may have on how to make the repository better.</p>
+          </div>
+        </div>
+
+        <div class="row gx-4 gx-lg-5 justify-content-center mb-5">
+          <div class="col-lg-8 col-md-10">
+
+            <form action="/contact" method="post" class="php-email-form" id="contact-form">
+
+              <!-- honeypot -->
+              <div class="form-trap" aria-hidden="true">
+                <label for="website">Website</label>
+                <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+              </div>
+
+              <!-- timing token -->
+              <input type="hidden" name="_t" value="<%= Date.now() %>">
+
+              <div class="row gx-3">
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input class="form-control" id="contactName" name="name" type="text" placeholder="Your name" required />
+                    <label for="contactName">Full Name</label>
+                    <div class="invalid-feedback">A name is required.</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input class="form-control" id="contactEmail" name="email" type="email" placeholder="name@example.com" required />
+                    <label for="contactEmail">Email Address</label>
+                    <div class="invalid-feedback">A valid email is required.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-floating mb-3">
+                <input class="form-control" id="contactSubject" name="subject" type="text" placeholder="Subject" required />
+                <label for="contactSubject">Subject</label>
+                <div class="invalid-feedback">A subject is required.</div>
+              </div>
+
+              <div class="form-floating mb-3">
+                <textarea class="form-control" id="contactMessage" name="message" placeholder="Your message" style="height: 10rem" required></textarea>
+                <label for="contactMessage">Message</label>
+                <div class="invalid-feedback">A message is required.</div>
+              </div>
+
+              <div class="my-3">
+                <div class="loading">Loading</div>
+                <div class="error-message"></div>
+                <div class="sent-message fade">Your message has been sent. Thank you!</div>
+              </div>
+
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-xl">Send Message</button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      </div>
+
+    </section><!-- /Contact Section -->
+	
+	
+    <!-- Team Section -->
+    <section class="page-section" id="team">
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up">
+        <h2 class="text-center mt-0">RelaScale Team</h2>
+        <hr class="divider" />
+        <p class="text-muted text-center mb-5">RelaScale is supported by a Social Science and Humanities Research Council of Canada Insight Grant awarded to Dr. Joel (2025-2030).</p>
+      </div>
+
+      <div class="container px-4 px-lg-5" data-aos="fade-up" data-aos-delay="100">
+
+        <div class="row gy-5">
+
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="250">
+            <div class="team-member">
+              <div class="member-img">
+                <img src="assets/img/person/person-m-12.webp" class="img-fluid" alt="Michael Chen" loading="lazy">
+              </div>
+              <div class="member-info">
+                <h4>James Marchment</h4>
+                <span>Design and Development</span>
+                <p>A graphic and web designer with over 10 years of experience, James has a long collaborative history with the relationship science community. Past projects include logos for the the 2016 International Association for Relationship Research (IARR) conference, the International Singles Studies Association (ISSA), and multiple research lab logos and websites.</p>
+                <div class="social">
+				<!--
+                  <a href="#"><i class="bi bi-twitter-x"></i></a>
+                  <a href="https://www.linkedin.com/in/jamesmarchment/"><i class="bi bi-linkedin"></i></a>
+                  <a href="#"><i class="bi bi-github"></i></a>
+				  -->
+                </div>
+              </div>
+            </div>
+          </div><!-- End Team Member -->
+		  
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="200">
+            <div class="team-member">
+              <div class="member-img">
+                <img src="assets/img/person/person-f-8.webp" class="img-fluid" alt="Sarah Johnson" loading="lazy">
+              </div>
+              <div class="member-info">
+                <h4>Samantha Joel</h4>
+                <span>Research and Community Liason</span>
+                <p>Samantha is an Associate Professor in the Psychology Department at Western University, and director of the Relationship Decisions Lab. For the last several years, her research has focused on methodological challenges in relationship science, with the particular goal of evaluating and improving self-report measures.</p>
+                <div class="social">
+				<!--
+                  <a href="#"><i class="bi bi-twitter-x"></i></a>
+                  <a href="https://www.linkedin.com/in/samantha-joel-306112246/"><i class="bi bi-linkedin"></i></a>
+                  <a href="#"><i class="bi bi-instagram"></i></a>
+				  -->
+                </div>
+              </div>
+            </div>
+          </div><!-- End Team Member -->
+
+
+
+        </div>
+
+      </div>
+
+    </section><!-- /Team Section -->
+
+	
+	
+	
+
+<script>
+(function () {
+  const input = document.getElementById("index-search-input");
+  const list  = document.getElementById("index-suggestions-list");
+  const form  = document.getElementById("index-search-form");
+  let activeIndex = -1;
+  let debounceTimer = null;
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  const stopWords = new Set(['a','an','the','and','or','of','in','to','for','with','on','at','by','from']);
+
+  function renderSuggestions(suggestions, query) {
+    list.innerHTML = "";
+    activeIndex = -1;
+    if (!suggestions.length) { list.style.display = "none"; return; }
+    const lower = query.toLowerCase();
+    suggestions.forEach(function (s) {
+      const li = document.createElement("li");
+      li.style.cssText = "padding:8px 16px; cursor:pointer; font-size:0.95rem;";
+      // Find the first non-stop-word that starts with the query and bold its prefix
+      const wordRe = /\w+/g;
+      let m, pos = -1;
+      while ((m = wordRe.exec(s)) !== null) {
+        if (m[0].toLowerCase().startsWith(lower) && !stopWords.has(m[0].toLowerCase())) {
+          pos = m.index; break;
+        }
+      }
+      li.innerHTML = pos >= 0
+        ? escapeHtml(s.slice(0, pos)) + "<strong>" + escapeHtml(s.slice(pos, pos + query.length)) + "</strong>" + escapeHtml(s.slice(pos + query.length))
+        : escapeHtml(s);
+      li.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        input.value = s;
+        list.style.display = "none";
+        form.submit();
+      });
+      li.addEventListener("mouseenter", function () {
+        setActive(Array.from(list.children).indexOf(li));
+      });
+      list.appendChild(li);
+    });
+    list.style.display = "block";
+  }
+
+  function setActive(index) {
+    const items = list.children;
+    if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].style.background = "";
+    activeIndex = index;
+    if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].style.background = "#f0f0f0";
+  }
+
+  function fetchSuggestions(query) {
+    if (query.length < 3) { list.style.display = "none"; return; }
+    fetch("/search/suggestions?query=" + encodeURIComponent(query))
+      .then(function (r) { return r.json(); })
+      .then(function (data) { renderSuggestions(data.suggestions, query); })
+      .catch(function () { list.style.display = "none"; });
+  }
+
+  input.addEventListener("input", function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function () { fetchSuggestions(input.value.trim()); }, 180);
+  });
+
+  input.addEventListener("keydown", function (e) {
+    const items = list.children;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive(Math.min(activeIndex + 1, items.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive(Math.max(activeIndex - 1, -1));
+    } else if (e.key === "Enter") {
+      if (activeIndex >= 0 && items[activeIndex]) {
+        e.preventDefault();
+        input.value = items[activeIndex].textContent;
+        list.style.display = "none";
+        form.submit();
+      }
+    } else if (e.key === "Escape") {
+      list.style.display = "none";
+      activeIndex = -1;
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!form.contains(e.target)) { list.style.display = "none"; activeIndex = -1; }
+  });
+})();
+</script>
+
+<script>
+// -- Footnote highlight (prevent scroll, flash the target instead) ----------
+document.querySelectorAll('a[href^="#fn-"]').forEach(link => {
+  link.addEventListener("click", e => {
+    e.preventDefault();
+    const target = document.getElementById(link.getAttribute("href").slice(1));
+    if (!target) return;
+    target.classList.remove("fn-highlight");
+    void target.offsetWidth; // force reflow so animation restarts on repeated clicks
+    target.classList.add("fn-highlight");
+  });
+});
+</script>
+
+<!-- Suggest a Measure Modal -->
+<div class="modal fade" id="suggestModal" tabindex="-1" aria-labelledby="suggestModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="suggestModalLabel">Suggest a Measure</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-4" style="font-size:0.9rem">Include the name of the measure and where it was published, and we'll take care of the rest.</p>
+        <form id="suggest-form" class="php-email-form">
+
+          <div class="form-trap" aria-hidden="true">
+            <label for="suggest-website">Website</label>
+            <input type="text" name="website" id="suggest-website" tabindex="-1" autocomplete="off">
+          </div>
+          <input type="hidden" name="_t" id="suggest-t">
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Your Name</label>
+                <input type="text" name="name" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Measure Name</label>
+            <input type="text" name="measure_name" required>
+          </div>
+
+          <div class="form-group">
+            <label>Citation</label>
+            <input type="text" name="citation" required placeholder="Author(s), Year, Journal…">
+          </div>
+
+          <div class="form-group">
+            <label>Comments <span class="text-muted" style="font-weight:400;font-size:0.85em">(optional)</span></label>
+            <textarea name="comments" rows="3"></textarea>
+          </div>
+
+          <div class="my-3">
+            <div class="loading">Loading</div>
+            <div class="error-message"></div>
+            <div class="sent-message fade">Thank you! We'll look into adding this measure.</div>
+          </div>
+
+          <button type="submit" class="submit-btn">
+            <span>Submit Suggestion</span>
+            <i class="bi bi-arrow-right"></i>
+          </button>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// -- Suggest a Measure modal ------------------------------------------------
+(function () {
+  const modal     = document.getElementById("suggestModal");
+  const form      = document.getElementById("suggest-form");
+  if (!modal || !form) return;
+
+  const loadingEl = form.querySelector(".loading");
+  const errorEl   = form.querySelector(".error-message");
+  const sentEl    = form.querySelector(".sent-message");
+  const submitBtn = form.querySelector("button[type='submit']");
+
+  // Stamp the timing token each time the modal opens
+  modal.addEventListener("show.bs.modal", () => {
+    document.getElementById("suggest-t").value = Date.now();
+  });
+
+  // Reset form state when modal closes
+  modal.addEventListener("hidden.bs.modal", () => {
+    form.reset();
+    errorEl.classList.remove("d-block");
+    sentEl.classList.remove("show");
+    sentEl.style.display = "";
+    submitBtn.style.opacity = "";
+    submitBtn.disabled = false;
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    loadingEl.classList.add("d-block");
+    errorEl.classList.remove("d-block");
+    sentEl.classList.remove("show");
+
+    const formData = Object.fromEntries(new FormData(form).entries());
+
+    try {
+      const response = await fetch("/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+      const result = await response.json();
+      loadingEl.classList.remove("d-block");
+
+      if (result.success) {
+        submitBtn.style.transition = "opacity 0.5s";
+        submitBtn.style.opacity = 0;
+        submitBtn.disabled = true;
+        sentEl.style.display = "block";
+        sentEl.classList.add("show");
+        form.reset();
+        setTimeout(() => bootstrap.Modal.getInstance(modal).hide(), 2000);
+      } else {
+        errorEl.textContent = result.error || "Failed to send suggestion.";
+        errorEl.classList.add("d-block");
+      }
+    } catch (err) {
+      loadingEl.classList.remove("d-block");
+      errorEl.textContent = err.message || "An error occurred.";
+      errorEl.classList.add("d-block");
+    }
+  });
+})();
+</script>
+
+<%- include("partials/footer") %>

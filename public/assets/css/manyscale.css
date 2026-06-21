@@ -1,0 +1,1298 @@
+
+.search-container {
+    position: relative;
+	margin-bottom: 20px;
+}
+
+/*--------------------------------------------------------------
+# Navigation Menu
+--------------------------------------------------------------*/
+/* Navmenu - Desktop */
+@media (min-width: 1200px) {
+  #navbarResponsive {
+    padding: 0;
+  }
+
+  #navbarResponsive ul {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    list-style: none;
+    align-items: center;
+  }
+
+  #navbarResponsive li {
+    position: relative;
+  }
+
+  #navbarResponsive a,
+  #navbarResponsive a:focus {
+    color: var(--nav-color);
+    padding: 18px 15px;
+    font-family: var(--nav-font);
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    transition: 0.3s;
+  }
+
+  #navbarResponsive a i,
+  #navbarResponsive a:focus i {
+    font-size: 12px;
+    line-height: 0;
+    margin-left: 5px;
+    transition: 0.3s;
+  }
+
+  #navbarResponsive li:last-child a {
+    padding-right: 0;
+  }
+
+  #navbarResponsive li:hover>a,
+  #navbarResponsive .active,
+  #navbarResponsive .active:focus {
+    color: var(--nav-hover-color);
+  }
+
+  #navbarResponsive .dropdown ul {
+    margin: 0;
+    padding: 10px 0;
+    background: var(--nav-dropdown-background-color);
+    display: block;
+    position: absolute;
+    visibility: hidden;
+    left: 14px;
+    top: 130%;
+    opacity: 0;
+    transition: 0.3s;
+    border-radius: 4px;
+    z-index: 99;
+    box-shadow: 0px 0px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  #navbarResponsive .dropdown ul li {
+    min-width: 200px;
+  }
+
+  #navbarResponsive .dropdown ul a {
+    padding: 10px 20px;
+    font-size: 15px;
+    text-transform: none;
+    color: var(--nav-dropdown-color);
+  }
+
+  #navbarResponsive .dropdown ul a i {
+    font-size: 12px;
+  }
+
+  #navbarResponsive .dropdown ul a:hover,
+  #navbarResponsive .dropdown ul .active:hover,
+  #navbarResponsive .dropdown ul li:hover>a {
+    color: var(--nav-dropdown-hover-color);
+  }
+
+  #navbarResponsive .dropdown:hover>ul {
+    opacity: 1;
+    top: 100%;
+    visibility: visible;
+  }
+
+  #navbarResponsive .dropdown .dropdown ul {
+    top: 0;
+    left: -90%;
+    visibility: hidden;
+  }
+
+  #navbarResponsive .dropdown .dropdown:hover>ul {
+    opacity: 1;
+    top: 0;
+    left: -100%;
+    visibility: visible;
+  }
+}
+
+/* Navmenu - Mobile */
+@media (max-width: 1199px) {
+  .mobile-nav-toggle {
+    color: var(--nav-color);
+    font-size: 28px;
+    line-height: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    transition: color 0.3s;
+  }
+
+  #navbarResponsive {
+    padding: 0;
+    z-index: 9997;
+  }
+
+  #navbarResponsive ul {
+    display: none;
+    list-style: none;
+    position: absolute;
+    inset: 60px 20px 20px 20px;
+    padding: 10px 0;
+    margin: 0;
+    border-radius: 6px;
+    background-color: var(--nav-mobile-background-color);
+    overflow-y: auto;
+    transition: 0.3s;
+    z-index: 9998;
+    box-shadow: 0px 0px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  #navbarResponsive a,
+  #navbarResponsive a:focus {
+    color: var(--nav-dropdown-color);
+    padding: 10px 20px;
+    font-family: var(--nav-font);
+    font-size: 18px;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    transition: 0.3s;
+  }
+
+  #navbarResponsive a i,
+  #navbarResponsive a:focus i {
+    font-size: 12px;
+    line-height: 0;
+    margin-left: 5px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: 0.3s;
+    background-color: color-mix(in srgb, var(--accent-color), transparent 90%);
+  }
+
+  #navbarResponsive a i:hover,
+  #navbarResponsive a:focus i:hover {
+    background-color: var(--accent-color);
+    color: var(--contrast-color);
+  }
+
+  #navbarResponsive a:hover,
+  #navbarResponsive .active,
+  #navbarResponsive .active:focus {
+    color: var(--nav-dropdown-hover-color);
+  }
+
+  #navbarResponsive .active i,
+  #navbarResponsive .active:focus i {
+    background-color: var(--accent-color);
+    color: var(--contrast-color);
+    transform: rotate(180deg);
+  }
+
+  #navbarResponsive .dropdown ul {
+    position: static;
+    display: none;
+    z-index: 99;
+    padding: 10px 0;
+    margin: 10px 20px;
+    background-color: var(--nav-dropdown-background-color);
+    border: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
+    box-shadow: none;
+    transition: all 0.5s ease-in-out;
+  }
+
+  #navbarResponsive .dropdown ul ul {
+    background-color: rgba(33, 37, 41, 0.1);
+  }
+
+  #navbarResponsive .dropdown>.dropdown-active {
+    display: block;
+    background-color: rgba(33, 37, 41, 0.03);
+  }
+
+  .mobile-nav-active {
+    overflow: hidden;
+  }
+
+  .mobile-nav-active .mobile-nav-toggle {
+    color: #fff;
+    position: absolute;
+    font-size: 32px;
+    top: 15px;
+    right: 15px;
+    margin-right: 0;
+    z-index: 9999;
+  }
+
+  .mobile-nav-active #navbarResponsive {
+    position: fixed;
+    overflow: hidden;
+    inset: 0;
+    background: rgba(33, 37, 41, 0.8);
+    transition: 0.3s;
+  }
+
+  .mobile-nav-active #navbarResponsive>ul {
+    display: block;
+  }
+}
+
+
+
+
+
+#mainNav .navbar-nav .nav-item .nav-link {
+	color: #4b4b4b;
+	font-weight: 400;
+	transition: all 0.5s;
+}
+
+ #mainNav .navbar-nav .nav-item .nav-link:hover {
+	 color: #101010;
+ }
+ 
+ 
+#mainNav {
+	transition: all 0.5s;
+	border-bottom: 1px solid rgba(0,0,0,0);
+	background: #f8f9fa;
+  backdrop-filter: blur(10px);
+  z-index: 1050;
+}
+
+#mainNav.navbar-shrink {
+	border-bottom: 1px solid rgba(50,50,50,0.25);
+	background: rgba(255, 255, 255, 0.8);
+}
+
+
+
+
+
+/* stuff for the index page */
+
+#suggestModal {
+  z-index: 9001;
+}
+
+.stats {
+	display: flex;
+  gap: 3rem;
+}
+
+.construct-details .construct-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.construct-details .construct-header .construct-year {
+  font-size: 0.85rem;
+  color: color-mix(in srgb, var(--default-color), transparent 50%);
+  font-weight: 300;
+}
+
+.construct-details .construct-header .construct-category {
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent-color);
+}
+
+.construct-title, h3 {
+	font-weight: 400;
+}
+
+/* stuff for the details page */
+
+button.no-pdf-download {
+    background-color: #f00!important;
+}
+
+p.no-break-links a {
+  white-space: nowrap;
+}
+
+.portfolio-details .project-navigation {
+  border-top: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
+  padding-top: 3rem;
+}
+
+.portfolio-details .project-navigation .nav-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item.prev,
+.portfolio-details .project-navigation .nav-container .nav-item.next {
+  color: var(--heading-color);
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item.prev .nav-label,
+.portfolio-details .project-navigation .nav-container .nav-item.next .nav-label {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--default-color), transparent 50%);
+  margin-bottom: 0.25rem;
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item.prev .nav-title,
+.portfolio-details .project-navigation .nav-container .nav-item.next .nav-title {
+  font-size: 1.125rem;
+  font-weight: 400;
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item.prev:hover,
+.portfolio-details .project-navigation .nav-container .nav-item.next:hover {
+  color: var(--accent-color);
+  transform: translateY(-3px);
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item.next {
+  text-align: right;
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item.center {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  border: 1px solid color-mix(in srgb, var(--default-color), transparent 85%);
+  border-radius: 6px;
+  color: var(--heading-color);
+  font-weight: 400;
+  transition: all 0.3s ease;
+}
+
+.portfolio-details .project-navigation .nav-container .nav-item.center i {
+  font-size: 1.125rem;
+}
+
+
+.portfolio-details .project-details-grid .project-info {
+  padding-left: 3rem;
+}
+
+.portfolio-details .project-details-grid .project-info .info-block {
+  padding: 1rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
+}
+
+.portfolio-details .project-details-grid .project-info .info-block:last-child {
+  border-bottom: none;
+}
+
+.portfolio-details .project-details-grid .project-info .info-block .info-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--default-color), transparent 50%);
+  margin-bottom: 0.5rem;
+}
+
+.portfolio-details .project-details-grid .project-info .info-block .info-value {
+  font-size: 1.125rem;
+  font-weight: 400;
+  color: var(--heading-color);
+}
+
+
+
+
+/*--------------------------------------------------------------
+# Font & Color Variables
+# Help: https://bootstrapmade.com/color-system/
+--------------------------------------------------------------*/
+/* Fonts */
+:root {
+  --default-font: "Roboto",  system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --heading-font: "Montserrat",  sans-serif;
+  --nav-font: "Poppins",  sans-serif;
+}
+
+/* Global Colors - The following color variables are used throughout the website. Updating them here will change the color scheme of the entire website */
+:root { 
+  --background-color: #ffffff; /* Background color for the entire website, including individual sections */
+  --default-color: #666666; /* Default color used for the majority of the text content across the entire website */
+  --heading-color: #000000; /* Color for headings, subheadings and title throughout the website */
+  --accent-color: #313131; /* Accent color that represents your brand on the website. It's used for buttons, links, and other elements that need to stand out */
+  --surface-color: #ffffff; /* The surface color is used as a background of boxed elements within sections, such as cards, icon boxes, or other elements that require a visual separation from the global background. */
+  --contrast-color: #ffffff; /* Contrast color for text, ensuring readability against backgrounds of accent, heading, or default colors. */
+}
+
+/* Nav Menu Colors - The following color variables are used specifically for the navigation menu. They are separate from the global colors to allow for more customization options */
+:root {
+  --nav-color: #999999;  /* The default color of the main navmenu links */
+  --nav-hover-color: #000000; /* Applied to main navmenu links when they are hovered over or active */
+  --nav-mobile-background-color: #ffffff; /* Used as the background color for mobile navigation menu */
+  --nav-dropdown-background-color: #ffffff; /* Used as the background color for dropdown items that appear when hovering over primary navigation items */
+  --nav-dropdown-color: #666666; /* Used for navigation links of the dropdown items in the navigation menu. */
+  --nav-dropdown-hover-color: #313131; /* Similar to --nav-hover-color, this color is applied to dropdown navigation links when they are hovered over. */
+}
+
+/* Color Presets - These classes override global colors when applied to any section or element, providing reuse of the same color scheme. */
+
+.light-background {
+  --background-color: #f9f9f9;
+  --surface-color: #ffffff;
+}
+
+.dark-background {
+  --background-color: #060606;
+  --default-color: #e3e3e3;
+  --heading-color: #ffffff;
+  --accent-color: #bdb5b5;
+  --surface-color: #252525;
+  --contrast-color: #ffffff;
+}
+
+/* Smooth scroll */
+:root {
+  scroll-behavior: smooth;
+}
+
+/*--------------------------------------------------------------
+# General Styling & Shared Classes
+--------------------------------------------------------------*/
+body {
+  color: var(--default-color);
+  background-color: var(--background-color);
+  font-family: var(--default-font);
+}
+
+a {
+  color: var(--accent-color);
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+a:hover {
+  color: color-mix(in srgb, var(--accent-color), transparent 25%);
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--heading-color);
+  font-family: var(--heading-font);
+  font-weight: 400;
+}
+
+
+/* ── Standalone btn-primary base ─────────────────────────────────────────── */
+/* The theme only styles .btn-primary inside .hero .hero-cta and              */
+/* .about .cta-section. This provides a fallback for all other contexts.      */
+
+a.btn-primary,
+button.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--accent-color);
+  color: var(--contrast-color);
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+
+
+button.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+a.btn-primary:hover,
+button.btn-primary:hover {
+  background-color: color-mix(in srgb, var(--accent-color), black 10%);
+  color: var(--contrast-color);
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.cta-intro {
+  font-size: 0.85rem;
+  color: var(--default-color);
+  opacity: 0.6;
+  margin: 0 0 0.6rem;
+  line-height: 1.5;
+}
+
+.search-input {
+    height: 50px;
+    border-radius: 30px;
+    padding-left: 45px;
+    border: none;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    transform: translateY(-50%);
+    color: #888;
+}
+
+#details_link_buttons a button i.bi, #translation_link_buttons a button i.bi {
+	padding: 10px 10px 10px 0;
+}
+
+
+#details_link_buttons {
+	margin-bottom: 25px;
+}
+
+.search-results {
+	text-align: left;
+}
+
+.search-results p {
+	max-width: unset;
+  margin: unset;
+  text-wrap: unset;
+  line-height: unset;
+}
+
+
+.search-results h6 {
+line-height: 1.5;	
+}
+
+.search-results.section-title h2 {
+	margin-bottom: .25rem;
+}
+
+.search-results .subtitle {
+	margin-bottom: .25rem;
+}
+
+.search-results span.subtitle:after {
+	content: none;
+}
+
+.align-left {
+	text-align: left;
+}
+
+.construct-index .subtitle:after {
+	left: 0;
+	transform: none;
+}
+
+.construct-group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.construct-group-toggle h3 { flex: 1; }
+.construct-toggle-icon {
+  margin-left: 0.75rem;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.construct-toggle-icon.rotated {
+  transform: rotate(-90deg);
+}
+
+/* Grid-rows trick: animates from natural height → 0 without a fixed max-height.
+   The outer div is the grid container; the ul is the single grid track that collapses. */
+.list-group-collapsible {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 0.3s ease, opacity 0.25s ease;
+}
+.list-group-collapsible.list-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.list-group-collapsible > .list-group {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.construct-index .measurename {
+	  line-height: 1.6;
+  margin: 0.3rem 0 0.5rem;
+  font-size: 1.25rem;
+  color: cadetblue;
+}
+
+
+.construct-index .primaryreference {
+	  margin: 0rem 1rem 0.5rem 1rem;
+  font-size: 1.05rem;
+}
+
+.alphabet-block {
+	  margin-bottom: 2em;
+}
+
+
+.alphabet-block h4 {  
+color: #868686;
+  margin-bottom: 0;
+  font-weight: 400;
+}
+
+.alphabet-block hr {
+  opacity: 0.35;
+}
+
+/* OVERRIDES  - can probably just update these in main.css */
+
+.portfolio .portfolio-card .construct-details .construct-header, .portfolio .portfolio-card .construct-details .construct-title {
+  margin-bottom: 10px;
+}
+
+
+.portfolio-card .card-body-flex {
+  display: flex;
+  align-items: stretch;
+  gap: 1.25rem;
+}
+
+.construct-accent-bar {
+  width: 16px;
+  flex-shrink: 0;
+  border-radius: 10px 3px 3px 8px;
+  align-self: stretch;
+  min-height: 3.5rem;
+}
+
+.portfolio .portfolio-card .construct-details {
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.portfolio .portfolio-card::before {
+  content: "";
+  display: block;
+  height: 1px;
+  width: 100%;
+  background-color: #eaeaea;
+  position: absolute;
+  top: -12px;
+  left: 0;
+}
+
+.portfolio .portfolio-card .construct-details .overlay-content {
+  display: flex;
+  gap: 20px;
+}
+
+.portfolio .portfolio-card .construct-details .overlay-content i {
+	  margin-right: 5px;
+}
+
+.portfolio .portfolio-card .construct-details .overlay-content a {
+  color: #646161;
+  border: 1px solid #ddd;
+  padding: 3px 16px;
+  border-radius: 6px;
+  transition: all 0.7s;
+}
+
+.portfolio .portfolio-card .construct-details .overlay-content a:hover {
+	color: #403d3d;  
+	border-color: #222;
+}
+
+.portfolio .portfolio-card .construct-details .construct-description {
+	  margin-bottom: 1rem;
+}
+
+/* ── Why section ─────────────────────────────────────────────────────────── */
+
+.why-content {
+  text-align: left;
+}
+
+.why-content p {
+  margin-bottom: 0.75rem;
+}
+
+.bracket-list {
+  padding-left: 1.75rem;
+  margin: 0.25rem 0 1rem;
+  list-style-type: decimal;
+}
+
+.bracket-list li {
+  margin-bottom: 0.3rem;
+  line-height: 1.6;
+}
+
+.why-footnotes {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #eaeaea;
+}
+
+.why-footnotes ol {
+  padding-left: 1.5rem;
+  margin: 0;
+}
+
+.why-footnotes li {
+  font-size: 0.78rem;
+  color: #999;
+  line-height: 1.55;
+  margin-bottom: 0.6rem;
+  text-align: left;
+}
+
+.why-footnotes li em {
+  font-style: italic;
+}
+
+@keyframes footnote-flash {
+  from { background-color: color-mix(in srgb, var(--accent-color) 18%, transparent); }
+  to   { background-color: transparent; }
+}
+
+.fn-highlight {
+  animation: footnote-flash 1.6s ease-out forwards;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: -4px;
+}
+
+.about div.cta-section {
+	display: flex;
+	gap: 20px;
+	margin-bottom: 16px;
+	margin-top: initial;
+	justify-content: center;
+	align-items: center;
+}
+
+#contact .container .row, 
+#team .container .row {
+	justify-content: center;
+}
+
+/* animation for the email form */
+
+.php-email-form .fade {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.php-email-form .fade.show {
+  opacity: 1;
+}
+
+.php-email-form .sent-message {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  display: none; /* hide initially */
+}
+
+.php-email-form .sent-message.show {
+  opacity: 1;
+}
+
+/* make footer stay stuck */
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh; /* accounts for mobile browser chrome */
+}
+
+.main {
+  flex: 1 0 auto;
+}
+
+/* ── Construct filter dropdown ───────────────────────────────────────────── */
+
+section#portfolio {
+	overflow:visible;
+	}
+
+.construct-filter-wrapper {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface-color);
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 0.5rem 1.1rem;
+  font-family: var(--nav-font);
+  font-size: 0.875rem;
+  color: var(--default-color);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  z-index: 1045;
+}
+
+.filter-toggle-btn:hover,
+.filter-toggle-btn.open {
+  border-color: var(--accent-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  color: var(--accent-color);
+}
+
+.filter-toggle-btn .bi-chevron-down {
+  font-size: 0.75rem;
+  transition: transform 0.22s ease;
+}
+
+.filter-toggle-btn.open .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+.filter-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 200;
+  background: var(--surface-color);
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  padding: 0.65rem;
+  min-width: 280px;
+  max-width: 380px;
+  z-index: 1050;
+}
+
+.filter-panel.open {
+  display: block;
+}
+
+.filter-search {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.7rem;
+  margin-bottom: 0.4rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: var(--default-font);
+  color: var(--default-color);
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.18s;
+  box-sizing: border-box;
+}
+
+.filter-search:focus {
+  border-color: var(--accent-color);
+  background: #fff;
+}
+
+/* Override the horizontal pill layout inside the panel */
+.filter-panel .portfolio-filters {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  max-height: 300px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.filter-panel .portfolio-filters li {
+  padding: 0.38rem 0.65rem !important;
+  margin: 0 !important;
+  font-size: 0.855rem !important;
+  font-weight: 300;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  word-break: break-word;
+}
+
+.filter-panel .portfolio-filters li.filter-active::before {
+  content: "✓ ";
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.filter-panel .portfolio-filters li:hover {
+  background: #f2f2f2;
+  color: var(--accent-color);
+}
+
+.filter-panel .portfolio-filters li.filter-active {
+  background: #ebebeb;
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+/* Suppress the underline bar used in the horizontal version */
+.filter-panel .portfolio-filters li::after {
+  display: none !important;
+}
+
+/* ── Active-filter tags ──────────────────────────────────────────────────── */
+
+.filter-tags-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #ebebeb;
+  color: var(--accent-color);
+  border-radius: 5px;
+  padding: 0.28rem 0.55rem;
+  font-size: 0.8rem;
+  font-family: var(--nav-font);
+  font-weight: 500;
+  line-height: 1.3;
+  z-index: 1048;
+}
+
+.filter-tag-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 0.1rem;
+  cursor: pointer;
+  color: #999;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.filter-tag-remove:hover {
+  color: var(--accent-color);
+}
+
+/* ── Construct index alphabet nav ───────────────────────────────────────── */
+
+.alphabet-nav {
+  position: sticky;
+  top: 62px;
+  z-index: 100;
+  padding: 0.45rem 0;
+  margin-bottom: 1.5rem;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 1049;
+}
+
+.alphabet-nav .container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  justify-content: center;
+}
+
+.alpha-link {
+  display: inline-block;
+  min-width: 1.8rem;
+  text-align: center;
+  padding: 0.25rem 0.3rem;
+  font-family: var(--nav-font);
+  font-size: 0.82rem;
+  font-weight: 500;
+  border-radius: 4px;
+  line-height: 1.4;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+a.alpha-link {
+  color: var(--accent-color);
+}
+
+a.alpha-link:hover {
+  background: var(--accent-color);
+  color: #fff;
+  text-decoration: none;
+}
+
+.alpha-link.disabled {
+  color: #ccc;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Offset anchor targets so sticky nav doesn't cover the heading */
+.alphabet-block {
+  scroll-margin-top: 110px;
+}
+
+/* ── Construct tag pills (constructs index, per-measure) ─────────────────── */
+
+.construct-tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.45rem 0 0.1rem;
+  padding: 0;
+}
+
+.construct-tag {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 25%, transparent);
+  color: var(--accent-color);
+  font-size: 0.76rem;
+  font-family: var(--nav-font);
+  font-weight: 400;
+  line-height: 1.5;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+#sidebar-constructs .construct-tag {
+  margin: 0 6px 4px 0;
+}
+
+/* Tags sit inside an <a>, so suppress inherited link underline */
+.construct-tags-list .construct-tag {
+  text-decoration: none !important;
+}
+
+@media (max-width: 576px) {
+  .construct-tag {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.45rem;
+  }
+}
+
+/* ── Suggest a Measure modal ─────────────────────────────────────────────── */
+
+#suggestModal .modal-content {
+  border: none;
+  border-radius: 10px;
+  background-color: var(--surface-color);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.14);
+}
+
+#suggestModal .modal-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
+  padding: 1.25rem 1.75rem;
+}
+
+#suggestModal .modal-title {
+  font-size: 24px;
+  font-weight: 300;
+  color: var(--heading-color);
+  letter-spacing: -0.3px;
+}
+
+#suggestModal .modal-body {
+  padding: 1.5rem 1.75rem 1.75rem;
+}
+
+#suggestModal .form-group {
+  margin-bottom: 1.5rem;
+}
+
+#suggestModal .form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--default-color);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.2px;
+}
+
+#suggestModal .form-group input,
+#suggestModal .form-group textarea {
+  width: 100%;
+  border: 1px solid color-mix(in srgb, var(--default-color), transparent 85%);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 15px;
+  color: var(--default-color);
+  background-color: var(--surface-color);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+#suggestModal .form-group input:focus,
+#suggestModal .form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color), transparent 90%);
+}
+
+#suggestModal .form-group input::placeholder,
+#suggestModal .form-group textarea::placeholder {
+  color: color-mix(in srgb, var(--default-color), transparent 60%);
+}
+
+#suggestModal .form-group textarea {
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.6;
+}
+
+#suggestModal .submit-btn {
+  background: var(--accent-color);
+  color: var(--contrast-color);
+  border: none;
+  border-radius: 8px;
+  padding: 14px 30px;
+  font-size: 15px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.3px;
+}
+
+#suggestModal .submit-btn:hover {
+  background: color-mix(in srgb, var(--accent-color) 85%, #000);
+}
+
+#suggestModal .submit-btn i {
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+#suggestModal .submit-btn:hover i {
+  transform: translateX(4px);
+}
+
+/* Bracket Counter */
+
+/* Hide default numbering and reset the counter */
+ol.bracket-list {
+  list-style-type: none;
+  counter-reset: bracket-counter;
+  padding-left: 20px;
+}
+
+/* Increment the counter for every list item */
+ol.bracket-list > li {
+  counter-increment: bracket-counter;
+  position: relative;
+}
+
+/* Generate custom bracket layout */
+ol.bracket-list > li::before {
+  content: "" counter(bracket-counter) ") ";
+ /* font-weight: bold; /* Optional: Make the marker stand out */
+  margin-right: 8px; /* Spaces the bracket from the text */
+}
+
+/* ── Index page ──────────────────────────────────────────────────────────── */
+
+.source-sans-3, body {
+  font-family: "Source Sans 3", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
+.fw-normal {
+  font-weight: 375 !important;
+}
+
+
+/* min-height reserves the pagination row's space even when only 1 page of results exists,
+   preventing layout shift when filters are applied or cleared. */
+#pagination-controls,
+#pagination-controls-top { min-height: 4.5rem; }
+#pagination-controls { margin-top: 2rem; text-align: center; }
+.pagination-wrapper { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+.pagination-info { font-size: 0.875rem; color: #6c757d; margin: 0; }
+.pagination-list { list-style: none; display: flex; gap: 0.35rem; flex-wrap: wrap; justify-content: center; padding: 0; margin: 0; }
+.page-btn { border: 1px solid #dee2e6; background: #fff; color: #495057; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.875rem; transition: all 0.2s; }
+.page-btn:hover { background: #f1f3f5; border-color: #adb5bd; }
+.page-btn.active { background: var(--default-color); border-color: var(--accent-color); color: var(--contrast-color); }
+.page-ellipsis { padding: 0.4rem 0.25rem; color: #6c757d; }
+.form-trap { position: absolute; left: -9999px; top: -9999px; opacity: 0; height: 0; overflow: hidden; }
+.form-trap input { height: 0; }
+@media (max-width: 576px) {
+  .page-btn { padding: 0.35rem 0.55rem; font-size: 0.8rem; min-width: 2rem; }
+  .pagination-info { font-size: 0.8rem; }
+  #pagination-controls { margin-top: 1.25rem; }
+  .pagination-list { gap: 0.25rem; }
+}
+
+/* ── Measure credits (details page) ─────────────────────────────────────── */
+.measure-credits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  font-size: 0.8rem;
+  color: var(--default-color);
+  margin-top: 0.25rem;
+}
+.measure-credits svg {
+  width: 14px; height: 14px;
+  vertical-align: -2px;
+  stroke: currentColor; fill: none; stroke-width: 1.8;
+  margin-right: 4px;
+}
+
+/* ── Contributors page ───────────────────────────────────────────────────── */
+.contributor-av {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color) 20%, transparent);
+  color: var(--accent-color);
+  font-size: 0.8rem; font-weight: 500;
+}
+.credit-lead {
+  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color) 35%, transparent);
+  font-weight: 500;
+}
