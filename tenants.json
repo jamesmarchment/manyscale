@@ -1,0 +1,10 @@
+[
+  {
+    "slug": "relationships",
+    "name": "RelaScale",
+    "patEnvVar": "AIRTABLE_PAT",
+    "baseId": "apprVFbjtVjqwv6mU",
+    "contact_recipient": "james.marchment@gmail.com",
+    "teamFile": "data/team.json"
+  }
+]

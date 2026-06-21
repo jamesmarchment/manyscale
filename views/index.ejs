@@ -42,7 +42,7 @@
                         <div class="masthead-device-mockup">
                             <div class="hero-image" id="bubblechart" data-aos="fade-left" data-aos-delay="300">
                 <script src="assets/vendor/d3/d3.v7.min.js"></script>
-				<script src="/cache-stats.js"></script>
+				<script src="<%= locals.cacheStatsUrl || '/cache-stats.js' %>"></script>
 				  <script>
 			// ***************** BUBBLE CHART
 			drawBubbleChart();

@@ -256,8 +256,8 @@ async function resolveTableIDs() {
 
 // CACHE TO DISK FROM SERVER **********************************************
 
-// In-memory cache
-let airtableCache = [];
+// Per-tenant in-memory caches, keyed by slug
+const tenantCaches = new Map();
 let contributorsCache = [];
 
 // Guarantee every cached record has a MeasureID, falling back to the Airtable record id.
@@ -276,26 +276,39 @@ function ensureMeasureID(records) {
 // cache the Airtable DB
 
 const CACHE_DIR = "./cache";
-const CACHE_FILE = path.join(CACHE_DIR, "cache.json");
 
-// Ensure cache directory exists
+function getCacheFile(slug) {
+  return path.join(CACHE_DIR, slug, "cache.json");
+}
+
+// Ensure root cache directory exists
 if (!fs.existsSync(CACHE_DIR)) {
   fs.mkdirSync(CACHE_DIR, { recursive: true });
 }
 
-// Load cache from disk when server starts
-if (fs.existsSync(CACHE_FILE)) {
-  const raw = fs.readFileSync(CACHE_FILE);
-  airtableCache = ensureMeasureID(JSON.parse(raw).records);
+// Load existing on-disk cache for each tenant at startup
+{
+  const slug = "relationships";
+  const sliceDir = path.join(CACHE_DIR, slug);
+  if (!fs.existsSync(sliceDir)) fs.mkdirSync(sliceDir, { recursive: true });
+  const cacheFile = getCacheFile(slug);
+  if (fs.existsSync(cacheFile)) {
+    const raw = fs.readFileSync(cacheFile);
+    tenantCaches.set(slug, ensureMeasureID(JSON.parse(raw).records));
+  }
 }
 
 
 // Fetches measures and translations from all configured sources and rebuilds the unified cache.
-async function refreshCache() {
+async function refreshCache(slug) {
+  const cacheFile = getCacheFile(slug);
+  const sliceDir = path.join(CACHE_DIR, slug);
+  if (!fs.existsSync(sliceDir)) fs.mkdirSync(sliceDir, { recursive: true });
+
   let oldCache = [];
-  if (fs.existsSync(CACHE_FILE)) {
+  if (fs.existsSync(cacheFile)) {
     try {
-      oldCache = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8")).records || [];
+      oldCache = JSON.parse(fs.readFileSync(cacheFile, "utf8")).records || [];
     } catch (err) {
       console.error("Failed to read old cache:", err);
     }
@@ -327,7 +340,7 @@ async function refreshCache() {
   }
 
   // Update in-memory cache
-  airtableCache = ensureMeasureID(allRecords);
+  tenantCaches.set(slug, ensureMeasureID(allRecords));
 
   // Preserve existing local attachment paths
   for (const record of allRecords) {
@@ -385,11 +398,11 @@ async function refreshCache() {
   }
 
   const jsonString = JSON.stringify({ records: allRecords }, null, 2);
-  fs.writeFileSync(CACHE_FILE, jsonString);
-  console.log(`Updated main cache: ${CACHE_FILE} (${allRecords.length} records total)`);
+  fs.writeFileSync(cacheFile, jsonString);
+  console.log(`Updated main cache: ${cacheFile} (${allRecords.length} records total)`);
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const backupFile = path.join(CACHE_DIR, `cache-${timestamp}.json`);
+  const backupFile = path.join(sliceDir, `cache-${timestamp}.json`);
   fs.writeFileSync(backupFile, jsonString);
   console.log(`Created backup: ${backupFile}`);
 }
@@ -431,14 +444,15 @@ async function refreshContributors() {
 
 
 // Save out some public stats for later
-function refreshCounts() {
+function refreshCounts(slug) {
+  const cache = tenantCaches.get(slug) || [];
   let totalMeasures = 0;
   let totalConstructs = 0;
   let totalItems = 0;
   let lastUpdated = new Date();
-  
+
   const constructCounts = {};
-  airtableCache.forEach(record => {
+  cache.forEach(record => {
   const fields = record.fields;
 
   // Count measures
@@ -471,7 +485,9 @@ window.MeasureStats = {
 };
 `;
 
-fs.writeFileSync(path.join(__dirname, "public/cache-stats.js"), statsJS, "utf8");
+const statsDir = path.join(__dirname, "public", slug);
+if (!fs.existsSync(statsDir)) fs.mkdirSync(statsDir, { recursive: true });
+fs.writeFileSync(path.join(statsDir, "cache-stats.js"), statsJS, "utf8");
 }
 
 // ROUTES AND FUNCTIONS **********************************************
@@ -525,7 +541,7 @@ app.get("/", (req, res) => {
   } catch (err) {
     console.warn("[team] Could not load team.json:", err.message);
   }
-  res.render("index", { team });
+  res.render("index", { team, cacheStatsUrl: "/relationships/cache-stats.js" });
 });
 
 // details
@@ -533,18 +549,19 @@ app.get("/details/:id", async (req, res) => {
   const recordId = req.params.id;
   
   
+  const cache = tenantCaches.get("relationships") || [];
   // Find the index of this record
-  const index = airtableCache.findIndex(r => r.fields["MeasureID"] === recordId);
+  const index = cache.findIndex(r => r.fields["MeasureID"] === recordId);
 
   if (index === -1) {
     return res.status(404).send("Record not found");
   }
 
-  const record = airtableCache[index];
+  const record = cache[index];
 
   // Get previous and next, with bounds checking
-  const prev = airtableCache[(index - 1 + airtableCache.length) % airtableCache.length];
-  const next = airtableCache[(index + 1) % airtableCache.length];
+  const prev = cache[(index - 1 + cache.length) % cache.length];
+  const next = cache[(index + 1) % cache.length];
   
   
   res.render("details", { id: recordId,
@@ -562,10 +579,11 @@ app.get("/search", (req, res) => {
   const rawQuery = (req.query.query || "").replace(/[\r\n]+/g, " ").trim();
   const query = rawQuery.toLowerCase();
 
+  const cache = tenantCaches.get("relationships") || [];
   // If no query provided, return empty result set
   let results = [];
   if (query) {
-    results = airtableCache.filter(record =>
+    results = cache.filter(record =>
       recordMatchesSearch(record, query)
     );
   }
@@ -587,7 +605,8 @@ app.get("/search/suggestions", (req, res) => {
   const seen = new Set();
   const suggestions = [];
 
-  for (const record of airtableCache) {
+  const cache = tenantCaches.get("relationships") || [];
+  for (const record of cache) {
     if (suggestions.length >= 6) break;
     const fields = record.fields;
     const candidates = [
@@ -616,14 +635,15 @@ app.get("/search/suggestions", (req, res) => {
 
 // constructs index
 app.get("/constructs", async (req, res) => {
-  // Make sure the cache is loaded
-  if (airtableCache.length === 0) {
-    await refreshCache();
+  let cache = tenantCaches.get("relationships") || [];
+  if (cache.length === 0) {
+    await refreshCache("relationships");
+    cache = tenantCaches.get("relationships") || [];
   }
   // Group constructs → record list
   const constructMap = {};
 
-  for (const record of airtableCache) {
+  for (const record of cache) {
     const constructs = record.fields["Construct(s)"]; 
 
     if (!constructs) continue;
@@ -651,15 +671,16 @@ app.get("/constructs/:name", async (req, res) => {
   
   const name = req.params.name.trim();
 
- // Make sure the cache is loaded
-  if (airtableCache.length === 0) {
-    await refreshCache();
+  let cache = tenantCaches.get("relationships") || [];
+  if (cache.length === 0) {
+    await refreshCache("relationships");
+    cache = tenantCaches.get("relationships") || [];
   }
   // Group constructs → record list
   const constructMap = {};
 
 
-  for (const record of airtableCache) {
+  for (const record of cache) {
     const constructs = record.fields["Construct(s)"];
     if (!constructs) continue;
 
@@ -828,18 +849,20 @@ app.post("/suggest", async (req, res) => {
 // DATA ******************************************************************************************************************************************
 // data response -- pulls entire table
 app.get("/api/data", async (req, res) => {
-  if (airtableCache.length === 0) {
-    await refreshCache();
+  let cache = tenantCaches.get("relationships") || [];
+  if (cache.length === 0) {
+    await refreshCache("relationships");
+    cache = tenantCaches.get("relationships") || [];
   }
 
   const id = req.query.id;
 
   if (id) {
-    const record = airtableCache.find(r => r.fields["MeasureID"] === id);
+    const record = cache.find(r => r.fields["MeasureID"] === id);
     return res.json({ records: record ? [record] : [] });
   }
 // ****** HERE IS WHERE WE ORDER THINGS <<<<<<-------------
-  const sorted = [...airtableCache].sort((a, b) =>
+  const sorted = [...cache].sort((a, b) =>
     (b.fields["Favorite"] ?? -Infinity) - (a.fields["Favorite"] ?? -Infinity)
   );
   res.json({ records: sorted });
@@ -857,12 +880,14 @@ app.listen(port, "0.0.0.0", () => {
 app.get("/api/search", async (req, res) => {
   const query = (req.query.q || "").toLowerCase();
 
-  if (airtableCache.length === 0) {
-    await refreshCache();
+  let cache = tenantCaches.get("relationships") || [];
+  if (cache.length === 0) {
+    await refreshCache("relationships");
+    cache = tenantCaches.get("relationships") || [];
   }
 
   // filter search without hitting Airtable
-  const results = airtableCache.filter(rec => {
+  const results = cache.filter(rec => {
     const field = rec.fields["Construct(s)"];
     if (!field) return false;
     return Array.isArray(field)
@@ -876,13 +901,15 @@ app.get("/api/search", async (req, res) => {
 
 // COUNT **********************************************
 app.get("/api/construct-stats", async (req, res) => {
-  if (airtableCache.length === 0) {
-    await refreshCache();
+  let cache = tenantCaches.get("relationships") || [];
+  if (cache.length === 0) {
+    await refreshCache("relationships");
+    cache = tenantCaches.get("relationships") || [];
   }
 
   const counts = {};
 
-  airtableCache.forEach(rec => {
+  cache.forEach(rec => {
     const constructs = rec.fields["Construct(s)"];
     if (!constructs) return;
 
@@ -899,13 +926,15 @@ app.get("/api/construct-stats", async (req, res) => {
 
 // SAVING THE PDFS LOCALLY
 
-const PDF_DIR = path.join(process.cwd(), "public/pdfs");
-if (!fs.existsSync(PDF_DIR)) fs.mkdirSync(PDF_DIR);
+function getPdfDir(slug) {
+  return path.join(process.cwd(), "public", slug, "pdfs");
+}
 
 
-async function downloadAttachmentList(list, localPathKey, filenameSuffix = "") {
+async function downloadAttachmentList(list, localPathKey, pdfDir, urlPrefix, filenameSuffix = "") {
   if (!Array.isArray(list)) return 0;
   let count = 0;
+  const seenFilenames = new Set();
   for (const attachment of list) {
     const origFilename = attachment.filename || "unnamed";
     const ext = path.extname(origFilename) || ".pdf";
@@ -916,8 +945,17 @@ async function downloadAttachmentList(list, localPathKey, filenameSuffix = "") {
     const safeSuffix = filenameSuffix
       ? "_" + filenameSuffix.replace(/[^a-zA-Z0-9-]/g, "_")
       : "";
-    const safeFilename = `${safeBaseName}${safeSuffix}_${attachment.id.slice(-4)}${ext}`;
-    const localPath = path.join(PDF_DIR, safeFilename);
+    let safeFilename = `${safeBaseName}${safeSuffix}${ext}`;
+    if (seenFilenames.has(safeFilename)) {
+      const base = `${safeBaseName}${safeSuffix}`;
+      let n = 2;
+      let candidate;
+      do { candidate = `${base}_${n++}${ext}`; } while (seenFilenames.has(candidate));
+      logDedupEvent(`[PDF] Duplicate filename "${safeFilename}" in the same attachment list — saving as "${candidate}"`);
+      safeFilename = candidate;
+    }
+    seenFilenames.add(safeFilename);
+    const localPath = path.join(pdfDir, safeFilename);
 
     if (!fs.existsSync(localPath)) {
       console.log(`⬇ Downloading ${origFilename} → ${safeFilename}`);
@@ -934,7 +972,7 @@ async function downloadAttachmentList(list, localPathKey, filenameSuffix = "") {
       }
     }
 
-    attachment[localPathKey] = `/pdfs/${safeFilename}`;
+    attachment[localPathKey] = `${urlPrefix}/${safeFilename}`;
   }
   return count;
 }
@@ -944,16 +982,20 @@ async function downloadAttachmentList(list, localPathKey, filenameSuffix = "") {
  * downloads them locally if missing, updates each record's attachment
  * info to include localPath, and re-saves updated cache.json.
  */
-export async function syncLocalPDFs() {
+export async function syncLocalPDFs(slug) {
+  const cacheFile = getCacheFile(slug);
+  const pdfDir = getPdfDir(slug);
+  const urlPrefix = `/${slug}/pdfs`;
+  if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
   console.log("🔄 Checking Airtable cache for PDFs to sync...");
 
   // Load cache — if missing, nothing to do
-  if (!fs.existsSync(CACHE_FILE)) {
+  if (!fs.existsSync(cacheFile)) {
     console.log("⚠ No cache file yet — skipping PDF sync.");
     return;
   }
 
-  const raw = fs.readFileSync(CACHE_FILE, "utf8");
+  const raw = fs.readFileSync(cacheFile, "utf8");
   let json = JSON.parse(raw);
 
   const records = json.records || [];
@@ -961,32 +1003,29 @@ export async function syncLocalPDFs() {
   let downloads = 0;
 
   for (const record of records) {
-    downloads += await downloadAttachmentList(record.fields["Full Measure (Required)"], "localPath");
-    downloads += await downloadAttachmentList(record.fields["Final PDF"], "f_localPath");
+    downloads += await downloadAttachmentList(record.fields["Full Measure (Required)"], "localPath", pdfDir, urlPrefix);
+    downloads += await downloadAttachmentList(record.fields["Final PDF"], "f_localPath", pdfDir, urlPrefix);
     for (const tr of (record.fields.translations || [])) {
       const lang = tr["Language"] || "";
-      downloads += await downloadAttachmentList(tr["Final PDF"], "f_localPath", lang);
+      downloads += await downloadAttachmentList(tr["Final PDF"], "f_localPath", pdfDir, urlPrefix, lang);
     }
   }
 
-  // If any files changed, save Cache with updated localPaths
+  fs.writeFileSync(cacheFile, JSON.stringify(json, null, 2), "utf8");
   if (downloads > 0) {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(json, null, 2), "utf8");
     console.log(`✔ PDF sync complete (${downloads} new files).`);
   } else {
-	  // write it anyway, because the cache update is removing local paths from cache.js
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(json, null, 2), "utf8");
     console.log("✔ No new PDFs needed.");
   }
 
-  airtableCache = ensureMeasureID(json.records);
+  tenantCaches.set(slug, ensureMeasureID(json.records));
 }
 
 app.get("/admin/sync-pdfs", async (req, res) => {
   if (req.query.token !== process.env.ADMIN_TOKEN) {
     return res.status(401).send("Unauthorized");
   }
-  await syncLocalPDFs();
+  await syncLocalPDFs("relationships");
   res.send("PDF sync completed");
 });
 
@@ -994,23 +1033,23 @@ app.get("/admin/refresh-cache", async (req, res) => {
   if (req.query.token !== process.env.ADMIN_TOKEN) {
     return res.status(401).send("Unauthorized");
   }
-  await refreshCache();
-  res.send(`Cache refreshed. ${airtableCache.length} records loaded.`);
+  await refreshCache("relationships");
+  res.send(`Cache refreshed. ${(tenantCaches.get("relationships") || []).length} records loaded.`);
 });
 
 
 
 // KEEP THIS AT THE BOTTOM -- just so it doesn't try to do anything that hasn't been declared yet
 
-async function runFullRefresh() {
+async function runFullRefresh(slug) {
 	try {
   console.log("Refreshing Airtable…");
-  await refreshCache();
+  await refreshCache(slug);
   await refreshContributors();
   console.log("Syncing PDFs…");
-  await syncLocalPDFs();
+  await syncLocalPDFs(slug);
   console.log("Counting records…");
-  await refreshCounts();  
+  await refreshCounts(slug);
   console.log("Cache + PDF sync complete.");
   } catch (err) {
     console.error("Error during scheduled refresh:", err);
@@ -1032,6 +1071,6 @@ resolveTableIDs().then(ok => {
     console.error("Table ID resolution failed — data will not be loaded. Fix the error above and restart.");
     return;
   }
-  runFullRefresh();
-  setInterval(runFullRefresh, 6 * 60 * 60 * 1000);
+  runFullRefresh("relationships");
+  setInterval(() => runFullRefresh("relationships"), 6 * 60 * 60 * 1000);
 });
