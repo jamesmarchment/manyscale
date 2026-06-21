@@ -314,47 +314,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
         <div class="row gy-5">
 
-          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="250">
+          <% (locals.team || []).forEach((member, i) => { %>
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="<%= 200 + i * 50 %>">
             <div class="team-member">
               <div class="member-img">
-                <img src="assets/img/person/person-m-12.webp" class="img-fluid rounded-5 mb-3" alt="James Marchment" loading="lazy">
+                <img src="assets/img/person/<%= member.photo %>" class="img-fluid rounded-5 mb-3" alt="<%= member.name %>" loading="lazy">
               </div>
               <div class="member-info">
-                <h4>James Marchment</h4>
-                <span>Design and Development</span>
-                <p>A graphic and web designer with over 10 years of experience, James has a long collaborative history with the relationship science community. Past projects include logos for the the 2016 International Association for Relationship Research (IARR) conference, the International Singles Studies Association (ISSA), and multiple research lab logos and websites.</p>
+                <h4><%= member.name %></h4>
+                <h6><%= member.title %></h6>
+                <p class="mt-2"><%= member.bio %></p>
                 <div class="social">
-				<!--
-                  <a href="#"><i class="bi bi-twitter-x"></i></a>
-                  <a href="https://www.linkedin.com/in/jamesmarchment/"><i class="bi bi-linkedin"></i></a>
-                  <a href="#"><i class="bi bi-github"></i></a>
-				  -->
+                  <% if (member.linkedin)  { %><a href="<%= member.linkedin %>"  target="_blank" rel="noopener noreferrer"><i class="bi bi-linkedin"></i></a><% } %>
+                  <% if (member.twitter)   { %><a href="<%= member.twitter %>"   target="_blank" rel="noopener noreferrer"><i class="bi bi-twitter-x"></i></a><% } %>
+                  <% if (member.github)    { %><a href="<%= member.github %>"    target="_blank" rel="noopener noreferrer"><i class="bi bi-github"></i></a><% } %>
+                  <% if (member.instagram) { %><a href="<%= member.instagram %>" target="_blank" rel="noopener noreferrer"><i class="bi bi-instagram"></i></a><% } %>
+                  <% if (member.website)   { %><a href="<%= member.website %>"   target="_blank" rel="noopener noreferrer"><i class="bi bi-globe"></i></a><% } %>
                 </div>
               </div>
             </div>
           </div><!-- End Team Member -->
-		  
-          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="200">
-            <div class="team-member">
-              <div class="member-img">
-                <img src="assets/img/person/person-f-8.webp" class="img-fluid rounded-5 mb-3" alt="Samantha Joel" loading="lazy">
-              </div>
-              <div class="member-info">
-                <h4>Samantha Joel</h4>
-                <span>Research and Community Liason</span>
-                <p>Samantha is an Associate Professor in the Psychology Department at Western University, and director of the Relationship Decisions Lab. For the last several years, her research has focused on methodological challenges in relationship science, with the particular goal of evaluating and improving self-report measures.</p>
-                <div class="social">
-				<!--
-                  <a href="#"><i class="bi bi-twitter-x"></i></a>
-                  <a href="https://www.linkedin.com/in/samantha-joel-306112246/"><i class="bi bi-linkedin"></i></a>
-                  <a href="#"><i class="bi bi-instagram"></i></a>
-				  -->
-                </div>
-              </div>
-            </div>
-          </div><!-- End Team Member -->
-
-
+          <% }) %>
 
         </div>
 

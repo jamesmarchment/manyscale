@@ -1,0 +1,17 @@
+[
+  {
+    "name": "James Marchment",
+    "title": "Design and Development",
+    "photo": "person-m-12.webp",
+    "bio": "A graphic and web designer with over 10 years of experience, James has a long collaborative history with the relationship science community. Past projects include logos for the 2016 International Association for Relationship Research (IARR) conference, the International Singles Studies Association (ISSA), and multiple research lab logos and websites.",
+    "linkedin": "https://www.linkedin.com/in/jamesmarchment/",
+	"website": "https://www.jamesmarchment.com"
+  },
+  {
+    "name": "Samantha Joel",
+    "title": "Research and Community Liaison",
+    "photo": "person-f-8.webp",
+    "bio": "Samantha is an Associate Professor in the Psychology Department at Western University, and director of the Relationship Decisions Lab. For the last several years, her research has focused on methodological challenges in relationship science, with the particular goal of evaluating and improving self-report measures.",
+    "linkedin": "https://www.linkedin.com/in/samantha-joel-306112246/"
+  }
+]

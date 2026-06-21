@@ -515,9 +515,17 @@ function recordMatchesSearch(record, query) {
 // PAGES -- ALL PAGES IN SITE NEED TO BE LISTED HERE
 // RENDER pages **********************************************
 
+const TEAM_FILE = path.join(__dirname, "data/team.json");
+
 // index
 app.get("/", (req, res) => {
-  res.render("index");
+  let team = [];
+  try {
+    team = JSON.parse(fs.readFileSync(TEAM_FILE, "utf8"));
+  } catch (err) {
+    console.warn("[team] Could not load team.json:", err.message);
+  }
+  res.render("index", { team });
 });
 
 // details
