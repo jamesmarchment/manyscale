@@ -52,6 +52,7 @@
         <tr><th>Name</th><td><%= tenant.name || "—" %></td></tr>
         <tr><th>Base ID</th><td><code><%= tenant.baseId || "—" %></code></td></tr>
         <tr><th>PAT variable</th><td><code><%= tenant.patEnvVar || "—" %></code></td></tr>
+        <tr><th>Contact Email</th><td><code><%= tenant.contact_recipient || "—" %></code></td></tr>
       </table>
     </div>
 
@@ -68,32 +69,86 @@
       </div>
     </div>
 
+    <h2>Site Content</h2>
+    <div class="card">
+      <form method="POST" action="/admin/content">
+        <table>
+          <tr>
+            <th><label for="meta-tagline">Page title tagline</label></th>
+            <td>
+              <input type="text" id="meta-tagline" name="meta_tagline" value="<%= locals.siteTagline || '' %>">
+              <p class="hint">Browser tab shows: <em><%= tenant.name %> — [tagline]</em></p>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="meta-desc">Meta description</label></th>
+            <td><input type="text" id="meta-desc" name="meta_description" value="<%= locals.siteDescription || '' %>"></td>
+          </tr>
+          <tr>
+            <th><label for="submit-form-url">Submit form URL</label></th>
+            <td>
+              <input type="text" id="submit-form-url" name="submit_form_url" value="<%= locals.submitFormUrl || '' %>">
+              <p class="hint">The Airtable <code>shr…</code> share link for the measure submission form.</p>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="hero-heading">Hero heading</label></th>
+            <td><input type="text" id="hero-heading" name="hero_heading" value="<%= locals.hero?.heading || '' %>"></td>
+          </tr>
+          <tr>
+            <th><label for="hero-sub">Hero subheading</label></th>
+            <td><input type="text" id="hero-sub" name="hero_subheading" value="<%= locals.hero?.subheading || '' %>"></td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Save Content</button>
+        </div>
+      </form>
+    </div>
+
     <h2>Configuration</h2>
     <div class="card">
-      <form method="POST" action="/admin/config">
+      <div class="actions" style="border-top: none; border-bottom: 1px solid #f1f1f1;">
+        <label style="display: flex; align-items: center; gap: .5rem; cursor: pointer; font-size: .875rem; color: #52525b;">
+          <input type="checkbox" id="cfg-unlock" style="width: auto; margin: 0;">
+          Unlock to enable editing
+        </label>
+      </div>
+      <form method="POST" action="/admin/config" id="cfg-form">
         <table>
           <tr>
             <th><label for="cfg-name">Name</label></th>
-            <td><input type="text" id="cfg-name" name="name" value="<%= tenant.name || '' %>"></td>
+            <td><input type="text" id="cfg-name" name="name" value="<%= tenant.name || '' %>" disabled></td>
+          </tr>
+          <tr>
+            <th><label for="cfg-contact_recipient">Email</label></th>
+            <td><input type="text" id="cfg-contact_recipient" name="contact_recipient" value="<%= tenant.contact_recipient || '' %>" disabled></td>
           </tr>
           <tr>
             <th><label for="cfg-base">Base ID</label></th>
-            <td><input type="text" id="cfg-base" name="baseId" value="<%= tenant.baseId || '' %>"></td>
+            <td><input type="text" id="cfg-base" name="baseId" value="<%= tenant.baseId || '' %>" disabled></td>
           </tr>
           <tr>
             <th><label for="cfg-pat">PAT</label></th>
             <td>
-              <input type="password" id="cfg-pat" name="pat" placeholder="Leave blank to keep current" autocomplete="new-password">
+              <input type="password" id="cfg-pat" name="pat" placeholder="Leave blank to keep current" autocomplete="new-password" disabled>
               <p class="hint">Stored in <code>.env</code> under <code><%= tenant.patEnvVar || "AIRTABLE_PAT" %></code>. Changes take effect after a server restart.</p>
             </td>
           </tr>
         </table>
         <div class="actions">
-          <button type="submit" class="btn">Save Configuration</button>
-          <span class="muted">Base ID changes also require a restart.</span>
+          <button type="submit" class="btn" id="cfg-submit" disabled>Save Configuration</button>
+          <span class="muted">Base ID and PAT changes require a server restart.</span>
         </div>
       </form>
     </div>
+    <script>
+      document.getElementById('cfg-unlock').addEventListener('change', function () {
+        const locked = !this.checked;
+        document.querySelectorAll('#cfg-form input').forEach(el => el.disabled = locked);
+        document.getElementById('cfg-submit').disabled = locked;
+      });
+    </script>
 
   </div>
 </body>

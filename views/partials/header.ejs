@@ -6,25 +6,25 @@
 <base href="/">
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title><%= locals.title || 'ManyScale — Psychological Measures and Constructs' %></title>
-  <meta name="description" content="ManyScale is a searchable database of psychological measures and constructs for relationship researchers.">
+  <title><%= locals.title || (locals.siteName + (locals.siteTagline ? ' — ' + locals.siteTagline : '')) %></title>
+  <meta name="description" content="<%= locals.siteDescription %>">
   <meta name="keywords" content="">
 
   <script defer data-domain="manyscale.org" src="https://analytics.relascale.com/js/script.file-downloads.js"></script>
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="ManyScale">
-  <meta property="og:title" content="<%= locals.title || 'ManyScale — Psychological Measures and Constructs' %>">
-  <meta property="og:description" content="ManyScale is a searchable database of psychological measures and constructs for researchers.">
+  <meta property="og:site_name" content="<%= locals.siteName %>">
+  <meta property="og:title" content="<%= locals.title || (locals.siteName + (locals.siteTagline ? ' — ' + locals.siteTagline : '')) %>">
+  <meta property="og:description" content="<%= locals.siteDescription %>">
   <meta property="og:url" content="https://manyscale.org">
   <meta property="og:image" content="https://manyscale.org/assets/img/manyscale_meta.jpg">
   <meta property="og:image:alt" content="ManyScale">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="<%= locals.title || 'ManyScale — Psychological Measures and Constructs' %>">
-  <meta name="twitter:description" content="ManyScale is a searchable database of psychological measures and constructs for researchers.">
+  <meta name="twitter:title" content="<%= locals.title || (locals.siteName + (locals.siteTagline ? ' — ' + locals.siteTagline : '')) %>">
+  <meta name="twitter:description" content="<%= locals.siteDescription %>">
   <meta name="twitter:image" content="https://manyscale.org/assets/img/manyscale_meta.jpg">
 
   <!-- Favicons -->

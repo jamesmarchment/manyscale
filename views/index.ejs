@@ -18,8 +18,8 @@
                     <div class="col-lg-6">
                         <!-- Mashead text and app badges-->
                         <div class="mb-5 mb-lg-0 text-center text-lg-start">
-                            <h1 class="display-4 lh-2 mb-3">Find the measure you need.</h1>
-                            <p class="lead fw-normal text-muted mb-5">RelaScale is a searchable database of self-report measures for relationship science.</p>
+                            <h1 class="display-4 lh-2 mb-3"><%= locals.hero?.heading || '' %></h1>
+                            <p class="lead fw-normal text-muted mb-5"><%= locals.hero?.subheading || '' %></p>
                             <!-- search -->
                             <div class="search-container">
 			  <form action="/search" method="get" id="index-search-form">
@@ -137,8 +137,8 @@
         <h2 class="text-center mt-0">Submit A Measure</h2>
         <hr class="divider" />
         <div class="text-center mb-4">
-          <a href="https://airtable.com/appGk5sn74t5YKaG7/shrsVaevLCqMhtGAW" target="_blank" class="btn btn-primary btn-dark btn-xl me-3">Access Form (Password Required)</a>
-          <a href="#contact" id="request-access-btn" data-subject="RelaScale Access Request" data-message="Hi! I’d like to request access to the measure upload form." class="btn btn-primary btn-dark btn-xl">Request Access</a>
+          <a href="<%= locals.submitFormUrl || '#' %>" target="_blank" class="btn btn-primary btn-dark btn-xl me-3">Access Form (Password Required)</a>
+          <a href="#contact" id="request-access-btn" data-subject="<%= locals.siteName || '#' %> Access Request" data-message="Hi! I’d like to request access to the <%= locals.siteName || '#' %> measure upload form." class="btn btn-primary btn-dark btn-xl">Request Access</a>
         </div>
         <p class="text-muted text-center mb-5">If you have a validated self-report measure pertaining to interpersonal relationships, we invite you to add it to the repository by completing a short form.</p>
       </div>
@@ -156,7 +156,7 @@
 
               <p>Once you have submitted the form, a moderator will review and approve your submission. Please note that at this time, only published self-report measures are eligible for inclusion in the repository.</p>
 			  
-			  <p>If you’ve already obtained the password from an administrator (e.g., at a conference presentation), you may <a href="https://airtable.com/appGk5sn74t5YKaG7/shrsVaevLCqMhtGAW">access the form using the direct link.</a> Otherwise, please <a href="#contact" id="request-access-link" data-subject="RelaScale Access Request" data-message="Hi! I’d like to request access to the measure upload form.">request access to the form.</a></p>
+			  <p>If you’ve already obtained the password from an administrator (e.g., at a conference presentation), you may <a href="<%= locals.submitFormUrl || '#' %>">access the form using the direct link.</a> Otherwise, please <a href="#contact" id="request-access-link" data-subject="RelaScale Access Request" data-message="Hi! I’d like to request access to the measure upload form.">request access to the form.</a></p>
             </div>
           </div>
 

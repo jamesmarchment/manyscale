@@ -317,6 +317,13 @@ function renderLinkButtons(rec) {
     container.innerHTML += `
       <button type="button" class="btn btn-primary no-pdf-download" disabled><i class="bi bi-ban"></i>${rec.fields["Missing PDF"]}</button>`;
   }
+  if (rec.fields["json file"]?.[0]?.["j_localPath"]) {
+    const jsonLink = rec.fields["json file"][0]["j_localPath"];
+    container.innerHTML += `
+      <a href="${jsonLink}" class="view-project" aria-label="Download measure data (JSON)" target="_blank" download>
+        <button type="button" class="btn btn-primary"><i class="bi bi-filetype-json"></i>Download Measure (JSON)</button>
+      </a>`;
+  }
 }
 
 

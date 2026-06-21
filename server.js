@@ -60,16 +60,14 @@ try {
 }
 const primaryTenant = _tenantsList.find(t => t.slug === "relationships") || _tenantsList[0];
 
-const AIRTABLE_PAT = process.env.AIRTABLE_PAT;
+const AIRTABLE_PAT = process.env[primaryTenant.patEnvVar];
 const BASE_ID = primaryTenant?.baseId;
 
 if (!AIRTABLE_PAT) {
-  console.error("AIRTABLE_PAT missing from .env — check .env file.");
-  process.exit(1);
+  console.warn(`[config] ${primaryTenant.patEnvVar} not set in .env — Airtable sync disabled. Server will serve from local disk cache if available.`);
 }
 if (!BASE_ID) {
-  console.error("baseId missing from tenants.json — check tenants.json.");
-  process.exit(1);
+  console.warn("[config] baseId missing from tenants.json — Airtable sync disabled. Server will serve from local disk cache if available.");
 }
 
 // Tracks the last successful full refresh time per tenant slug
@@ -78,17 +76,29 @@ const lastRefreshTimes = new Map();
 // Updates a single key=value line in .env, or appends it if missing
 function updateEnvVar(key, value) {
   const envPath = path.join(__dirname, ".env");
+  // Strip newlines to prevent injecting additional lines into .env
+  const safeValue = String(value).replace(/[\r\n]/g, "");
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   let content = "";
   try { content = fs.readFileSync(envPath, "utf8"); } catch {}
-  const regex = new RegExp(`^${key}=.*$`, "m");
+  const regex = new RegExp(`^${escapedKey}=.*$`, "m");
   content = regex.test(content)
-    ? content.replace(regex, `${key}=${value}`)
-    : content.trimEnd() + `\n${key}=${value}\n`;
+    ? content.replace(regex, `${key}=${safeValue}`)
+    : content.trimEnd() + `\n${key}=${safeValue}\n`;
   fs.writeFileSync(envPath, content, "utf8");
 }
 
-// Expose tenant name to all templates
-app.use((req, res, next) => { res.locals.siteName = primaryTenant.name; next(); });
+// Expose tenant-level locals to all templates
+app.use((req, res, next) => {
+  res.locals.siteName = primaryTenant.name;
+  try {
+    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${primaryTenant.slug}.json`), "utf8"));
+    const meta = content.meta || {};
+    res.locals.siteTagline    = meta.tagline    || "";
+    res.locals.siteDescription = meta.description || "";
+  } catch {}
+  next();
+});
 
 // Optional secondary data source — set both to enable; merged into cache at startup
 const AIRTABLE_PAT_2 = process.env.AIRTABLE_PAT_2 || null;
@@ -101,6 +111,8 @@ let CONTRIBUTORS_TABLE_ID = null;
 
 let MEASURES_TABLE_ID_2 = null;
 let TRANSLATIONS_TABLE_ID_2 = null;
+
+let SUBMIT_FORM_URL = null;
 
 // email
 const transporter = nodemailer.createTransport({
@@ -240,6 +252,14 @@ async function resolveTableIDs() {
 
   MEASURES_TABLE_ID = measuresTable.id;
   console.log(`Resolved Measures table: ${MEASURES_TABLE_ID}`);
+
+  const formView = (measuresTable.views || []).find(v => v.type === "form");
+  if (formView) {
+    SUBMIT_FORM_URL = `https://airtable.com/${BASE_ID}/${formView.id}`;
+    console.log(`Resolved submit form URL: ${SUBMIT_FORM_URL}`);
+  } else {
+    console.warn("[resolveTableIDs] No form view found in Measures table — submit form link will be inactive.");
+  }
 
   if (!translationsTable) {
     console.warn(
@@ -573,17 +593,18 @@ function recordMatchesSearch(record, query) {
 // PAGES -- ALL PAGES IN SITE NEED TO BE LISTED HERE
 // RENDER pages **********************************************
 
-const TEAM_FILE = path.join(__dirname, "data/team.json");
-
 // index
 app.get("/", (req, res) => {
-  let team = [];
+  let team = [], hero = {}, submitFormUrl = SUBMIT_FORM_URL;
   try {
-    team = JSON.parse(fs.readFileSync(TEAM_FILE, "utf8"));
+    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${primaryTenant.slug}.json`), "utf8"));
+    team = content.team || [];
+    hero = content.hero || {};
+    if (content.submitFormUrl) submitFormUrl = content.submitFormUrl;
   } catch (err) {
-    console.warn("[team] Could not load team.json:", err.message);
+    console.warn(`[content] Could not load data/${primaryTenant.slug}.json:`, err.message);
   }
-  res.render("index", { team, cacheStatsUrl: "/relationships/cache-stats.js" });
+  res.render("index", { team, hero, submitFormUrl, cacheStatsUrl: "/relationships/cache-stats.js" });
 });
 
 // details
@@ -1047,6 +1068,7 @@ export async function syncLocalPDFs(slug) {
   for (const record of records) {
     downloads += await downloadAttachmentList(record.fields["Full Measure (Required)"], "localPath", pdfDir, urlPrefix);
     downloads += await downloadAttachmentList(record.fields["Final PDF"], "f_localPath", pdfDir, urlPrefix);
+    downloads += await downloadAttachmentList(record.fields["json file"], "j_localPath", pdfDir, urlPrefix);
     for (const tr of (record.fields.translations || [])) {
       const lang = tr["Language"] || "";
       downloads += await downloadAttachmentList(tr["Final PDF"], "f_localPath", pdfDir, urlPrefix, lang);
@@ -1093,10 +1115,18 @@ app.get("/admin", requireAdmin, (req, res) => {
   let tenants = [];
   try { tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8")); } catch {}
   const tenant = tenants.find(t => t.slug === "relationships") || tenants[0] || {};
+  let hero = {}, submitFormUrl = "";
+  try {
+    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${tenant.slug}.json`), "utf8"));
+    hero = content.hero || {};
+    submitFormUrl = content.submitFormUrl || "";
+  } catch {}
   const flash = req.session.flash || null;
   delete req.session.flash;
   res.render("admin/index", {
     tenant,
+    hero,
+    submitFormUrl,
     recordCount: (tenantCaches.get("relationships") || []).length,
     lastRefresh: lastRefreshTimes.get("relationships") || null,
     flash,
@@ -1104,13 +1134,14 @@ app.get("/admin", requireAdmin, (req, res) => {
 });
 
 app.post("/admin/config", requireAdmin, (req, res) => {
-  const { name, baseId, pat } = req.body;
+  const { name, baseId, pat, contact_recipient } = req.body;
   try {
     let tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8"));
     const idx = tenants.findIndex(t => t.slug === "relationships");
     if (idx !== -1) {
-      if (name?.trim())   tenants[idx].name   = name.trim();
-      if (baseId?.trim()) tenants[idx].baseId = baseId.trim();
+      if (name?.trim())               tenants[idx].name               = name.trim();
+      if (baseId?.trim())             tenants[idx].baseId             = baseId.trim();
+      if (contact_recipient !== undefined) tenants[idx].contact_recipient = contact_recipient.trim();
       fs.writeFileSync(TENANTS_FILE, JSON.stringify(tenants, null, 2), "utf8");
     }
     if (pat?.trim()) {
@@ -1120,6 +1151,29 @@ app.post("/admin/config", requireAdmin, (req, res) => {
     req.session.flash = { type: "ok", msg: "Configuration saved. Restart the server to apply PAT or Base ID changes." };
   } catch (err) {
     console.error("Admin config error:", err);
+    req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect("/admin");
+});
+
+app.post("/admin/content", requireAdmin, (req, res) => {
+  const { hero_heading, hero_subheading, meta_tagline, meta_description, submit_form_url } = req.body;
+  const slug = "relationships";
+  const contentFile = path.join(__dirname, "data", `${slug}.json`);
+  try {
+    let content = {};
+    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
+    if (!content.hero) content.hero = {};
+    if (!content.meta) content.meta = {};
+    if (hero_heading      !== undefined) content.hero.heading     = hero_heading;
+    if (hero_subheading   !== undefined) content.hero.subheading  = hero_subheading;
+    if (meta_tagline      !== undefined) content.meta.tagline     = meta_tagline;
+    if (meta_description  !== undefined) content.meta.description = meta_description;
+    if (submit_form_url   !== undefined) content.submitFormUrl    = submit_form_url;
+    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
+    req.session.flash = { type: "ok", msg: "Site content saved." };
+  } catch (err) {
+    console.error("Admin content error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
   }
   res.redirect("/admin");
@@ -1176,21 +1230,23 @@ async function runFullRefresh(slug) {
   }
 }
 
-/*
-refreshCache()
-  .then(syncLocalPDFs)
-  .then(refreshCounts)
-  .then(() => console.log("Cache + PDF sync complete."))
-  .catch(console.error);
-*/
 
-// Resolve table IDs once at startup, then kick off the data refresh cycle
+// Resolve table IDs once at startup, then kick off the data refresh cycle.
+// If Airtable is unreachable the server still starts and serves from the local disk cache;
+// the interval keeps retrying so it auto-recovers when connectivity is restored.
 console.log("Starting ManyScale…");
 resolveTableIDs().then(ok => {
-  if (!ok) {
-    console.error("Table ID resolution failed — data will not be loaded. Fix the error above and restart.");
-    return;
+  if (ok) {
+    runFullRefresh("relationships").catch(err => console.error("[startup] Initial refresh failed:", err));
+  } else {
+    console.warn("[startup] Airtable unavailable — serving from local disk cache if available. Will retry in 6 hours.");
   }
-  runFullRefresh("relationships");
-  setInterval(() => runFullRefresh("relationships"), 6 * 60 * 60 * 1000);
+  setInterval(async () => {
+    const resolved = await resolveTableIDs();
+    if (resolved) {
+      await runFullRefresh("relationships").catch(err => console.error("[refresh] Scheduled refresh failed:", err));
+    } else {
+      console.warn("[refresh] Airtable still unavailable — will retry next cycle.");
+    }
+  }, 6 * 60 * 60 * 1000);
 });
