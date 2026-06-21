@@ -17,6 +17,7 @@ import path from "path";
 
 import { fileURLToPath } from "url";
 import nodemailer from "nodemailer";
+import session from "express-session";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,21 +33,62 @@ const port = process.env.PORT || 3007;
 // using EJS
 app.set("view engine", "ejs");
 
-app.use(cors()); 
-app.use(express.json());                          
-app.use(express.urlencoded({ extended: true }));  
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+if (!process.env.SESSION_SECRET) console.warn("[session] SESSION_SECRET not set — using insecure default. Set it in .env.");
+app.use(session({
+  secret: process.env.SESSION_SECRET || "manyscale-dev-secret",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, maxAge: 8 * 60 * 60 * 1000 }
+}));
 
 // static files
 app.use(express.static("public"));
 
 
-const AIRTABLE_PAT = process.env.AIRTABLE_PAT;
-const BASE_ID = process.env.BASE_ID;
-
-if (!AIRTABLE_PAT || !BASE_ID) {
-  console.error("Missing environment variables. Check .env file.");
+// Non-secret tenant config lives in tenants.json; secrets and infrastructure stay in .env
+const TENANTS_FILE = path.join(__dirname, "tenants.json");
+let _tenantsList;
+try {
+  _tenantsList = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8"));
+} catch (err) {
+  console.error("Cannot read tenants.json:", err.message);
   process.exit(1);
 }
+const primaryTenant = _tenantsList.find(t => t.slug === "relationships") || _tenantsList[0];
+
+const AIRTABLE_PAT = process.env.AIRTABLE_PAT;
+const BASE_ID = primaryTenant?.baseId;
+
+if (!AIRTABLE_PAT) {
+  console.error("AIRTABLE_PAT missing from .env — check .env file.");
+  process.exit(1);
+}
+if (!BASE_ID) {
+  console.error("baseId missing from tenants.json — check tenants.json.");
+  process.exit(1);
+}
+
+// Tracks the last successful full refresh time per tenant slug
+const lastRefreshTimes = new Map();
+
+// Updates a single key=value line in .env, or appends it if missing
+function updateEnvVar(key, value) {
+  const envPath = path.join(__dirname, ".env");
+  let content = "";
+  try { content = fs.readFileSync(envPath, "utf8"); } catch {}
+  const regex = new RegExp(`^${key}=.*$`, "m");
+  content = regex.test(content)
+    ? content.replace(regex, `${key}=${value}`)
+    : content.trimEnd() + `\n${key}=${value}\n`;
+  fs.writeFileSync(envPath, content, "utf8");
+}
+
+// Expose tenant name to all templates
+app.use((req, res, next) => { res.locals.siteName = primaryTenant.name; next(); });
 
 // Optional secondary data source — set both to enable; merged into cache at startup
 const AIRTABLE_PAT_2 = process.env.AIRTABLE_PAT_2 || null;
@@ -780,7 +822,7 @@ app.post("/contact", async (req, res) => {
   try {
     const mailOptions = {
       from: process.env.SMTP_USER,
-      to: process.env.CONTACT_RECIPIENT || process.env.SMTP_USER,
+      to: primaryTenant.contact_recipient || process.env.SMTP_USER,
       subject: `New Contact Form Message from ${name}`,
       text: `Name: ${name}\nEmail: ${email}\n\nSubject: ${subject}\n\nMessage:\n${message}`
     };
@@ -831,7 +873,7 @@ app.post("/suggest", async (req, res) => {
 
     await transporter.sendMail({
       from: process.env.SMTP_USER,
-      to: process.env.CONTACT_RECIPIENT || process.env.SMTP_USER,
+      to: primaryTenant.contact_recipient || process.env.SMTP_USER,
       subject: `Measure Suggestion: ${measure_name}`,
       text: body,
     });
@@ -1021,6 +1063,83 @@ export async function syncLocalPDFs(slug) {
   tenantCaches.set(slug, ensureMeasureID(json.records));
 }
 
+// ADMIN UI **********************************************
+
+function requireAdmin(req, res, next) {
+  if (req.session?.adminLoggedIn) return next();
+  res.redirect("/admin/login");
+}
+
+app.get("/admin/login", (req, res) => {
+  if (req.session?.adminLoggedIn) return res.redirect("/admin");
+  res.render("admin/login", { error: null });
+});
+
+app.post("/admin/login", (req, res) => {
+  const adminPwd = process.env.ADMIN_PASSWORD;
+  if (!adminPwd) return res.render("admin/login", { error: "ADMIN_PASSWORD is not configured on the server." });
+  if (req.body.password === adminPwd) {
+    req.session.adminLoggedIn = true;
+    return res.redirect("/admin");
+  }
+  res.render("admin/login", { error: "Incorrect password." });
+});
+
+app.post("/admin/logout", (req, res) => {
+  req.session.destroy(() => res.redirect("/admin/login"));
+});
+
+app.get("/admin", requireAdmin, (req, res) => {
+  let tenants = [];
+  try { tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8")); } catch {}
+  const tenant = tenants.find(t => t.slug === "relationships") || tenants[0] || {};
+  const flash = req.session.flash || null;
+  delete req.session.flash;
+  res.render("admin/index", {
+    tenant,
+    recordCount: (tenantCaches.get("relationships") || []).length,
+    lastRefresh: lastRefreshTimes.get("relationships") || null,
+    flash,
+  });
+});
+
+app.post("/admin/config", requireAdmin, (req, res) => {
+  const { name, baseId, pat } = req.body;
+  try {
+    let tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8"));
+    const idx = tenants.findIndex(t => t.slug === "relationships");
+    if (idx !== -1) {
+      if (name?.trim())   tenants[idx].name   = name.trim();
+      if (baseId?.trim()) tenants[idx].baseId = baseId.trim();
+      fs.writeFileSync(TENANTS_FILE, JSON.stringify(tenants, null, 2), "utf8");
+    }
+    if (pat?.trim()) {
+      const patVar = tenants[idx]?.patEnvVar || "AIRTABLE_PAT";
+      updateEnvVar(patVar, pat.trim());
+    }
+    req.session.flash = { type: "ok", msg: "Configuration saved. Restart the server to apply PAT or Base ID changes." };
+  } catch (err) {
+    console.error("Admin config error:", err);
+    req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect("/admin");
+});
+
+app.post("/admin/cache", requireAdmin, async (req, res) => {
+  try {
+    await runFullRefresh("relationships");
+    const count = (tenantCaches.get("relationships") || []).length;
+    req.session.flash = { type: "ok", msg: `Cache refreshed — ${count} records loaded.` };
+  } catch (err) {
+    console.error("Admin cache refresh error:", err);
+    req.session.flash = { type: "err", msg: "Refresh failed: " + err.message };
+  }
+  res.redirect("/admin");
+});
+
+
+// TOKEN-PROTECTED ADMIN API (for scripted access) **********************************************
+
 app.get("/admin/sync-pdfs", async (req, res) => {
   if (req.query.token !== process.env.ADMIN_TOKEN) {
     return res.status(401).send("Unauthorized");
@@ -1050,6 +1169,7 @@ async function runFullRefresh(slug) {
   await syncLocalPDFs(slug);
   console.log("Counting records…");
   await refreshCounts(slug);
+  lastRefreshTimes.set(slug, new Date());
   console.log("Cache + PDF sync complete.");
   } catch (err) {
     console.error("Error during scheduled refresh:", err);

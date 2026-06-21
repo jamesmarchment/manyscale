@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — <%= tenant.name || "ManyScale" %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+    header h1 { font-size: 1.2rem; margin: 0; }
+    h2 { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #71717a; margin: 1.5rem 0 .5rem; }
+    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    tr + tr td, tr + tr th { border-top: 1px solid #f1f1f1; }
+    th, td { padding: .55rem .85rem; text-align: left; font-size: .9rem; vertical-align: top; }
+    th { width: 38%; color: #52525b; font-weight: 500; }
+    code { font-family: monospace; font-size: .85em; background: #f4f4f5; padding: .1em .3em; border-radius: 3px; }
+    input[type=text], input[type=password] { width: 100%; padding: .4rem .55rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .9rem; font-family: monospace; }
+    input:focus { outline: 2px solid #333; outline-offset: 1px; }
+    .hint { font-size: .78rem; color: #71717a; margin-top: .25rem; }
+    .actions { padding: .75rem .85rem; background: #fafafa; border-top: 1px solid #f1f1f1; display: flex; align-items: center; gap: .75rem; }
+    .btn { padding: .4rem .9rem; background: #18181b; color: #fff; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; }
+    .btn:hover { background: #3f3f46; }
+    .btn-ghost { background: transparent; color: #52525b; border: 1px solid #d4d4d8; }
+    .btn-ghost:hover { background: #f4f4f5; }
+    .flash { border-radius: 4px; padding: .55rem .85rem; font-size: .875rem; margin-bottom: 1rem; }
+    .flash.ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .muted { color: #71717a; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <h1>ManyScale Admin</h1>
+      <form method="POST" action="/admin/logout">
+        <button type="submit" class="btn btn-ghost">Log out</button>
+      </form>
+    </header>
+
+    <% if (locals.flash) { %>
+      <div class="flash <%= flash.type %>"><%= flash.msg %></div>
+    <% } %>
+
+    <h2>Tenant</h2>
+    <div class="card">
+      <table>
+        <tr><th>Slug</th><td><code><%= tenant.slug || "—" %></code></td></tr>
+        <tr><th>Name</th><td><%= tenant.name || "—" %></td></tr>
+        <tr><th>Base ID</th><td><code><%= tenant.baseId || "—" %></code></td></tr>
+        <tr><th>PAT variable</th><td><code><%= tenant.patEnvVar || "—" %></code></td></tr>
+      </table>
+    </div>
+
+    <h2>Cache</h2>
+    <div class="card">
+      <table>
+        <tr><th>Records in memory</th><td><%= recordCount %></td></tr>
+        <tr><th>Last refreshed</th><td><%= lastRefresh ? lastRefresh.toLocaleString() : "Not yet this session" %></td></tr>
+      </table>
+      <div class="actions">
+        <form method="POST" action="/admin/cache">
+          <button type="submit" class="btn">Refresh Cache Now</button>
+        </form>
+      </div>
+    </div>
+
+    <h2>Configuration</h2>
+    <div class="card">
+      <form method="POST" action="/admin/config">
+        <table>
+          <tr>
+            <th><label for="cfg-name">Name</label></th>
+            <td><input type="text" id="cfg-name" name="name" value="<%= tenant.name || '' %>"></td>
+          </tr>
+          <tr>
+            <th><label for="cfg-base">Base ID</label></th>
+            <td><input type="text" id="cfg-base" name="baseId" value="<%= tenant.baseId || '' %>"></td>
+          </tr>
+          <tr>
+            <th><label for="cfg-pat">PAT</label></th>
+            <td>
+              <input type="password" id="cfg-pat" name="pat" placeholder="Leave blank to keep current" autocomplete="new-password">
+              <p class="hint">Stored in <code>.env</code> under <code><%= tenant.patEnvVar || "AIRTABLE_PAT" %></code>. Changes take effect after a server restart.</p>
+            </td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Save Configuration</button>
+          <span class="muted">Base ID changes also require a restart.</span>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</body>
+</html>
