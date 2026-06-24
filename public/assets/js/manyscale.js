@@ -129,12 +129,12 @@ function applyConstructTagColors(root = document) {
 // Bubbles are sized by number of measures; clicking navigates to the construct page.
 // =============================================================================
 
-async function drawBubbleChart() {
+async function drawBubbleChart(constructs) {
 
   const childElement  = document.getElementById("bubblechart");
   const parentElement = childElement.parentElement;
 
-  const data = window.MeasureStats.constructs;
+  const data = constructs;
 
   const dataArray = Object.entries(data).map(([key, value]) => ({ name: key, value }));
 

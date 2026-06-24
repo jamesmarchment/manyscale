@@ -537,19 +537,18 @@ function refreshCounts(slug) {
 
   // Unique construct count (not total tags across all measures)
   totalConstructs = Object.keys(constructCounts).length;
-  const statsJS = `
-window.MeasureStats = {
-  lastUpdated: "${lastUpdated}",
-  totalMeasures: ${totalMeasures},
-  totalConstructs: ${totalConstructs},
-  totalItems: ${totalItems},
-  constructs: ${JSON.stringify(constructCounts, null, 2)}
-};
-`;
+  const statsJSON = JSON.stringify({
+    slug,
+    lastUpdated,
+    totalMeasures,
+    totalConstructs,
+    totalItems,
+    constructs: constructCounts,
+  }, null, 2);
 
 const statsDir = path.join(__dirname, "public", slug);
 if (!fs.existsSync(statsDir)) fs.mkdirSync(statsDir, { recursive: true });
-fs.writeFileSync(path.join(statsDir, "cache-stats.js"), statsJS, "utf8");
+fs.writeFileSync(path.join(statsDir, "cache-stats.json"), statsJSON, "utf8");
 }
 
 // ROUTES AND FUNCTIONS **********************************************
@@ -604,7 +603,7 @@ app.get("/", (req, res) => {
   } catch (err) {
     console.warn(`[content] Could not load data/${primaryTenant.slug}.json:`, err.message);
   }
-  res.render("index", { team, hero, submitFormUrl, cacheStatsUrl: "/relationships/cache-stats.js" });
+  res.render("index", { team, hero, submitFormUrl, cacheStatsUrl: "/relationships/cache-stats.json" });
 });
 
 // details

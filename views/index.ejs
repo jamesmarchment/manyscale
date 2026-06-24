@@ -42,10 +42,12 @@
                         <div class="masthead-device-mockup">
                             <div class="hero-image" id="bubblechart" data-aos="fade-left" data-aos-delay="300">
                 <script src="assets/vendor/d3/d3.v7.min.js"></script>
-				<script src="<%= locals.cacheStatsUrl || '/cache-stats.js' %>"></script>
 				  <script>
 			// ***************** BUBBLE CHART
-			drawBubbleChart();
+			fetch("<%= locals.cacheStatsUrl || '/cache-stats.json' %>")
+			  .then(r => r.json())
+			  .then(stats => drawBubbleChart(stats.constructs))
+			  .catch(err => console.error("Could not load cache stats:", err));
 				  </script>
             </div>
                         </div>
@@ -305,35 +307,34 @@ document.addEventListener("DOMContentLoaded", () => {
     <section class="page-section" id="team">
 
       <div class="container px-4 px-lg-5" data-aos="fade-up">
-        <h2 class="text-center mt-0">RelaScale Team</h2>
+        <h2 class="text-center mt-0"><%= locals.siteName || 'ManyScale' %> Team</h2>
         <hr class="divider" />
         <p class="text-muted text-center mb-5">RelaScale is supported by a Social Science and Humanities Research Council of Canada Insight Grant awarded to Dr. Joel (2025-2030).</p>
       </div>
 
       <div class="container px-4 px-lg-5" data-aos="fade-up" data-aos-delay="100">
 
-        <div class="row gy-5">
+        <div class="row mt-2 gy-5">
 
           <% (locals.team || []).forEach((member, i) => { %>
-          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="<%= 200 + i * 50 %>">
-            <div class="team-member">
-              <div class="member-img">
-                <img src="assets/img/person/<%= member.photo %>" class="img-fluid rounded-5 mb-3" alt="<%= member.name %>" loading="lazy">
-              </div>
-              <div class="member-info">
-                <h4><%= member.name %></h4>
-                <h6><%= member.title %></h6>
-                <p class="mt-2"><%= member.bio %></p>
-                <div class="social">
+          <div class="row mb-2 mt-3" data-aos="fade-up" data-aos-delay="<%= 200 + i * 50 %>">
+<div class="col-md-2 text-md-right"> 
+<img src="assets/img/person/<%= member.photo %>" alt="<%= member.name %>" class="img-fluid rounded-circle">
+</div>
+<div class="col-md-9 flex-valign">
+<h4 class="text-letter-spacing-xs mt-0 mb-1 text-dark font-weight-bold"><%= member.name %></h4>
+<h6 class="mt-0 mb-2 font-weight-normal"><em><%= member.title %></em></h6>
+
+<div class="social mt-2">
                   <% if (member.linkedin)  { %><a href="<%= member.linkedin %>"  target="_blank" rel="noopener noreferrer"><i class="bi bi-linkedin"></i></a><% } %>
                   <% if (member.twitter)   { %><a href="<%= member.twitter %>"   target="_blank" rel="noopener noreferrer"><i class="bi bi-twitter-x"></i></a><% } %>
                   <% if (member.github)    { %><a href="<%= member.github %>"    target="_blank" rel="noopener noreferrer"><i class="bi bi-github"></i></a><% } %>
                   <% if (member.instagram) { %><a href="<%= member.instagram %>" target="_blank" rel="noopener noreferrer"><i class="bi bi-instagram"></i></a><% } %>
                   <% if (member.website)   { %><a href="<%= member.website %>"   target="_blank" rel="noopener noreferrer"><i class="bi bi-globe"></i></a><% } %>
                 </div>
-              </div>
-            </div>
-          </div><!-- End Team Member -->
+<hr class="hr-primary w-70 ml-0 my-2"><p><%= member.bio %></p> 
+</div>
+</div>
           <% }) %>
 
         </div>

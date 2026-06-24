@@ -10,7 +10,7 @@
   <meta name="description" content="<%= locals.siteDescription %>">
   <meta name="keywords" content="">
 
-  <script defer data-domain="manyscale.org" src="https://analytics.relascale.com/js/script.file-downloads.js"></script>
+  <script defer data-domain="<%= locals.siteName || 'ManyScale' %>" src="https://analytics.relascale.com/js/script.file-downloads.js"></script>
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
@@ -19,7 +19,7 @@
   <meta property="og:description" content="<%= locals.siteDescription %>">
   <meta property="og:url" content="https://manyscale.org">
   <meta property="og:image" content="https://manyscale.org/assets/img/manyscale_meta.jpg">
-  <meta property="og:image:alt" content="ManyScale">
+  <meta property="og:image:alt" content="<%= locals.siteName || 'ManyScale' %>">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
@@ -50,6 +50,5 @@
   <link href="/assets/css/manyscale.css" rel="stylesheet">
   
   <script src="/assets/js/manyscale.js"></script>
-  <script src="/cache-stats.js"></script>
 </head>
 

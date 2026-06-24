@@ -7,6 +7,12 @@
 /*--------------------------------------------------------------
 # Navigation Menu
 --------------------------------------------------------------*/
+
+
+.footer-links ul {
+  list-style: none;
+}
+
 /* Navmenu - Desktop */
 @media (min-width: 1200px) {
   #navbarResponsive {
