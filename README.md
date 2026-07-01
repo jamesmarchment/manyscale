@@ -106,7 +106,7 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `SESSION_SECRET` | Yes | Random string used to sign session cookies |
 | `PORT` | No | Port to listen on (default: `3007`) |
 
-*Required if you want the contact or measure suggestion forms to send email. The SMTP host is hardcoded to `mail.manyscale.org` — update the `transporter` config in `server.js` to use a different mail provider.
+*Required if you want the contact or measure suggestion forms to send email. The SMTP host is hardcoded to `mail.manyscale.org` — update the `transporter` config in `lib/email.js` to use a different mail provider.
 
 ---
 
@@ -147,12 +147,25 @@ Navigate to `/admin` and log in with `ADMIN_PASSWORD`. From there you can:
 ## Project Structure
 
 ```
-├── server.js                  # Express app and all routes
+├── server.js                  # Entry point: wires middleware, mounts routers, starts server
+├── config.js                  # Env/tenant bootstrap (dotenv, tenants.json, PAT, BASE_ID)
+├── middleware.js              # Session, tenant locals, requireAdmin, rate limiter
 ├── tenants.json               # Tenant config (not committed)
 ├── tenants_example.json       # Template for tenants.json
 ├── .env                       # Secrets (not committed)
 ├── .env.example               # Template for .env
 ├── package.json
+│
+├── lib/
+│   ├── airtable.js            # Cache, Airtable sync, PDF sync, startup refresh cycle
+│   ├── email.js               # Nodemailer transporter
+│   └── search.js              # recordMatchesSearch(), stop-word set
+│
+├── routes/
+│   ├── api.js                 # GET /api/data, /api/search, /api/construct-stats
+│   ├── forms.js               # POST /contact, POST /suggest
+│   ├── public.js              # All public page routes (/, /search, /constructs, etc.)
+│   └── admin.js               # All /admin/* routes and multer photo upload
 │
 ├── data/
 │   └── {slug}.json            # Editable site content: hero, team, meta, logo color
