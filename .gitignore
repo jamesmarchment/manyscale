@@ -2,6 +2,7 @@ node_modules/
 .claude/
 .gstack/
 .env
+data/
 *.log
 server.pid
 cache/
