@@ -52,7 +52,7 @@
 
     <header>
       <h1>ManyScale Admin</h1>
-      <form method="POST" action="/admin/logout">
+      <form method="POST" action="<%= basePath %>/admin/logout">
         <button type="submit" class="btn btn-ghost">Log out</button>
       </form>
     </header>
@@ -79,7 +79,7 @@
         <tr><th>Last refreshed</th><td><%= lastRefresh ? lastRefresh.toLocaleString() : "Not yet this session" %></td></tr>
       </table>
       <div class="actions">
-        <form method="POST" action="/admin/cache">
+        <form method="POST" action="<%= basePath %>/admin/cache">
           <button type="submit" class="btn">Refresh Cache Now</button>
         </form>
       </div>
@@ -87,7 +87,7 @@
 
     <h2>Site Content</h2>
     <div class="card">
-      <form method="POST" action="/admin/content">
+      <form method="POST" action="<%= basePath %>/admin/content">
         <table>
           <tr>
             <th><label for="meta-tagline">Page title tagline</label></th>
@@ -135,7 +135,7 @@
 
     <h2>Team</h2>
     <div class="card">
-      <form method="POST" action="/admin/team" id="team-form">
+      <form method="POST" action="<%= basePath %>/admin/team" id="team-form">
         <div id="team-members"></div>
         <div class="actions" style="justify-content: space-between;">
           <button type="button" class="btn btn-ghost" id="add-member-btn">+ Add Member</button>
@@ -250,7 +250,7 @@
         const fd = new FormData();
         fd.append('photo', file);
 
-        fetch('/admin/team/upload-photo', { method: 'POST', body: fd })
+        fetch('<%= basePath %>/admin/team/upload-photo', { method: 'POST', body: fd })
           .then(r => r.json())
           .then(data => {
             if (data.error) {
@@ -294,7 +294,7 @@
           Unlock to enable editing
         </label>
       </div>
-      <form method="POST" action="/admin/config" id="cfg-form">
+      <form method="POST" action="<%= basePath %>/admin/config" id="cfg-form">
         <table>
           <tr>
             <th><label for="cfg-name">Name</label></th>

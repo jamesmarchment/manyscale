@@ -4,10 +4,10 @@ import { tenantCaches, refreshCache } from "../lib/airtable.js";
 const router = Router();
 
 router.get("/api/data", async (req, res) => {
-  let cache = tenantCaches.get("relationships") || [];
+  let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
+    await refreshCache(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
   const id = req.query.id;
@@ -27,10 +27,10 @@ router.get("/api/data", async (req, res) => {
 router.get("/api/search", async (req, res) => {
   const query = (req.query.q || "").toLowerCase();
 
-  let cache = tenantCaches.get("relationships") || [];
+  let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
+    await refreshCache(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
   const results = cache.filter(rec => {
@@ -46,10 +46,10 @@ router.get("/api/search", async (req, res) => {
 
 
 router.get("/api/construct-stats", async (req, res) => {
-  let cache = tenantCaches.get("relationships") || [];
+  let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
+    await refreshCache(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
   const counts = {};

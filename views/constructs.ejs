@@ -16,8 +16,8 @@
       <div class="breadcrumbs">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/"><i class="bi bi-house"></i> Home</a></li>
-            <li class="breadcrumb-item"><a href="/constructs/">Constructs</a></li>
+            <li class="breadcrumb-item"><a href="<%= basePath %>/"><i class="bi bi-house"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="<%= basePath %>/constructs/">Constructs</a></li>
             <li class="breadcrumb-item active current">Index</li>
           </ol>
         </nav>
@@ -87,7 +87,7 @@
         <% const presentLetters = new Set(constructs.map(g => g.name.charAt(0).toUpperCase())); %>
         <% for (let i = 65; i <= 90; i++) { const letter = String.fromCharCode(i); %>
           <% if (presentLetters.has(letter)) { %>
-            <a href="constructs/#letter-<%= letter %>" class="alpha-link"><%= letter %></a>
+            <a href="<%= basePath %>/constructs/#letter-<%= letter %>" class="alpha-link"><%= letter %></a>
           <% } else { %>
             <span class="alpha-link disabled"><%= letter %></span>
           <% } %>
@@ -131,7 +131,7 @@
                 ].map(l => l.toLowerCase().replace(/\s+/g, '-')).join(' ');
               %>
                 <li class="list-group-item <%= item.fields['MeasureID'] %>" data-construct-slugs="<%= itemSlugs %>" data-language-slugs="<%= itemLangSlugs %>">
-                  <a href="/details/<%= item.fields['MeasureID'] %>">
+                  <a href="<%= basePath %>/details/<%= item.fields['MeasureID'] %>">
                     <p class="measurename"><%= item.fields["Measure Name"] %></p>
                     <p class="primaryreference"><%= item.fields["Primary Reference"] %></p>
                     <p class="construct-tags-list"><% (item.fields["Construct(s)"] || []).forEach(c => { %><span class="construct-tag"><%= c %></span><% }) %></p>

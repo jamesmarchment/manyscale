@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ManyScale</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; color: #18181b; }
+    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; padding: 2.5rem 3rem; min-width: 280px; }
+    h1 { font-size: 1.3rem; margin: 0 0 1.5rem; font-weight: 600; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li + li { margin-top: 0.6rem; }
+    a { font-size: 1rem; text-decoration: none; color: #18181b; padding: 0.4rem 0.6rem; border-radius: 4px; display: block; }
+    a:hover { background: #f4f4f5; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ManyScale</h1>
+    <ul>
+      <% tenants.forEach(t => { %>
+        <li><a href="/<%= t.slug %>"><%= t.name %></a></li>
+      <% }) %>
+    </ul>
+  </div>
+</body>
+</html>

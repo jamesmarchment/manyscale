@@ -22,7 +22,7 @@
                             <p class="lead fw-normal text-muted mb-5"><%= locals.hero?.subheading || '' %></p>
                             <!-- search -->
                             <div class="search-container">
-			  <form action="/search" method="get" id="index-search-form">
+			  <form action="<%= basePath %>/search" method="get" id="index-search-form">
 			    <div class="search-wrapper" style="position: relative">
               <input type="text" name="query" id="index-search-input" class="form-control search-input" placeholder="Search..." autocomplete="off"><i class="bi bi-search search-icon"></i>
               <ul id="index-suggestions-list" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:1000; list-style:none; margin:0; padding:0; background:#fff; border:1px solid #ddd; border-radius:0 0 8px 8px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></ul>
@@ -244,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="row gx-4 gx-lg-5 justify-content-center mb-5">
           <div class="col-lg-8 col-md-10">
 
-            <form action="/contact" method="post" class="php-email-form" id="contact-form">
+            <form action="<%= basePath %>/contact" method="post" class="php-email-form" id="contact-form">
 
               <!-- honeypot -->
               <div class="form-trap" aria-hidden="true">
@@ -403,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function fetchSuggestions(query) {
     if (query.length < 3) { list.style.display = "none"; return; }
-    fetch("/search/suggestions?query=" + encodeURIComponent(query))
+    fetch("<%= basePath %>/search/suggestions?query=" + encodeURIComponent(query))
       .then(function (r) { return r.json(); })
       .then(function (data) { renderSuggestions(data.suggestions, query); })
       .catch(function () { list.style.display = "none"; });
@@ -556,7 +556,7 @@ document.querySelectorAll('a[href^="#fn-"]').forEach(link => {
     const formData = Object.fromEntries(new FormData(form).entries());
 
     try {
-      const response = await fetch("/suggest", {
+      const response = await fetch("<%= basePath %>/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)

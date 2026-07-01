@@ -2,7 +2,6 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import { tenantCaches, refreshCache, contributorsCache, SUBMIT_FORM_URL } from "../lib/airtable.js";
-import { primaryTenant } from "../config.js";
 import { recordMatchesSearch, SUGGESTION_STOP_WORDS } from "../lib/search.js";
 
 const router = Router();
@@ -10,14 +9,14 @@ const router = Router();
 router.get("/", (req, res) => {
   let team = [], hero = {}, submitFormUrl = SUBMIT_FORM_URL;
   try {
-    const content = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", `${primaryTenant.slug}.json`), "utf8"));
+    const content = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", `${req.tenant.slug}.json`), "utf8"));
     team = content.team || [];
     hero = content.hero || {};
     if (content.submitFormUrl) submitFormUrl = content.submitFormUrl;
   } catch (err) {
-    console.warn(`[content] Could not load data/${primaryTenant.slug}.json:`, err.message);
+    console.warn(`[content] Could not load data/${req.tenant.slug}.json:`, err.message);
   }
-  res.render("index", { team, hero, submitFormUrl, cacheStatsUrl: "/relationships/cache-stats.json" });
+  res.render("index", { team, hero, submitFormUrl, cacheStatsUrl: `/${req.tenant.slug}/cache-stats.json` });
 });
 
 router.get("/details/", (req, res) => {
@@ -27,7 +26,7 @@ router.get("/details/", (req, res) => {
 router.get("/details/:id", async (req, res) => {
   const recordId = req.params.id;
 
-  const cache = tenantCaches.get("relationships") || [];
+  const cache = tenantCaches.get(req.tenant.slug) || [];
   const index = cache.findIndex(r => r.fields["MeasureID"] === recordId);
 
   if (index === -1) {
@@ -45,7 +44,7 @@ router.get("/search", (req, res) => {
   const rawQuery = (req.query.query || "").replace(/[\r\n]+/g, " ").trim();
   const query = rawQuery.toLowerCase();
 
-  const cache = tenantCaches.get("relationships") || [];
+  const cache = tenantCaches.get(req.tenant.slug) || [];
   let results = [];
   if (query) {
     results = cache.filter(record => recordMatchesSearch(record, query));
@@ -62,7 +61,7 @@ router.get("/search/suggestions", (req, res) => {
   const seen = new Set();
   const suggestions = [];
 
-  const cache = tenantCaches.get("relationships") || [];
+  const cache = tenantCaches.get(req.tenant.slug) || [];
   for (const record of cache) {
     if (suggestions.length >= 6) break;
     const fields = record.fields;
@@ -91,10 +90,10 @@ router.get("/search/suggestions", (req, res) => {
 });
 
 router.get("/constructs", async (req, res) => {
-  let cache = tenantCaches.get("relationships") || [];
+  let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
+    await refreshCache(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
   const constructMap = {};
@@ -118,10 +117,10 @@ router.get("/constructs", async (req, res) => {
 router.get("/constructs/:name", async (req, res) => {
   const name = req.params.name.trim();
 
-  let cache = tenantCaches.get("relationships") || [];
+  let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
+    await refreshCache(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
   const constructMap = {};

@@ -16,8 +16,8 @@
       <div class="breadcrumbs">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/"><i class="bi bi-house"></i> Home</a></li>
-            <li class="breadcrumb-item"><a href="/constructs">Constructs and Measures</a></li>
+            <li class="breadcrumb-item"><a href="<%= basePath %>/"><i class="bi bi-house"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="<%= basePath %>/constructs">Constructs and Measures</a></li>
             <li class="breadcrumb-item active current" data-field="Measure Name"></li>
           </ol>
         </nav>
@@ -104,15 +104,15 @@
 <!-- prev/next -->
         <div class="project-navigation" data-aos="fade-up" data-aos-delay="200">
           <div class="nav-container">
-            <a href="/details/<%= prev.fields['MeasureID'] %>" class="nav-item prev">
+            <a href="<%= basePath %>/details/<%= prev.fields['MeasureID'] %>" class="nav-item prev">
               <span class="nav-label">Previous Measure</span>
               <span class="nav-title"><%= prev.fields["Measure Name"] %></span>
             </a>
-            <a href="/constructs/" class="nav-item center">
+            <a href="<%= basePath %>/constructs/" class="nav-item center">
               <i class="bi bi-grid"></i>
               <span>All Measures</span>
             </a>
-            <a href="/details/<%= next.fields['MeasureID'] %>" class="nav-item next">
+            <a href="<%= basePath %>/details/<%= next.fields['MeasureID'] %>" class="nav-item next">
               <span class="nav-label">Next Measure</span>
               <span class="nav-title"><%= next.fields["Measure Name"] %></span>
             </a>
@@ -141,7 +141,7 @@ console.log(single.fields);
 
   const constructs = single.fields["Construct(s)"] || [];
   const constructLinks = constructs
-    .map(c => `<span class="construct-tag"><a href="/constructs/${encodeURIComponent(c)}">${c}</a></span>`)
+    .map(c => `<span class="construct-tag"><a href="<%= basePath %>/constructs/${encodeURIComponent(c)}">${c}</a></span>`)
     .join("");
   // document.getElementById("intro-constructs").innerHTML = constructLinks;
   document.getElementById("sidebar-constructs").innerHTML = constructLinks;

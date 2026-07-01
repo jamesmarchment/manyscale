@@ -105,6 +105,7 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
 | `SESSION_SECRET` | Yes | Random string used to sign session cookies |
 | `PORT` | No | Port to listen on (default: `3007`) |
+| `MULTI_TENANT` | No | Set to `true` to enable slug-prefixed URLs (e.g. `/relationships/constructs`). Default is `false` (single-tenant, no slug in URL). |
 
 *Required if you want the contact or measure suggestion forms to send email. The SMTP host is hardcoded to `mail.manyscale.org` — update the `transporter` config in `lib/email.js` to use a different mail provider.
 
@@ -112,9 +113,11 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 
 ## Routes
 
+In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served at the paths below. In **multi-tenant** mode (`MULTI_TENANT=true`) every tenant route is prefixed with `/{slug}` (e.g. `/relationships/constructs`), and `GET /` serves the tenant index instead.
+
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | Homepage |
+| GET | `/` | Homepage (single-tenant) — or tenant index listing all tenants (multi-tenant only) |
 | GET | `/search?query=` | Search measures by name, construct, reference, description, or translation language |
 | GET | `/constructs` | Browse all constructs alphabetically |
 | GET | `/constructs/:name` | All measures tagged with a specific construct |
@@ -165,7 +168,8 @@ Navigate to `/admin` and log in with `ADMIN_PASSWORD`. From there you can:
 │   ├── api.js                 # GET /api/data, /api/search, /api/construct-stats
 │   ├── forms.js               # POST /contact, POST /suggest
 │   ├── public.js              # All public page routes (/, /search, /constructs, etc.)
-│   └── admin.js               # All /admin/* routes and multer photo upload
+│   ├── admin.js               # All /admin/* routes and multer photo upload
+│   └── landing.js             # GET / tenant index (multi-tenant mode only)
 │
 ├── data/
 │   └── {slug}.json            # Editable site content: hero, team, meta, logo color
@@ -184,6 +188,7 @@ Navigate to `/admin` and log in with `ADMIN_PASSWORD`. From there you can:
 │   ├── contributors.ejs
 │   ├── terms.ejs
 │   ├── privacy.ejs
+│   ├── landing.ejs            # Tenant index page (multi-tenant mode only; no partials)
 │   ├── admin/
 │   │   ├── index.ejs
 │   │   └── login.ejs
@@ -208,7 +213,7 @@ Navigate to `/admin` and log in with `ADMIN_PASSWORD`. From there you can:
 
 ## Caching and Data Sync
 
-The server resolves Airtable table IDs at startup via the metadata API, then pulls all approved measures and translations, downloads any new PDFs, and writes `cache/{slug}/cache.json` with a timestamped backup alongside it. This cycle repeats every 6 hours.
+The server resolves Airtable table IDs at startup via the metadata API, then pulls all approved measures and translations, downloads any new PDFs, and writes `cache/{slug}/cache.json`. A timestamped backup is created alongside it only when the data has changed since the previous refresh. This cycle repeats every 6 hours.
 
 If Airtable is unreachable, the server starts and serves from the existing disk cache. It keeps retrying on each scheduled cycle and recovers automatically.
 

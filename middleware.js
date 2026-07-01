@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import session from "express-session";
-import { primaryTenant, SESSION_SECRET } from "./config.js";
+import { primaryTenant, SESSION_SECRET, MULTI_TENANT, _tenantsList } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,4 +50,18 @@ export function contactRateLimitOk(ip) {
   if (entry.count >= RATE_LIMIT_MAX) return false;
   entry.count++;
   return true;
+}
+
+export function resolveTenant(req, res, next) {
+  if (!MULTI_TENANT) {
+    req.tenant = primaryTenant;
+    res.locals.basePath = "";
+    return next();
+  }
+  const slug = req.params.slug;
+  const tenant = _tenantsList.find(t => t.slug === slug);
+  if (!tenant) return res.status(404).send("Unknown tenant");
+  req.tenant = tenant;
+  res.locals.basePath = "/" + slug;
+  next();
 }

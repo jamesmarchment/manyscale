@@ -11,13 +11,14 @@ James Marchment and Samantha Joel
 import express from "express";
 import cors from "cors";
 
-import { PORT } from "./config.js";
+import { PORT, MULTI_TENANT, primaryTenant } from "./config.js";
 import { resolveTableIDs, runFullRefresh } from "./lib/airtable.js";
-import { sessionMiddleware, tenantLocalsMiddleware } from "./middleware.js";
+import { sessionMiddleware, tenantLocalsMiddleware, resolveTenant } from "./middleware.js";
 import apiRouter from "./routes/api.js";
 import formsRouter from "./routes/forms.js";
 import publicRouter from "./routes/public.js";
 import adminRouter from "./routes/admin.js";
+import landingRouter from "./routes/landing.js";
 
 const app = express();
 
@@ -29,10 +30,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(express.static("public"));
 app.use(tenantLocalsMiddleware);
-app.use(apiRouter);
-app.use(formsRouter);
-app.use(publicRouter);
-app.use(adminRouter);
+
+if (MULTI_TENANT) {
+  app.use("/:slug", resolveTenant, apiRouter, formsRouter, publicRouter, adminRouter);
+  app.use("/", landingRouter);
+} else {
+  app.use(resolveTenant);
+  app.use(apiRouter);
+  app.use(formsRouter);
+  app.use(publicRouter);
+  app.use(adminRouter);
+}
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
@@ -44,14 +52,14 @@ app.listen(PORT, "0.0.0.0", () => {
 console.log("Starting ManyScale…");
 resolveTableIDs().then(ok => {
   if (ok) {
-    runFullRefresh("relationships").catch(err => console.error("[startup] Initial refresh failed:", err));
+    runFullRefresh(primaryTenant.slug).catch(err => console.error("[startup] Initial refresh failed:", err));
   } else {
     console.warn("[startup] Airtable unavailable — serving from local disk cache if available. Will retry in 6 hours.");
   }
   setInterval(async () => {
     const resolved = await resolveTableIDs();
     if (resolved) {
-      await runFullRefresh("relationships").catch(err => console.error("[refresh] Scheduled refresh failed:", err));
+      await runFullRefresh(primaryTenant.slug).catch(err => console.error("[refresh] Scheduled refresh failed:", err));
     } else {
       console.warn("[refresh] Airtable still unavailable — will retry next cycle.");
     }

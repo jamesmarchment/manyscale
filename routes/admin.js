@@ -4,7 +4,7 @@ import path from "path";
 import multer from "multer";
 import { requireAdmin } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
-import { TENANTS_FILE, updateEnvVar, primaryTenant } from "../config.js";
+import { TENANTS_FILE, updateEnvVar } from "../config.js";
 
 const router = Router();
 
@@ -52,9 +52,7 @@ router.post("/admin/logout", (req, res) => {
 });
 
 router.get("/admin", requireAdmin, (req, res) => {
-  let tenants = [];
-  try { tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8")); } catch {}
-  const tenant = tenants.find(t => t.slug === "relationships") || tenants[0] || {};
+  const tenant = req.tenant;
   let hero = {}, submitFormUrl = "", team = [];
   try {
     const content = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", `${tenant.slug}.json`), "utf8"));
@@ -69,8 +67,8 @@ router.get("/admin", requireAdmin, (req, res) => {
     hero,
     submitFormUrl,
     team,
-    recordCount: (tenantCaches.get("relationships") || []).length,
-    lastRefresh: lastRefreshTimes.get("relationships") || null,
+    recordCount: (tenantCaches.get(req.tenant.slug) || []).length,
+    lastRefresh: lastRefreshTimes.get(req.tenant.slug) || null,
     flash,
   });
 });
@@ -79,7 +77,7 @@ router.post("/admin/config", requireAdmin, (req, res) => {
   const { name, baseId, pat, contact_recipient } = req.body;
   try {
     let tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8"));
-    const idx = tenants.findIndex(t => t.slug === "relationships");
+    const idx = tenants.findIndex(t => t.slug === req.tenant.slug);
     if (idx !== -1) {
       if (name?.trim())               tenants[idx].name               = name.trim();
       if (baseId?.trim())             tenants[idx].baseId             = baseId.trim();
@@ -100,7 +98,7 @@ router.post("/admin/config", requireAdmin, (req, res) => {
 
 router.post("/admin/content", requireAdmin, (req, res) => {
   const { hero_heading, hero_subheading, meta_tagline, meta_description, submit_form_url, logo_color } = req.body;
-  const contentFile = path.join(process.cwd(), "data", `${primaryTenant.slug}.json`);
+  const contentFile = path.join(process.cwd(), "data", `${req.tenant.slug}.json`);
   try {
     let content = {};
     try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
@@ -123,8 +121,8 @@ router.post("/admin/content", requireAdmin, (req, res) => {
 
 router.post("/admin/cache", requireAdmin, async (req, res) => {
   try {
-    await runFullRefresh("relationships");
-    const count = (tenantCaches.get("relationships") || []).length;
+    await runFullRefresh(req.tenant.slug);
+    const count = (tenantCaches.get(req.tenant.slug) || []).length;
     req.session.flash = { type: "ok", msg: `Cache refreshed — ${count} records loaded.` };
   } catch (err) {
     console.error("Admin cache refresh error:", err);
@@ -142,7 +140,7 @@ router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/team", requireAdmin, (req, res) => {
-  const contentFile = path.join(process.cwd(), "data", `${primaryTenant.slug}.json`);
+  const contentFile = path.join(process.cwd(), "data", `${req.tenant.slug}.json`);
   try {
     let content = {};
     try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
@@ -181,7 +179,7 @@ router.get("/admin/sync-pdfs", async (req, res) => {
   if (req.query.token !== process.env.ADMIN_TOKEN) {
     return res.status(401).send("Unauthorized");
   }
-  await syncLocalPDFs("relationships");
+  await syncLocalPDFs(req.tenant.slug);
   res.send("PDF sync completed");
 });
 
@@ -189,8 +187,8 @@ router.get("/admin/refresh-cache", async (req, res) => {
   if (req.query.token !== process.env.ADMIN_TOKEN) {
     return res.status(401).send("Unauthorized");
   }
-  await refreshCache("relationships");
-  res.send(`Cache refreshed. ${(tenantCaches.get("relationships") || []).length} records loaded.`);
+  await refreshCache(req.tenant.slug);
+  res.send(`Cache refreshed. ${(tenantCaches.get(req.tenant.slug) || []).length} records loaded.`);
 });
 
 

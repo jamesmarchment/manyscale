@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { transporter } from "../lib/email.js";
-import { primaryTenant } from "../config.js";
 import { contactRateLimitOk } from "../middleware.js";
 
 const router = Router();
@@ -28,7 +27,7 @@ router.post("/contact", async (req, res) => {
   try {
     const mailOptions = {
       from: process.env.SMTP_USER,
-      to: primaryTenant.contact_recipient || process.env.SMTP_USER,
+      to: req.tenant.contact_recipient || process.env.SMTP_USER,
       subject: `New Contact Form Message from ${name}`,
       text: `Name: ${name}\nEmail: ${email}\n\nSubject: ${subject}\n\nMessage:\n${message}`
     };
@@ -77,7 +76,7 @@ router.post("/suggest", async (req, res) => {
 
     await transporter.sendMail({
       from: process.env.SMTP_USER,
-      to: primaryTenant.contact_recipient || process.env.SMTP_USER,
+      to: req.tenant.contact_recipient || process.env.SMTP_USER,
       subject: `Measure Suggestion: ${measure_name}`,
       text: body,
     });

@@ -16,8 +16,8 @@
       <div class="breadcrumbs">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/"><i class="bi bi-house"></i> Home</a></li>
-            <li class="breadcrumb-item"><a href="/constructs/">Constructs</a></li>
+            <li class="breadcrumb-item"><a href="<%= basePath %>/"><i class="bi bi-house"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="<%= basePath %>/constructs/">Constructs</a></li>
             <li class="breadcrumb-item active current"><%= name %></li>
           </ol>
         </nav>
@@ -39,7 +39,7 @@
     <ul class="list-group">
       <% items.forEach(item => { %>
         <li class="list-group-item">
-          <a href="/details/<%= item.fields['MeasureID'] %>">
+          <a href="<%= basePath %>/details/<%= item.fields['MeasureID'] %>">
             <p class="measurename"><%= item.fields["Measure Name"] %></p>
             <p class="primaryreference"><%= item.fields["Primary Reference"] %></p>
           </a>

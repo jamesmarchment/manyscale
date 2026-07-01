@@ -15,7 +15,7 @@
       <div class="breadcrumbs">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/"><i class="bi bi-house"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="<%= basePath %>/"><i class="bi bi-house"></i> Home</a></li>
             <li class="breadcrumb-item active current">Search</li>
           </ol>
         </nav>
@@ -24,7 +24,7 @@
 <div class="container section-title title-wrapper aos-init aos-animate" data-aos="fade-up">
       
         <h1>Search Results</h1>
-        <form action="/search" method="get" id="search-form">
+        <form action="<%= basePath %>/search" method="get" id="search-form">
           <div class="search-wrapper" style="position: relative">
             <input type="text" name="query" id="search-input" value="<%= query %>" class="form-control search-input" placeholder="Search..." autocomplete="off"><i class="bi bi-search search-icon"></i>
             <ul id="suggestions-list" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:1000; list-style:none; margin:0; padding:0; background:#fff; border:1px solid #ddd; border-radius:0 0 8px 8px; box-shadow:0 4px 12px rgba(0,0,0,0.1);"></ul>
@@ -42,7 +42,7 @@
   <% results.forEach(r => { %>
     <article class="search-result-item mb-5">
       <span class="construct-category"><%= r.fields["Construct(s)"]?.join(", ") %></span>
-      <a href="/details/<%= r.fields['MeasureID'] %>">
+      <a href="<%= basePath %>/details/<%= r.fields['MeasureID'] %>">
         <h3><%= r.fields["Measure Name"] %></h3>
       </a>
       <h6><%= r.fields["Primary Reference"] %></h6>
@@ -110,7 +110,7 @@
 
   function fetchSuggestions(query) {
     if (query.length < 3) { list.style.display = "none"; return; }
-    fetch("/search/suggestions?query=" + encodeURIComponent(query))
+    fetch("<%= basePath %>/search/suggestions?query=" + encodeURIComponent(query))
       .then(function (r) { return r.json(); })
       .then(function (data) { renderSuggestions(data.suggestions, query); })
       .catch(function () { list.style.display = "none"; });

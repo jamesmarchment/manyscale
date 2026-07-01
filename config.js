@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
 
 export const PORT = process.env.PORT || 3007;
+export const MULTI_TENANT = process.env.MULTI_TENANT === "true";
 export const SESSION_SECRET = process.env.SESSION_SECRET || "manyscale-dev-secret";
 
 export const TENANTS_FILE = path.join(__dirname, "tenants.json");
