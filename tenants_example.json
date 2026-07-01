@@ -1,9 +1,9 @@
 [
   {
-    "slug": "relationships",
-    "name": "ManyScale",
-    "patEnvVar": "RELASCALE_PAT",
-    "baseId": "apprVFbjtVjqwv6mU",
-    "contact_recipient": "james.marchment@gmail.com"
+    "slug": "your-slug",
+    "name": "Your Organization",
+    "patEnvVar": "YOUR_AIRTABLE_PAT_ENV_VAR",
+    "baseId": "yourAirtableBaseId",
+    "contact_recipient": "you@example.com"
   }
 ]

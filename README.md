@@ -1,0 +1,213 @@
+# ManyScale
+
+ManyScale is a self-hostable web app that makes self-report measures accessible to psychology researchers. It provides a searchable, browsable index of psychological scales sourced from Airtable, organized by construct, with translations paired to their originals.
+
+The intended use is for subfield experts to run their own named instances — RelaScale for relationship science, AgroScale for agricultural psychology, PolitiScale for political psychology, and so on — contributing to a growing network of specialist collections.
+
+---
+
+## Tech Stack
+
+| Layer | Tech |
+|---|---|
+| Runtime | Node.js ≥ 18 (ES Modules) |
+| Server | Express 5 |
+| Templating | EJS |
+| Data backend | Airtable (REST API, polled and cached locally) |
+| Email | Nodemailer (SMTP) |
+| Auth | express-session (admin panel) |
+| File uploads | Multer |
+| Frontend | Bootstrap 5, AOS, GLightbox, Swiper, Isotope, D3 |
+
+---
+
+## Getting Started
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment variables
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+See [Environment Variables](#environment-variables) below for details.
+
+### 3. Configure tenants
+
+Copy `tenants_example.json` to `tenants.json` and edit it:
+
+```bash
+cp tenants_example.json tenants.json
+```
+
+```json
+[
+  {
+    "slug": "your-slug",
+    "name": "Your Organization",
+    "patEnvVar": "YOUR_AIRTABLE_PAT_ENV_VAR",
+    "baseId": "yourAirtableBaseId",
+    "contact_recipient": "you@example.com"
+  }
+]
+```
+
+- `slug` — used for cache directories, public asset paths, and URL routing
+- `patEnvVar` — the name of the `.env` key that holds this tenant's Airtable PAT
+- `baseId` — the Airtable base ID (starts with `app`)
+- `contact_recipient` — where contact form and measure suggestion emails are delivered
+
+### 4. Set up Airtable
+
+Your Airtable base must have the following tables (exact names):
+
+- **Measures** — each record is one measure; only records with `Status = "Approved"` are shown
+- **Translations** — linked to Measures via `MeasureID (from MeasureID)`
+- **Contributors** *(optional)* — records with a `Role` field set to `"Core Team"`, `"Contributor"`, or `"Funding"`
+
+Your Airtable Personal Access Token needs the following scopes:
+- `data.records:read`
+- `schema.bases:read` (required for table ID resolution at startup)
+
+A form view on the Measures table is detected automatically and used as the submission link.
+
+### 5. Run the server
+
+```bash
+# Production
+npm start
+
+# Development (auto-restarts on file changes)
+npm run dev
+```
+
+The server starts on port `3007` by default, or whatever `PORT` is set to in `.env`. On startup it pulls all approved records from Airtable, downloads any PDFs not yet on disk, and writes the result to `cache/{slug}/cache.json`. This cycle repeats every 6 hours. If Airtable is unreachable, the server starts anyway and falls back to the local disk cache.
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `<patEnvVar>` | Yes | Airtable PAT for the primary tenant. The variable name comes from `patEnvVar` in `tenants.json` (e.g. `RELASCALE_PAT`) |
+| `AIRTABLE_PAT_2` | No | PAT for an optional secondary Airtable base to merge into the primary cache |
+| `BASE_ID_2` | No | Base ID for the secondary Airtable source |
+| `SMTP_USER` | Yes* | Email address used to send contact and suggestion form emails |
+| `SMTP_PASS` | Yes* | SMTP password for `SMTP_USER` |
+| `ADMIN_PASSWORD` | Yes | Password for the `/admin` panel |
+| `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
+| `SESSION_SECRET` | Yes | Random string used to sign session cookies |
+| `PORT` | No | Port to listen on (default: `3007`) |
+
+*Required if you want the contact or measure suggestion forms to send email. The SMTP host is hardcoded to `mail.manyscale.org` — update the `transporter` config in `server.js` to use a different mail provider.
+
+---
+
+## Routes
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/` | Homepage |
+| GET | `/search?query=` | Search measures by name, construct, reference, description, or translation language |
+| GET | `/constructs` | Browse all constructs alphabetically |
+| GET | `/constructs/:name` | All measures tagged with a specific construct |
+| GET | `/details/:id` | Individual measure detail page |
+| GET | `/contributors` | Team and contributors listing |
+| GET | `/terms` | Terms of service |
+| GET | `/privacy` | Privacy policy |
+| POST | `/contact` | Contact form submission |
+| POST | `/suggest` | Measure suggestion form |
+| GET | `/api/data` | Full JSON data dump; optional `?id=` filter |
+| GET | `/api/search?q=` | JSON search endpoint (filters by construct) |
+| GET | `/api/construct-stats` | JSON map of construct → measure count |
+| GET | `/admin` | Admin panel (session-protected) |
+| GET | `/admin/refresh-cache?token=` | Trigger a cache refresh (token-protected) |
+| GET | `/admin/sync-pdfs?token=` | Trigger a PDF sync (token-protected) |
+
+---
+
+## Admin Panel
+
+Navigate to `/admin` and log in with `ADMIN_PASSWORD`. From there you can:
+
+- Edit site content (hero heading, tagline, description, logo color)
+- Edit Airtable connection settings (name, base ID, PAT, contact email)
+- Manage the team section (add/edit members, upload photos)
+- Manually trigger a cache refresh from Airtable
+
+---
+
+## Project Structure
+
+```
+├── server.js                  # Express app and all routes
+├── tenants.json               # Tenant config (not committed)
+├── tenants_example.json       # Template for tenants.json
+├── .env                       # Secrets (not committed)
+├── .env.example               # Template for .env
+├── package.json
+│
+├── data/
+│   └── {slug}.json            # Editable site content: hero, team, meta, logo color
+│
+├── cache/
+│   └── {slug}/
+│       ├── cache.json         # Current Airtable data cache (measures + translations)
+│       └── cache-*.json       # Timestamped backups created on each refresh
+│
+├── views/
+│   ├── index.ejs
+│   ├── search.ejs
+│   ├── details.ejs
+│   ├── constructs.ejs
+│   ├── construct-details.ejs
+│   ├── contributors.ejs
+│   ├── terms.ejs
+│   ├── privacy.ejs
+│   ├── admin/
+│   │   ├── index.ejs
+│   │   └── login.ejs
+│   └── partials/
+│       ├── header.ejs
+│       ├── nav.ejs
+│       └── footer.ejs
+│
+└── public/
+    ├── assets/
+    │   ├── css/               # Site stylesheets
+    │   ├── js/                # Site scripts
+    │   ├── img/               # Images
+    │   └── vendor/            # Bootstrap, AOS, GLightbox, Swiper, Isotope, D3
+    └── {slug}/
+        ├── pdfs/              # Locally cached measure PDFs (downloaded from Airtable)
+        ├── team/              # Team photos (uploaded via admin panel)
+        └── cache-stats.json   # Public stats: measure count, construct count, item count
+```
+
+---
+
+## Caching and Data Sync
+
+The server resolves Airtable table IDs at startup via the metadata API, then pulls all approved measures and translations, downloads any new PDFs, and writes `cache/{slug}/cache.json` with a timestamped backup alongside it. This cycle repeats every 6 hours.
+
+If Airtable is unreachable, the server starts and serves from the existing disk cache. It keeps retrying on each scheduled cycle and recovers automatically.
+
+For scripted environments, manual refresh endpoints are available without a browser session:
+
+```
+GET /admin/refresh-cache?token=<ADMIN_TOKEN>
+GET /admin/sync-pdfs?token=<ADMIN_TOKEN>
+```
+
+---
+
+## Secondary Airtable Source
+
+Set `AIRTABLE_PAT_2` and `BASE_ID_2` to merge a second Airtable base into the primary cache. Records with the same `MeasureID` as a primary record are skipped; deduplication events are logged to `server.log` with a field-level diff. This is intended for federating multiple contributing collections into one instance.

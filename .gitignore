@@ -8,3 +8,5 @@ server.pid
 cache/
 public/*
 !public/assets/
+start-stop.sh
+tenants.json
