@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin — <%= tenant.name || "ManyScale" %></title>
+  <link rel="stylesheet" href="/assets/css/nano.min.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
@@ -19,16 +20,31 @@
     code { font-family: monospace; font-size: .85em; background: #f4f4f5; padding: .1em .3em; border-radius: 3px; }
     input[type=text], input[type=password] { width: 100%; padding: .4rem .55rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .9rem; font-family: monospace; }
     input:focus { outline: 2px solid #333; outline-offset: 1px; }
+    textarea.field { width: 100%; padding: .4rem .55rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .9rem; font-family: system-ui, sans-serif; resize: vertical; min-height: 72px; }
+    textarea.field:focus { outline: 2px solid #333; outline-offset: 1px; }
     .hint { font-size: .78rem; color: #71717a; margin-top: .25rem; }
     .actions { padding: .75rem .85rem; background: #fafafa; border-top: 1px solid #f1f1f1; display: flex; align-items: center; gap: .75rem; }
     .btn { padding: .4rem .9rem; background: #18181b; color: #fff; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; }
     .btn:hover { background: #3f3f46; }
     .btn-ghost { background: transparent; color: #52525b; border: 1px solid #d4d4d8; }
     .btn-ghost:hover { background: #f4f4f5; }
+    .btn-danger { background: transparent; color: #b91c1c; border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fef2f2; }
     .flash { border-radius: 4px; padding: .55rem .85rem; font-size: .875rem; margin-bottom: 1rem; }
     .flash.ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
     .flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
     .muted { color: #71717a; font-size: .85rem; }
+    input[type=color] { width: 48px; height: 32px; padding: 2px; border: 1px solid #d4d4d8; border-radius: 4px; cursor: pointer; background: #fff; }
+    /* team section */
+    .member-block { border-top: 1px solid #e4e4e7; }
+    .member-block:first-child { border-top: none; }
+    .member-head { display: flex; align-items: center; justify-content: space-between; padding: .5rem .85rem; background: #fafafa; border-bottom: 1px solid #f1f1f1; }
+    .member-label { font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #52525b; }
+    .photo-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .photo-thumb { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 1px solid #e4e4e7; flex-shrink: 0; }
+    .photo-meta { display: flex; flex-direction: column; gap: .3rem; }
+    .photo-name-display { font-size: .78rem; color: #52525b; font-family: monospace; }
+    .photo-msg { font-size: .78rem; margin-top: .15rem; }
   </style>
 </head>
 <body>
@@ -92,6 +108,17 @@
             </td>
           </tr>
           <tr>
+            <th><label for="logo-color">Logo color</label></th>
+            <td>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                <span id="logo-color-pickr"></span>
+                <input type="hidden" id="logo-color" name="logo_color" value="<%= locals.logoColor || '#000000' %>">
+                <input type="text" id="logo-color-hex" value="<%= locals.logoColor || '#000000' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
+              </div>
+              <p class="hint">Fill color of the SVG logo in the nav. Defaults to black.</p>
+            </td>
+          </tr>
+          <tr>
             <th><label for="hero-heading">Hero heading</label></th>
             <td><input type="text" id="hero-heading" name="hero_heading" value="<%= locals.hero?.heading || '' %>"></td>
           </tr>
@@ -105,6 +132,159 @@
         </div>
       </form>
     </div>
+
+    <h2>Team</h2>
+    <div class="card">
+      <form method="POST" action="/admin/team" id="team-form">
+        <div id="team-members"></div>
+        <div class="actions" style="justify-content: space-between;">
+          <button type="button" class="btn btn-ghost" id="add-member-btn">+ Add Member</button>
+          <button type="submit" class="btn">Save Team</button>
+        </div>
+      </form>
+    </div>
+
+    <script type="application/json" id="team-json"><%- JSON.stringify(locals.team || []).replace(/<\//g, '<\\/') %></script>
+    <script>
+    (function () {
+      const initialTeam = JSON.parse(document.getElementById('team-json').textContent);
+
+      let teamData = initialTeam.length ? initialTeam : [];
+
+      function esc(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      function photoUrl(p) {
+        return p ? (p.startsWith('/') ? p : '/assets/img/person/' + p) : '';
+      }
+
+      function memberBlock(i, m) {
+        const photoSrc = photoUrl(m.photo);
+        return `<div class="member-block" data-idx="${i}">
+          <div class="member-head">
+            <span class="member-label">Member ${i + 1}</span>
+            <button type="button" class="btn btn-danger btn-sm remove-member-btn" style="padding:.2rem .6rem;font-size:.8rem">− Remove</button>
+          </div>
+          <table>
+            <tr>
+              <th>Photo</th>
+              <td>
+                <div class="photo-row">
+                  <img class="photo-thumb" src="${photoSrc}" alt=""${m.photo ? '' : ' style="display:none"'}>
+                  <div class="photo-meta">
+                    <input type="hidden" name="team[${i}][photo]" value="${esc(m.photo)}" class="photo-val">
+                    <label class="btn btn-ghost" style="padding:.3rem .7rem;font-size:.82rem;cursor:pointer;margin:0">
+                      Choose Photo
+                      <input type="file" class="photo-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+                    </label>
+                    <span class="photo-name-display">${esc(m.photo) || 'No photo selected'}</span>
+                    <span class="photo-msg" style="display:none"></span>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr><th><label>Name</label></th><td><input type="text" name="team[${i}][name]" value="${esc(m.name)}"></td></tr>
+            <tr><th><label>Title</label></th><td><input type="text" name="team[${i}][title]" value="${esc(m.title)}"></td></tr>
+            <tr><th><label>Bio</label></th><td><textarea name="team[${i}][bio]" class="field">${esc(m.bio)}</textarea></td></tr>
+            <tr><th>LinkedIn</th><td><input type="text" name="team[${i}][linkedin]" value="${esc(m.linkedin)}" placeholder="https://www.linkedin.com/in/…"></td></tr>
+            <tr><th>Twitter / X</th><td><input type="text" name="team[${i}][twitter]" value="${esc(m.twitter)}" placeholder="https://x.com/…"></td></tr>
+            <tr><th>GitHub</th><td><input type="text" name="team[${i}][github]" value="${esc(m.github)}" placeholder="https://github.com/…"></td></tr>
+            <tr><th>Instagram</th><td><input type="text" name="team[${i}][instagram]" value="${esc(m.instagram)}" placeholder="https://www.instagram.com/…"></td></tr>
+            <tr><th>Website</th><td><input type="text" name="team[${i}][website]" value="${esc(m.website)}" placeholder="https://…"></td></tr>
+          </table>
+        </div>`;
+      }
+
+      function syncTeamDataFromDOM() {
+        const container = document.getElementById('team-members');
+        container.querySelectorAll('.member-block').forEach((block, i) => {
+          const idx = parseInt(block.dataset.idx);
+          teamData[idx] = teamData[idx] || {};
+          const get = sel => (block.querySelector(sel) || {}).value || '';
+          teamData[idx].name      = get('input[name$="[name]"]');
+          teamData[idx].title     = get('input[name$="[title]"]');
+          teamData[idx].bio       = get('textarea[name$="[bio]"]');
+          teamData[idx].linkedin  = get('input[name$="[linkedin]"]');
+          teamData[idx].twitter   = get('input[name$="[twitter]"]');
+          teamData[idx].github    = get('input[name$="[github]"]');
+          teamData[idx].instagram = get('input[name$="[instagram]"]');
+          teamData[idx].website   = get('input[name$="[website]"]');
+        });
+      }
+
+      function render() {
+        const container = document.getElementById('team-members');
+        container.innerHTML = teamData.length
+          ? teamData.map((m, i) => memberBlock(i, m)).join('')
+          : '<p class="muted" style="padding:.85rem">No team members yet. Click "+ Add Member" to add one.</p>';
+
+        container.querySelectorAll('.remove-member-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            syncTeamDataFromDOM();
+            const idx = parseInt(btn.closest('.member-block').dataset.idx);
+            teamData.splice(idx, 1);
+            render();
+          });
+        });
+
+        container.querySelectorAll('.photo-file').forEach(input => {
+          input.addEventListener('change', () => handlePhotoUpload(input));
+        });
+      }
+
+      function handlePhotoUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const block    = input.closest('.member-block');
+        const msgEl    = block.querySelector('.photo-msg');
+        const nameEl   = block.querySelector('.photo-name-display');
+        const imgEl    = block.querySelector('.photo-thumb');
+        const hiddenEl = block.querySelector('.photo-val');
+        const idx      = parseInt(block.dataset.idx);
+
+        msgEl.style.color   = '#52525b';
+        msgEl.textContent   = 'Uploading…';
+        msgEl.style.display = 'block';
+
+        const fd = new FormData();
+        fd.append('photo', file);
+
+        fetch('/admin/team/upload-photo', { method: 'POST', body: fd })
+          .then(r => r.json())
+          .then(data => {
+            if (data.error) {
+              msgEl.style.color = '#b91c1c';
+              msgEl.textContent = data.error;
+              return;
+            }
+            hiddenEl.value      = data.path;
+            nameEl.textContent  = data.path;
+            imgEl.src           = data.path;
+            imgEl.style.display = 'block';
+            teamData[idx].photo = data.path;
+            msgEl.style.color   = '#15803d';
+            msgEl.textContent   = 'Uploaded.';
+            setTimeout(() => { msgEl.style.display = 'none'; }, 2500);
+          })
+          .catch(err => {
+            msgEl.style.color = '#b91c1c';
+            msgEl.textContent = 'Upload failed: ' + err.message;
+          });
+      }
+
+      document.getElementById('add-member-btn').addEventListener('click', () => {
+        syncTeamDataFromDOM();
+        teamData.push({ name: '', title: '', photo: '', bio: '', linkedin: '', twitter: '', github: '', instagram: '', website: '' });
+        render();
+        // Scroll new card into view
+        const blocks = document.querySelectorAll('.member-block');
+        if (blocks.length) blocks[blocks.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      render();
+    })();
+    </script>
 
     <h2>Configuration</h2>
     <div class="card">
@@ -148,6 +328,42 @@
         document.querySelectorAll('#cfg-form input').forEach(el => el.disabled = locked);
         document.getElementById('cfg-submit').disabled = locked;
       });
+
+    </script>
+    <script src="/assets/js/pickr.min.js"></script>
+    <script>
+      (function () {
+        const hidden   = document.getElementById('logo-color');
+        const hexInput = document.getElementById('logo-color-hex');
+
+        const pickr = Pickr.create({
+          el: '#logo-color-pickr',
+          theme: 'nano',
+          default: hidden.value || '#000000',
+          comparison: false,
+          components: {
+            preview: true,
+            opacity: false,
+            hue: true, 
+            interaction: { hex: true, input: true }
+          }
+        });
+
+        pickr.on('change', (color) => {
+          const hex = color.toHEXA().toString().substring(0, 7).toLowerCase();
+          hidden.value   = hex;
+          hexInput.value = hex;
+        });
+
+        hexInput.addEventListener('input', () => {
+          const v = hexInput.value.trim();
+          if (/^#[0-9a-f]{6}$/i.test(v)) {
+            hidden.value = v;
+            pickr.setColor(v);
+          }
+        });
+        hexInput.addEventListener('blur', () => { hexInput.value = hidden.value; });
+      })();
     </script>
 
   </div>

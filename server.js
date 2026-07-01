@@ -18,6 +18,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import nodemailer from "nodemailer";
 import session from "express-session";
+import multer from "multer";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,8 +95,9 @@ app.use((req, res, next) => {
   try {
     const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${primaryTenant.slug}.json`), "utf8"));
     const meta = content.meta || {};
-    res.locals.siteTagline    = meta.tagline    || "";
+    res.locals.siteTagline     = meta.tagline     || "";
     res.locals.siteDescription = meta.description || "";
+    res.locals.logoColor       = content.logoColor || "";
   } catch {}
   next();
 });
@@ -1091,6 +1093,71 @@ function requireAdmin(req, res, next) {
   res.redirect("/admin/login");
 }
 
+// Photo upload — saves to public/{slug}/team/
+const TEAM_PHOTO_SLUG = "relationships";
+const TEAM_PHOTO_DIR  = path.join(__dirname, "public", TEAM_PHOTO_SLUG, "team");
+if (!fs.existsSync(TEAM_PHOTO_DIR)) fs.mkdirSync(TEAM_PHOTO_DIR, { recursive: true });
+
+const photoStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, TEAM_PHOTO_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+    const base = path.basename(file.originalname, path.extname(file.originalname))
+      .replace(/[^a-zA-Z0-9-_]/g, "_")
+      .slice(0, 60);
+    cb(null, `${base}${ext}`);
+  },
+});
+const photoUpload = multer({
+  storage: photoStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    cb(null, /\.(jpe?g|png|webp|gif)$/i.test(file.originalname));
+  },
+});
+
+app.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
+  photoUpload.single("photo")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || "Upload failed." });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded or unsupported type." });
+    res.json({ path: `/${TEAM_PHOTO_SLUG}/team/${req.file.filename}` });
+  });
+});
+
+app.post("/admin/team", requireAdmin, (req, res) => {
+  const slug = "relationships";
+  const contentFile = path.join(__dirname, "data", `${slug}.json`);
+  try {
+    let content = {};
+    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
+    const raw = req.body.team || {};
+    const indices = Array.isArray(raw)
+      ? raw.map((_, i) => i)
+      : Object.keys(raw).map(Number).sort((a, b) => a - b);
+    const members = Array.isArray(raw) ? raw : indices.map(i => raw[i]);
+    content.team = members.map(m => {
+      const entry = {
+        name:  (m.name  || "").trim(),
+        title: (m.title || "").trim(),
+        photo: (m.photo || "").trim(),
+        bio:   (m.bio   || "").trim(),
+      };
+      if (m.linkedin?.trim())  entry.linkedin  = m.linkedin.trim();
+      if (m.twitter?.trim())   entry.twitter   = m.twitter.trim();
+      if (m.github?.trim())    entry.github    = m.github.trim();
+      if (m.instagram?.trim()) entry.instagram = m.instagram.trim();
+      if (m.website?.trim())   entry.website   = m.website.trim();
+      return entry;
+    });
+    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
+    req.session.flash = { type: "ok", msg: "Team saved." };
+  } catch (err) {
+    console.error("Admin team error:", err);
+    req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect("/admin");
+});
+
 app.get("/admin/login", (req, res) => {
   if (req.session?.adminLoggedIn) return res.redirect("/admin");
   res.render("admin/login", { error: null });
@@ -1114,11 +1181,12 @@ app.get("/admin", requireAdmin, (req, res) => {
   let tenants = [];
   try { tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8")); } catch {}
   const tenant = tenants.find(t => t.slug === "relationships") || tenants[0] || {};
-  let hero = {}, submitFormUrl = "";
+  let hero = {}, submitFormUrl = "", team = [];
   try {
     const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${tenant.slug}.json`), "utf8"));
     hero = content.hero || {};
     submitFormUrl = content.submitFormUrl || "";
+    team = content.team || [];
   } catch {}
   const flash = req.session.flash || null;
   delete req.session.flash;
@@ -1126,6 +1194,7 @@ app.get("/admin", requireAdmin, (req, res) => {
     tenant,
     hero,
     submitFormUrl,
+    team,
     recordCount: (tenantCaches.get("relationships") || []).length,
     lastRefresh: lastRefreshTimes.get("relationships") || null,
     flash,
@@ -1156,7 +1225,7 @@ app.post("/admin/config", requireAdmin, (req, res) => {
 });
 
 app.post("/admin/content", requireAdmin, (req, res) => {
-  const { hero_heading, hero_subheading, meta_tagline, meta_description, submit_form_url } = req.body;
+  const { hero_heading, hero_subheading, meta_tagline, meta_description, submit_form_url, logo_color } = req.body;
   const slug = "relationships";
   const contentFile = path.join(__dirname, "data", `${slug}.json`);
   try {
@@ -1169,6 +1238,7 @@ app.post("/admin/content", requireAdmin, (req, res) => {
     if (meta_tagline      !== undefined) content.meta.tagline     = meta_tagline;
     if (meta_description  !== undefined) content.meta.description = meta_description;
     if (submit_form_url   !== undefined) content.submitFormUrl    = submit_form_url;
+    if (logo_color        !== undefined && /^#[0-9a-f]{6}$/i.test(logo_color)) content.logoColor = logo_color;
     fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
     req.session.flash = { type: "ok", msg: "Site content saved." };
   } catch (err) {

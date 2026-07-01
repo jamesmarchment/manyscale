@@ -18,11 +18,11 @@
     {
       "name": "James Marchment",
       "title": "Design and Development",
-      "photo": "person-m-12.webp",
+      "photo": "/relationships/team/james_2026.jpg",
       "bio": "A graphic and web designer with over 10 years of experience, James has a long collaborative history with the relationship science community. Past projects include logos for the 2016 International Association for Relationship Research (IARR) conference, the International Singles Studies Association (ISSA), and multiple research lab logos and websites.",
       "linkedin": "https://www.linkedin.com/in/jamesmarchment/",
       "website": "https://www.jamesmarchment.com"
     }
-    
-  ]
+  ],
+  "logoColor": "#dc800e"
 }

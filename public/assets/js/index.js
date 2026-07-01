@@ -344,21 +344,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ── Stats counter ─────────────────────────────────────────────────────────────
 
-document.addEventListener("DOMContentLoaded", () => {
+function renderMeasureStats(stats) {
   const container = document.getElementById("measurestats-output");
-  if (!container || !window.MeasureStats) return;
+  if (!container) return;
   container.innerHTML = `
     <div class="stat-item">
-      <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${window.MeasureStats.totalMeasures}" data-purecounter-duration="1"></div>
+      <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${stats.totalMeasures}" data-purecounter-duration="1"></div>
       <div class="stat-label text-center">Measures</div>
     </div>
     <div class="stat-item">
-      <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${window.MeasureStats.totalConstructs}" data-purecounter-duration="1"></div>
+      <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${stats.totalConstructs}" data-purecounter-duration="1"></div>
       <div class="stat-label text-center">Constructs</div>
     </div>
     <div class="stat-item">
-      <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${window.MeasureStats.totalItems}" data-purecounter-duration="1"></div>
+      <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${stats.totalItems}" data-purecounter-duration="1"></div>
       <div class="stat-label text-center">Total Items</div>
     </div>
   `;
-});
+  if (window.PureCounter) new PureCounter();
+}

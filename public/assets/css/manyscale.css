@@ -121,33 +121,17 @@
 
 /* Navmenu - Mobile */
 @media (max-width: 1199px) {
-  .mobile-nav-toggle {
-    color: var(--nav-color);
-    font-size: 28px;
-    line-height: 0;
-    margin-right: 10px;
-    cursor: pointer;
-    transition: color 0.3s;
-  }
-
   #navbarResponsive {
     padding: 0;
-    z-index: 9997;
   }
 
   #navbarResponsive ul {
-    display: none;
     list-style: none;
-    position: absolute;
-    inset: 60px 20px 20px 20px;
     padding: 10px 0;
     margin: 0;
+    background-color: #f8f9fa;
     border-radius: 6px;
-    background-color: var(--nav-mobile-background-color);
-    overflow-y: auto;
-    transition: 0.3s;
-    z-index: 9998;
-    box-shadow: 0px 0px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.1);
   }
 
   #navbarResponsive a,
@@ -159,90 +143,14 @@
     font-weight: 300;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     white-space: nowrap;
     transition: 0.3s;
-  }
-
-  #navbarResponsive a i,
-  #navbarResponsive a:focus i {
-    font-size: 12px;
-    line-height: 0;
-    margin-left: 5px;
-    width: 30px;
-    height: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: 0.3s;
-    background-color: color-mix(in srgb, var(--accent-color), transparent 90%);
-  }
-
-  #navbarResponsive a i:hover,
-  #navbarResponsive a:focus i:hover {
-    background-color: var(--accent-color);
-    color: var(--contrast-color);
   }
 
   #navbarResponsive a:hover,
   #navbarResponsive .active,
   #navbarResponsive .active:focus {
     color: var(--nav-dropdown-hover-color);
-  }
-
-  #navbarResponsive .active i,
-  #navbarResponsive .active:focus i {
-    background-color: var(--accent-color);
-    color: var(--contrast-color);
-    transform: rotate(180deg);
-  }
-
-  #navbarResponsive .dropdown ul {
-    position: static;
-    display: none;
-    z-index: 99;
-    padding: 10px 0;
-    margin: 10px 20px;
-    background-color: var(--nav-dropdown-background-color);
-    border: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
-    box-shadow: none;
-    transition: all 0.5s ease-in-out;
-  }
-
-  #navbarResponsive .dropdown ul ul {
-    background-color: rgba(33, 37, 41, 0.1);
-  }
-
-  #navbarResponsive .dropdown>.dropdown-active {
-    display: block;
-    background-color: rgba(33, 37, 41, 0.03);
-  }
-
-  .mobile-nav-active {
-    overflow: hidden;
-  }
-
-  .mobile-nav-active .mobile-nav-toggle {
-    color: #fff;
-    position: absolute;
-    font-size: 32px;
-    top: 15px;
-    right: 15px;
-    margin-right: 0;
-    z-index: 9999;
-  }
-
-  .mobile-nav-active #navbarResponsive {
-    position: fixed;
-    overflow: hidden;
-    inset: 0;
-    background: rgba(33, 37, 41, 0.8);
-    transition: 0.3s;
-  }
-
-  .mobile-nav-active #navbarResponsive>ul {
-    display: block;
   }
 }
 

@@ -205,7 +205,7 @@ async function drawBubbleChart(constructs) {
     const L = blendedLuminance(fillHex, opacity);
     // Use white unless the background is clearly too light. Raise this value to
     // keep white on more bubbles; lower it to be more conservative.
-    return L <= 0.7 ? "white" : "#333";
+    return L <= 0.69 ? "white" : "#333";
   }
 
   function wrapBubbleLabel(textEl, name, r, cx, cy, fillColor) {
