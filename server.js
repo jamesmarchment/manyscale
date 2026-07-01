@@ -15,12 +15,12 @@ import fs from "fs";
 import path from "path";
 
 import { fileURLToPath } from "url";
-import nodemailer from "nodemailer";
 import session from "express-session";
 import multer from "multer";
 
 import { PORT, TENANTS_FILE, _tenantsList, primaryTenant, AIRTABLE_PAT, BASE_ID, AIRTABLE_PAT_2, BASE_ID_2, updateEnvVar } from "./config.js";
 import { recordMatchesSearch, SUGGESTION_STOP_WORDS } from "./lib/search.js";
+import { transporter } from "./lib/email.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,16 +77,6 @@ let TRANSLATIONS_TABLE_ID_2 = null;
 
 let SUBMIT_FORM_URL = null;
 
-// email
-const transporter = nodemailer.createTransport({
-  host: "mail.manyscale.org",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
-});
 
 
 
