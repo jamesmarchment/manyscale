@@ -22,6 +22,7 @@ import { recordMatchesSearch, SUGGESTION_STOP_WORDS } from "./lib/search.js";
 import { transporter } from "./lib/email.js";
 import { tenantCaches, contributorsCache, lastRefreshTimes, SUBMIT_FORM_URL, resolveTableIDs, refreshCache, runFullRefresh, syncLocalPDFs } from "./lib/airtable.js";
 import { sessionMiddleware, tenantLocalsMiddleware, requireAdmin, contactRateLimitOk } from "./middleware.js";
+import apiRouter from "./routes/api.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,7 @@ app.use(express.static("public"));
 
 // Expose tenant-level locals to all templates
 app.use(tenantLocalsMiddleware);
+app.use(apiRouter);
 
 
 
@@ -356,81 +358,10 @@ app.post("/suggest", async (req, res) => {
 
 
 
-// DATA ******************************************************************************************************************************************
-// data response -- pulls entire table
-app.get("/api/data", async (req, res) => {
-  let cache = tenantCaches.get("relationships") || [];
-  if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
-  }
-
-  const id = req.query.id;
-
-  if (id) {
-    const record = cache.find(r => r.fields["MeasureID"] === id);
-    return res.json({ records: record ? [record] : [] });
-  }
-// ****** HERE IS WHERE WE ORDER THINGS <<<<<<-------------
-  const sorted = [...cache].sort((a, b) =>
-    (b.fields["Favorite"] ?? -Infinity) - (a.fields["Favorite"] ?? -Infinity)
-  );
-  res.json({ records: sorted });
-});
-
 
 // double-check that server started up, save to log
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
-});
-
-
-
-// SEARCH ******************************************************************************************************************************************
-app.get("/api/search", async (req, res) => {
-  const query = (req.query.q || "").toLowerCase();
-
-  let cache = tenantCaches.get("relationships") || [];
-  if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
-  }
-
-  // filter search without hitting Airtable
-  const results = cache.filter(rec => {
-    const field = rec.fields["Construct(s)"];
-    if (!field) return false;
-    return Array.isArray(field)
-      ? field.some(item => item.toLowerCase().includes(query))
-      : field.toLowerCase().includes(query);
-  });
-
-  res.json({ records: results });
-});
-
-
-// COUNT **********************************************
-app.get("/api/construct-stats", async (req, res) => {
-  let cache = tenantCaches.get("relationships") || [];
-  if (cache.length === 0) {
-    await refreshCache("relationships");
-    cache = tenantCaches.get("relationships") || [];
-  }
-
-  const counts = {};
-
-  cache.forEach(rec => {
-    const constructs = rec.fields["Construct(s)"];
-    if (!constructs) return;
-
-    const list = Array.isArray(constructs) ? constructs : [constructs];
-
-    list.forEach(c => {
-      counts[c] = (counts[c] || 0) + 1;
-    });
-  });
-
-  res.json(counts);
 });
 
 
