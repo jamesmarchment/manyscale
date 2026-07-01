@@ -10,7 +10,6 @@ James Marchment and Samantha Joel
 
 // imports
 import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
@@ -20,15 +19,13 @@ import nodemailer from "nodemailer";
 import session from "express-session";
 import multer from "multer";
 
+import { PORT, TENANTS_FILE, _tenantsList, primaryTenant, AIRTABLE_PAT, BASE_ID, AIRTABLE_PAT_2, BASE_ID_2, updateEnvVar } from "./config.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 
-// configuration
-dotenv.config();
-
 const app = express();
-const port = process.env.PORT || 3007;
 
 
 // using EJS
@@ -50,44 +47,10 @@ app.use(session({
 app.use(express.static("public"));
 
 
-// Non-secret tenant config lives in tenants.json; secrets and infrastructure stay in .env
-const TENANTS_FILE = path.join(__dirname, "tenants.json");
-let _tenantsList;
-try {
-  _tenantsList = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8"));
-} catch (err) {
-  console.error("Cannot read tenants.json:", err.message);
-  process.exit(1);
-}
-const primaryTenant = _tenantsList.find(t => t.slug === "relationships") || _tenantsList[0];
-
-const AIRTABLE_PAT = process.env[primaryTenant.patEnvVar];
-const BASE_ID = primaryTenant?.baseId;
-
-if (!AIRTABLE_PAT) {
-  console.warn(`[config] ${primaryTenant.patEnvVar} not set in .env — Airtable sync disabled. Server will serve from local disk cache if available.`);
-}
-if (!BASE_ID) {
-  console.warn("[config] baseId missing from tenants.json — Airtable sync disabled. Server will serve from local disk cache if available.");
-}
 
 // Tracks the last successful full refresh time per tenant slug
 const lastRefreshTimes = new Map();
 
-// Updates a single key=value line in .env, or appends it if missing
-function updateEnvVar(key, value) {
-  const envPath = path.join(__dirname, ".env");
-  // Strip newlines to prevent injecting additional lines into .env
-  const safeValue = String(value).replace(/[\r\n]/g, "");
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  let content = "";
-  try { content = fs.readFileSync(envPath, "utf8"); } catch {}
-  const regex = new RegExp(`^${escapedKey}=.*$`, "m");
-  content = regex.test(content)
-    ? content.replace(regex, `${key}=${safeValue}`)
-    : content.trimEnd() + `\n${key}=${safeValue}\n`;
-  fs.writeFileSync(envPath, content, "utf8");
-}
 
 // Expose tenant-level locals to all templates
 app.use((req, res, next) => {
@@ -102,9 +65,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Optional secondary data source — set both to enable; merged into cache at startup
-const AIRTABLE_PAT_2 = process.env.AIRTABLE_PAT_2 || null;
-const BASE_ID_2 = process.env.BASE_ID_2 || null;
 
 // Resolved once at startup via the metadata API — never read from .env
 let MEASURES_TABLE_ID = null;
@@ -934,8 +894,8 @@ app.get("/api/data", async (req, res) => {
 
 
 // double-check that server started up, save to log
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Server running on port ${port}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 
