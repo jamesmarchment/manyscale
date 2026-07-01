@@ -2,7 +2,7 @@
 
 ManyScale is a self-hostable web app that makes self-report measures accessible to psychology researchers. It provides a searchable, browsable index of psychological scales sourced from Airtable, organized by construct, with translations paired to their originals.
 
-The intended use is for subfield experts to run their own named instances — RelaScale for relationship science, AgroScale for agricultural psychology, PolitiScale for political psychology, and so on — contributing to a growing network of specialist collections.
+The intended use is for subfield experts to run their own named instances — RelaScale for relationship science, AggreScale for aggression measures, PolitiScale for political psychology, and so on — contributing to a growing network of specialist collections.
 
 ---
 
