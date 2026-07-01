@@ -1,0 +1,53 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import session from "express-session";
+import { primaryTenant, SESSION_SECRET } from "./config.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+if (!process.env.SESSION_SECRET) {
+  console.warn("[session] SESSION_SECRET not set — using insecure default. Set it in .env.");
+}
+
+export const sessionMiddleware = session({
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { httpOnly: true, maxAge: 8 * 60 * 60 * 1000 }
+});
+
+// Expose tenant-level locals to all templates
+export function tenantLocalsMiddleware(req, res, next) {
+  res.locals.siteName = primaryTenant.name;
+  try {
+    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${primaryTenant.slug}.json`), "utf8"));
+    const meta = content.meta || {};
+    res.locals.siteTagline     = meta.tagline     || "";
+    res.locals.siteDescription = meta.description || "";
+    res.locals.logoColor       = content.logoColor || "";
+  } catch {}
+  next();
+}
+
+export function requireAdmin(req, res, next) {
+  if (req.session?.adminLoggedIn) return next();
+  res.redirect("/admin/login");
+}
+
+// In-memory rate limiter: max 5 submissions per IP per hour
+export const _contactRateMap = new Map();
+export const RATE_LIMIT_MAX = 5;
+export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+
+export function contactRateLimitOk(ip) {
+  const now = Date.now();
+  const entry = _contactRateMap.get(ip);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    _contactRateMap.set(ip, { count: 1, windowStart: now });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}

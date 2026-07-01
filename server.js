@@ -15,13 +15,13 @@ import fs from "fs";
 import path from "path";
 
 import { fileURLToPath } from "url";
-import session from "express-session";
 import multer from "multer";
 
 import { PORT, TENANTS_FILE, primaryTenant, updateEnvVar } from "./config.js";
 import { recordMatchesSearch, SUGGESTION_STOP_WORDS } from "./lib/search.js";
 import { transporter } from "./lib/email.js";
 import { tenantCaches, contributorsCache, lastRefreshTimes, SUBMIT_FORM_URL, resolveTableIDs, refreshCache, runFullRefresh, syncLocalPDFs } from "./lib/airtable.js";
+import { sessionMiddleware, tenantLocalsMiddleware, requireAdmin, contactRateLimitOk } from "./middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,13 +37,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-if (!process.env.SESSION_SECRET) console.warn("[session] SESSION_SECRET not set — using insecure default. Set it in .env.");
-app.use(session({
-  secret: process.env.SESSION_SECRET || "manyscale-dev-secret",
-  resave: false,
-  saveUninitialized: false,
-  cookie: { httpOnly: true, maxAge: 8 * 60 * 60 * 1000 }
-}));
+app.use(sessionMiddleware);
 
 // static files
 app.use(express.static("public"));
@@ -51,17 +45,7 @@ app.use(express.static("public"));
 
 
 // Expose tenant-level locals to all templates
-app.use((req, res, next) => {
-  res.locals.siteName = primaryTenant.name;
-  try {
-    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${primaryTenant.slug}.json`), "utf8"));
-    const meta = content.meta || {};
-    res.locals.siteTagline     = meta.tagline     || "";
-    res.locals.siteDescription = meta.description || "";
-    res.locals.logoColor       = content.logoColor || "";
-  } catch {}
-  next();
-});
+app.use(tenantLocalsMiddleware);
 
 
 
@@ -283,23 +267,6 @@ app.get("/privacy", (req, res) => {
 
 // contact form (post, not get) .................................................................................................
 
-// in-memory rate limiter: max 5 submissions per IP per hour
-const _contactRateMap = new Map();
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-
-function contactRateLimitOk(ip) {
-  const now = Date.now();
-  const entry = _contactRateMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    _contactRateMap.set(ip, { count: 1, windowStart: now });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
-  return true;
-}
-
 app.post("/contact", async (req, res) => {
   const { name, email, subject, message, website, _t } = req.body;
 
@@ -468,11 +435,6 @@ app.get("/api/construct-stats", async (req, res) => {
 
 
 // ADMIN UI **********************************************
-
-function requireAdmin(req, res, next) {
-  if (req.session?.adminLoggedIn) return next();
-  res.redirect("/admin/login");
-}
 
 // Photo upload — saves to public/{slug}/team/
 const TEAM_PHOTO_SLUG = "relationships";
