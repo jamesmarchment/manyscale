@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Master Admin — ManyScale</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
+    .wrap { max-width: 960px; margin: 0 auto; }
+    header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+    header h1 { font-size: 1.2rem; margin: 0; }
+    h2 { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #71717a; margin: 1.5rem 0 .5rem; }
+    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    tr + tr td, tr + tr th { border-top: 1px solid #f1f1f1; }
+    th, td { padding: .55rem .85rem; text-align: left; font-size: .9rem; vertical-align: top; }
+    thead th { color: #52525b; font-weight: 600; background: #fafafa; }
+    code { font-family: monospace; font-size: .85em; background: #f4f4f5; padding: .1em .3em; border-radius: 3px; }
+    .btn { padding: .4rem .9rem; background: #18181b; color: #fff; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn:hover { background: #3f3f46; }
+    .btn-ghost { background: transparent; color: #52525b; border: 1px solid #d4d4d8; }
+    .btn-ghost:hover { background: #f4f4f5; }
+    .btn-danger { background: transparent; color: #b91c1c; border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fef2f2; }
+    .btn-sm { padding: .25rem .6rem; font-size: .78rem; }
+    .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
+    .row-actions form { display: inline-flex; align-items: center; gap: .3rem; margin: 0; }
+    .row-actions input[type=text] { width: 7rem; padding: .25rem .4rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .78rem; font-family: monospace; }
+    .flash { border-radius: 4px; padding: .55rem .85rem; font-size: .875rem; margin-bottom: 1rem; }
+    .flash.ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .muted { color: #71717a; font-size: .85rem; }
+    .status { display: inline-block; padding: .1em .55em; border-radius: 999px; font-size: .78rem; font-weight: 600; }
+    .status.active { background: #f0fdf4; color: #15803d; }
+    .status.inactive { background: #f4f4f5; color: #71717a; }
+    .empty { padding: 1.5rem .85rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <h1>ManyScale — Master Admin</h1>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <a href="/master/tenants/new" class="btn">+ New Tenant</a>
+        <form method="POST" action="/master/logout">
+          <button type="submit" class="btn btn-ghost">Log out</button>
+        </form>
+      </div>
+    </header>
+
+    <% if (locals.flash) { %>
+      <div class="flash <%= flash.type %>"><%= flash.msg %></div>
+    <% } %>
+
+    <h2>Tenants</h2>
+    <div class="card">
+      <% if (!tenants.length) { %>
+        <p class="empty muted">No tenants yet.</p>
+      <% } else { %>
+        <table>
+          <thead>
+            <tr>
+              <th>Slug</th>
+              <th>Name</th>
+              <th>Base ID</th>
+              <th>Contact Email</th>
+              <th>Records</th>
+              <th>Last Refreshed</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% tenants.forEach(t => { %>
+              <tr>
+                <td><code><%= t.slug %></code></td>
+                <td><%= t.name || "—" %></td>
+                <td><code><%= t.baseId || "—" %></code></td>
+                <td><%= t.contact_recipient || "—" %></td>
+                <td><%= t.recordCount %></td>
+                <td><%= t.lastRefresh ? new Date(t.lastRefresh).toLocaleString() : "Never" %></td>
+                <td><span class="status <%= t.active ? 'active' : 'inactive' %>"><%= t.active ? "Active" : "Inactive" %></span></td>
+                <td>
+                  <div class="row-actions">
+                    <form method="POST" action="/master/tenants/<%= t.slug %>/refresh-cache">
+                      <button type="submit" class="btn btn-ghost btn-sm">Refresh Cache</button>
+                    </form>
+                    <form method="POST" action="/master/tenants/<%= t.slug %>/toggle-active">
+                      <button type="submit" class="btn <%= t.active ? 'btn-danger' : 'btn-ghost' %> btn-sm"><%= t.active ? "Deactivate" : "Activate" %></button>
+                    </form>
+                    <form method="POST" action="/master/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">
+                      <input type="text" name="confirmSlug" placeholder="type slug" aria-label="Type slug to confirm deletion">
+                      <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+  </div>
+</body>
+</html>

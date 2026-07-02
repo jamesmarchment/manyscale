@@ -35,6 +35,11 @@ export function requireAdmin(req, res, next) {
   res.redirect(res.locals.basePath + "/admin/login");
 }
 
+export function requireMasterAdmin(req, res, next) {
+  if (req.session?.masterLoggedIn) return next();
+  res.redirect("/master/login");
+}
+
 // In-memory rate limiter: max 5 submissions per IP per hour
 export const _contactRateMap = new Map();
 export const RATE_LIMIT_MAX = 5;
@@ -59,7 +64,7 @@ export function resolveTenant(req, res, next) {
     return next();
   }
   const slug = req.params.slug;
-  const tenant = _tenantsList.find(t => t.slug === slug);
+  const tenant = _tenantsList.find(t => t.slug === slug && t.active !== false);
   if (!tenant) return res.status(404).send("Unknown tenant");
   req.tenant = tenant;
   res.locals.basePath = "/" + slug;

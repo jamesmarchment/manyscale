@@ -1,26 +1,13 @@
 import { Router } from "express";
-import { scryptSync, timingSafeEqual } from "crypto";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
 import { requireAdmin } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
 import { TENANTS_FILE, updateEnvVar } from "../config.js";
+import { verifyPassword } from "../lib/auth.js";
 
 const router = Router();
-
-function verifyPassword(password, stored) {
-  const [saltHex, hashHex] = stored.split(":");
-  if (!saltHex || !hashHex) return false;
-  try {
-    const salt = Buffer.from(saltHex, "hex");
-    const hash = Buffer.from(hashHex, "hex");
-    const derived = scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
-    return timingSafeEqual(derived, hash);
-  } catch {
-    return false;
-  }
-}
 
 // Photo upload — saves to public/{slug}/team/
 const TEAM_PHOTO_SLUG = "relationships";

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Tenant — Master Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+    header h1 { font-size: 1.2rem; margin: 0; }
+    h2 { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #71717a; margin: 1.5rem 0 .5rem; }
+    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    tr + tr td, tr + tr th { border-top: 1px solid #f1f1f1; }
+    th, td { padding: .55rem .85rem; text-align: left; font-size: .9rem; vertical-align: top; }
+    th { width: 38%; color: #52525b; font-weight: 500; }
+    input[type=text], input[type=password], input[type=email] { width: 100%; padding: .4rem .55rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .9rem; font-family: monospace; }
+    input:focus { outline: 2px solid #333; outline-offset: 1px; }
+    .hint { font-size: .78rem; color: #71717a; margin-top: .25rem; }
+    .actions { padding: .75rem .85rem; background: #fafafa; border-top: 1px solid #f1f1f1; display: flex; align-items: center; gap: .75rem; }
+    .btn { padding: .4rem .9rem; background: #18181b; color: #fff; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn:hover { background: #3f3f46; }
+    .btn-ghost { background: transparent; color: #52525b; border: 1px solid #d4d4d8; }
+    .btn-ghost:hover { background: #f4f4f5; }
+    .errors { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px; padding: .65rem .85rem; font-size: .85rem; margin-bottom: 1rem; }
+    .errors ul { margin: 0; padding-left: 1.1rem; }
+    .checkbox-row { display: flex; align-items: center; gap: .5rem; }
+    .checkbox-row input[type=checkbox] { width: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <h1>New Tenant</h1>
+      <a href="/master" class="btn btn-ghost">Back to dashboard</a>
+    </header>
+
+    <% if (locals.errors && errors.length) { %>
+      <div class="errors">
+        <ul>
+          <% errors.forEach(e => { %>
+            <li><%= e %></li>
+          <% }) %>
+        </ul>
+      </div>
+    <% } %>
+
+    <div class="card">
+      <form method="POST" action="/master/tenants">
+        <table>
+          <tr>
+            <th><label for="name">Name</label></th>
+            <td><input type="text" id="name" name="name" value="<%= locals.values?.name || '' %>"></td>
+          </tr>
+          <tr>
+            <th><label for="slug">Slug</label></th>
+            <td>
+              <input type="text" id="slug" name="slug" value="<%= locals.values?.slug || '' %>">
+              <p class="hint">Lowercase letters, numbers, and hyphens only. Cannot be changed later, and cannot be "master".</p>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="contact_email">Contact Email</label></th>
+            <td><input type="email" id="contact_email" name="contact_email" value="<%= locals.values?.contact_email || '' %>"></td>
+          </tr>
+          <tr>
+            <th><label for="baseId">Airtable Base ID</label></th>
+            <td><input type="text" id="baseId" name="baseId" value="<%= locals.values?.baseId || '' %>"></td>
+          </tr>
+          <tr>
+            <th><label for="pat">Airtable PAT</label></th>
+            <td><input type="password" id="pat" name="pat" autocomplete="new-password"></td>
+          </tr>
+          <tr>
+            <th><label for="adminPassword">Admin Password</label></th>
+            <td>
+              <input type="password" id="adminPassword" name="adminPassword" autocomplete="new-password">
+              <p class="hint">At least 8 characters. This is the login for this tenant's own /admin panel.</p>
+            </td>
+          </tr>
+          <tr>
+            <th>Scaffold Tables</th>
+            <td>
+              <label class="checkbox-row">
+                <input type="checkbox" name="scaffoldTables" <%= locals.values?.scaffoldTables ? "checked" : "" %>>
+                Scaffold Measures/Translations/Contributors tables in this base automatically
+              </label>
+            </td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Create Tenant</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -10,6 +10,7 @@ dotenv.config();
 export const PORT = process.env.PORT || 3007;
 export const MULTI_TENANT = process.env.MULTI_TENANT === "true";
 export const SESSION_SECRET = process.env.SESSION_SECRET || "manyscale-dev-secret";
+export const MASTER_ADMIN_PASSWORD_HASH = process.env.MASTER_ADMIN_PASSWORD_HASH || "";
 
 export const TENANTS_FILE = path.join(__dirname, "tenants.json");
 
