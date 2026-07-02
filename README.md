@@ -228,4 +228,18 @@ GET /admin/sync-pdfs?token=<ADMIN_TOKEN>
 
 ## Secondary Airtable Source
 
-Set `AIRTABLE_PAT_2` and `BASE_ID_2` to merge a second Airtable base into the primary cache. Records with the same `MeasureID` as a primary record are skipped; deduplication events are logged to `server.log` with a field-level diff. This is intended for federating multiple contributing collections into one instance.
+A tenant can optionally pull from a second Airtable base and merge its records into the primary cache. Configure it per-tenant in `tenants.json`:
+
+```json
+{
+  "slug": "your-slug",
+  "patEnvVar": "YOUR_PAT",
+  "baseId": "appXXXXXXXXXX",
+  "secondaryPatEnvVar": "YOUR_SECONDARY_PAT",
+  "secondaryBaseId": "appYYYYYYYYYY"
+}
+```
+
+Then add the PAT value itself to `.env` under whatever key name you chose for `secondaryPatEnvVar`. Tenants that omit `secondaryPatEnvVar` / `secondaryBaseId` never attempt a secondary fetch.
+
+Records with the same `MeasureID` as a primary record are skipped; deduplication events are logged to `server.log` with a field-level diff. This is intended for federating multiple contributing collections into one instance.

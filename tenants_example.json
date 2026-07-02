@@ -4,6 +4,9 @@
     "name": "Your Organization",
     "patEnvVar": "YOUR_AIRTABLE_PAT_ENV_VAR",
     "baseId": "yourAirtableBaseId",
-    "contact_recipient": "you@example.com"
+    "contact_recipient": "you@example.com",
+    "adminPasswordHash": "run `npm run hash-password` and paste the output here",
+    "secondaryPatEnvVar": "YOUR_SECONDARY_PAT_ENV_VAR",
+    "secondaryBaseId": "secondaryAirtableBaseId"
   }
 ]

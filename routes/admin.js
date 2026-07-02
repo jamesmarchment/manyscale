@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { scryptSync, timingSafeEqual } from "crypto";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
@@ -7,6 +8,19 @@ import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshC
 import { TENANTS_FILE, updateEnvVar } from "../config.js";
 
 const router = Router();
+
+function verifyPassword(password, stored) {
+  const [saltHex, hashHex] = stored.split(":");
+  if (!saltHex || !hashHex) return false;
+  try {
+    const salt = Buffer.from(saltHex, "hex");
+    const hash = Buffer.from(hashHex, "hex");
+    const derived = scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
+    return timingSafeEqual(derived, hash);
+  } catch {
+    return false;
+  }
+}
 
 // Photo upload — saves to public/{slug}/team/
 const TEAM_PHOTO_SLUG = "relationships";
@@ -33,22 +47,26 @@ const photoUpload = multer({
 
 
 router.get("/admin/login", (req, res) => {
-  if (req.session?.adminLoggedIn) return res.redirect("/admin");
+  if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug) {
+    return res.redirect(res.locals.basePath + "/admin");
+  }
   res.render("admin/login", { error: null });
 });
 
 router.post("/admin/login", (req, res) => {
-  const adminPwd = process.env.ADMIN_PASSWORD;
-  if (!adminPwd) return res.render("admin/login", { error: "ADMIN_PASSWORD is not configured on the server." });
-  if (req.body.password === adminPwd) {
+  const adminPasswordHash = req.tenant.adminPasswordHash;
+  if (!adminPasswordHash) return res.render("admin/login", { error: "Admin password is not configured for this tenant. Run npm run hash-password to generate one." });
+  if (verifyPassword(req.body.password || "", adminPasswordHash)) {
     req.session.adminLoggedIn = true;
-    return res.redirect("/admin");
+    req.session.adminTenantSlug = req.tenant.slug;
+    return res.redirect(res.locals.basePath + "/admin");
   }
   res.render("admin/login", { error: "Incorrect password." });
 });
 
 router.post("/admin/logout", (req, res) => {
-  req.session.destroy(() => res.redirect("/admin/login"));
+  const loginPath = res.locals.basePath + "/admin/login";
+  req.session.destroy(() => res.redirect(loginPath));
 });
 
 router.get("/admin", requireAdmin, (req, res) => {
@@ -93,7 +111,7 @@ router.post("/admin/config", requireAdmin, (req, res) => {
     console.error("Admin config error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
   }
-  res.redirect("/admin");
+  res.redirect(res.locals.basePath + "/admin");
 });
 
 router.post("/admin/content", requireAdmin, (req, res) => {
@@ -116,7 +134,7 @@ router.post("/admin/content", requireAdmin, (req, res) => {
     console.error("Admin content error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
   }
-  res.redirect("/admin");
+  res.redirect(res.locals.basePath + "/admin");
 });
 
 router.post("/admin/cache", requireAdmin, async (req, res) => {
@@ -128,7 +146,7 @@ router.post("/admin/cache", requireAdmin, async (req, res) => {
     console.error("Admin cache refresh error:", err);
     req.session.flash = { type: "err", msg: "Refresh failed: " + err.message };
   }
-  res.redirect("/admin");
+  res.redirect(res.locals.basePath + "/admin");
 });
 
 router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
@@ -169,7 +187,7 @@ router.post("/admin/team", requireAdmin, (req, res) => {
     console.error("Admin team error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
   }
-  res.redirect("/admin");
+  res.redirect(res.locals.basePath + "/admin");
 });
 
 

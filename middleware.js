@@ -31,8 +31,8 @@ export function tenantLocalsMiddleware(req, res, next) {
 }
 
 export function requireAdmin(req, res, next) {
-  if (req.session?.adminLoggedIn) return next();
-  res.redirect("/admin/login");
+  if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug) return next();
+  res.redirect(res.locals.basePath + "/admin/login");
 }
 
 // In-memory rate limiter: max 5 submissions per IP per hour

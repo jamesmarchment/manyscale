@@ -2,8 +2,8 @@
 /*
 
 ManyScale Server
-v0.0.1
-2026-06-14
+v0.1.0
+2026-07-02
 James Marchment and Samantha Joel
 
 */
@@ -50,14 +50,14 @@ app.listen(PORT, "0.0.0.0", () => {
 // If Airtable is unreachable the server still starts and serves from the local disk cache;
 // the interval keeps retrying so it auto-recovers when connectivity is restored.
 console.log("Starting ManyScale…");
-resolveTableIDs().then(ok => {
+resolveTableIDs(primaryTenant).then(ok => {
   if (ok) {
     runFullRefresh(primaryTenant.slug).catch(err => console.error("[startup] Initial refresh failed:", err));
   } else {
     console.warn("[startup] Airtable unavailable — serving from local disk cache if available. Will retry in 6 hours.");
   }
   setInterval(async () => {
-    const resolved = await resolveTableIDs();
+    const resolved = await resolveTableIDs(primaryTenant);
     if (resolved) {
       await runFullRefresh(primaryTenant.slug).catch(err => console.error("[refresh] Scheduled refresh failed:", err));
     } else {

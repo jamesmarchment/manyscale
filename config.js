@@ -24,18 +24,12 @@ try {
 export { _tenantsList };
 export const primaryTenant = _tenantsList.find(t => t.slug === "relationships") || _tenantsList[0];
 
-export const AIRTABLE_PAT = process.env[primaryTenant.patEnvVar];
-export const BASE_ID = primaryTenant?.baseId;
-
-if (!AIRTABLE_PAT) {
+if (!process.env[primaryTenant.patEnvVar]) {
   console.warn(`[config] ${primaryTenant.patEnvVar} not set in .env — Airtable sync disabled. Server will serve from local disk cache if available.`);
 }
-if (!BASE_ID) {
+if (!primaryTenant.baseId) {
   console.warn("[config] baseId missing from tenants.json — Airtable sync disabled. Server will serve from local disk cache if available.");
 }
-
-export const AIRTABLE_PAT_2 = process.env.AIRTABLE_PAT_2 || null;
-export const BASE_ID_2 = process.env.BASE_ID_2 || null;
 
 export function updateEnvVar(key, value) {
   const envPath = path.join(__dirname, ".env");
