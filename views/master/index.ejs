@@ -7,7 +7,7 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
-    .wrap { max-width: 960px; margin: 0 auto; }
+    .wrap { max-width: 1200px; margin: 0 auto; }
     header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
     header h1 { font-size: 1.2rem; margin: 0; }
     h2 { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #71717a; margin: 1.5rem 0 .5rem; }
@@ -27,6 +27,11 @@
     .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
     .row-actions form { display: inline-flex; align-items: center; gap: .3rem; margin: 0; }
     .row-actions input[type=text] { width: 7rem; padding: .25rem .4rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .78rem; font-family: monospace; }
+    .delete-toggle summary { list-style: none; width: 1.6rem; text-align: center; padding-left: 0; padding-right: 0; }
+    .delete-toggle summary::-webkit-details-marker { display: none; }
+    .delete-toggle summary::marker { content: ""; }
+    .delete-toggle[open] summary { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+    .delete-toggle form { display: inline-flex; align-items: center; gap: .3rem; margin-top: .4rem; }
     .flash { border-radius: 4px; padding: .55rem .85rem; font-size: .875rem; margin-bottom: 1rem; }
     .flash.ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
     .flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
@@ -90,10 +95,13 @@
                     <form method="POST" action="/master/tenants/<%= t.slug %>/toggle-active">
                       <button type="submit" class="btn <%= t.active ? 'btn-danger' : 'btn-ghost' %> btn-sm"><%= t.active ? "Deactivate" : "Activate" %></button>
                     </form>
-                    <form method="POST" action="/master/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">
-                      <input type="text" name="confirmSlug" placeholder="type slug" aria-label="Type slug to confirm deletion">
-                      <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                    </form>
+                    <details class="delete-toggle">
+                      <summary class="btn btn-ghost btn-sm" title="Delete tenant" aria-label="Delete tenant">&times;</summary>
+                      <form method="POST" action="/master/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">
+                        <input type="text" name="confirmSlug" placeholder="type slug" aria-label="Type slug to confirm deletion">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                      </form>
+                    </details>
                   </div>
                 </td>
               </tr>
