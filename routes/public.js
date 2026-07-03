@@ -16,7 +16,16 @@ router.get("/", (req, res) => {
   } catch (err) {
     console.warn(`[content] Could not load data/${req.tenant.slug}.json:`, err.message);
   }
-  res.render("index", { team, hero, submitFormUrl, cacheStatsUrl: `/${req.tenant.slug}/cache-stats.json` });
+
+  const contributors = contributorsCache
+    .filter(r => r.fields["Role"] === "Contributor")
+    .sort((a, b) => (b.fields["Measures"] || []).length - (a.fields["Measures"] || []).length);
+
+    
+  const funding = contributorsCache
+    .filter(r => r.fields["Role"] === "Funding");
+
+  res.render("index", { team, hero, submitFormUrl, contributors, funding,cacheStatsUrl: `/${req.tenant.slug}/cache-stats.json` });
 });
 
 router.get("/details/", (req, res) => {

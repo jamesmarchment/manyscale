@@ -309,20 +309,24 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="container px-4 px-lg-5" data-aos="fade-up">
         <h2 class="text-center mt-0"><%= locals.siteName || 'ManyScale' %> Team</h2>
         <hr class="divider" />
-        <p class="text-muted text-center mb-5">RelaScale is supported by a Social Science and Humanities Research Council of Canada Insight Grant awarded to Dr. Joel (2025-2030).</p>
+        <p class="text-muted text-center mb-5">We are grateful to the researchers and labs who have shared their measures and contributed to the database.</p>
       </div>
 
       <div class="container px-4 px-lg-5" data-aos="fade-up" data-aos-delay="100">
 
         <div class="row mt-2 gy-5">
+          <div class="row justify-content-center my-0 gx-2">
+          <div class="col-md-10 px-2">
+          <h4 class="mb-3">Core Team</h4>
+          </div></div>
 
           <% (locals.team || []).forEach((member, i) => { %>
           <div class="row mb-2 mt-3" data-aos="fade-up" data-aos-delay="<%= 200 + i * 50 %>">
-<div class="col-md-2 text-md-right"> 
+<div class="col-md-1 text-md-right"> 
 <img src="<%= member.photo?.startsWith('/') ? member.photo : 'assets/img/person/' + member.photo %>" alt="<%= member.name %>" class="img-fluid rounded-circle">
 </div>
 <div class="col-md-9 flex-valign">
-<h4 class="text-letter-spacing-xs mt-0 mb-1 text-dark font-weight-bold"><%= member.name %></h4>
+<h5 class="text-letter-spacing-xs mt-0 mb-1 text-dark font-weight-bold"><%= member.name %></h5>
 <h6 class="mt-0 mb-2 font-weight-normal"><em><%= member.title %></em></h6>
 
 <div class="social mt-2">
@@ -332,13 +336,82 @@ document.addEventListener("DOMContentLoaded", () => {
                   <% if (member.instagram) { %><a href="<%= member.instagram %>" target="_blank" rel="noopener noreferrer"><i class="bi bi-instagram"></i></a><% } %>
                   <% if (member.website)   { %><a href="<%= member.website %>"   target="_blank" rel="noopener noreferrer"><i class="bi bi-globe"></i></a><% } %>
                 </div>
-<hr class="hr-primary w-70 ml-0 my-2"><p><%= member.bio %></p> 
+<hr class="hr-primary w-70 ml-0 my-2"><!--<p><%= member.bio %></p>--> 
 </div>
 </div>
           <% }) %>
 
         </div>
 
+
+<style>
+.contributor-av {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1rem;
+}
+
+</style>
+          <!-- Contributors -->
+           <div class="row justify-content-center mt-5 mb-4">
+            
+           <div class="col-md-10">
+          <%
+            function initials(name) {
+              return (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+            }
+          %>
+          <% if (contributors.length > 0) { %>
+          <h4 class="mb-3">Scale Contributors</h4>
+          <div class="border rounded mb-5">
+            <% contributors.forEach((person, i) => {
+              const name = person.fields["Name"] || "";
+              const contributions = [].concat(person.fields["Contribution(s)"] || []);
+              const measureCount = (person.fields["Measures"] || []).length;
+            %>
+            <div class="<%= i > 0 ? 'border-top ' : '' %>d-flex align-items-start gap-3 px-3 py-2">
+              <div class="contributor-av mt-1"><%= initials(name) %></div>
+              <div>
+                <div class="d-flex align-items-baseline gap-2">
+                  <span class="fw-semibold small"><%= name %></span>
+                  <% if (measureCount > 0) { %>
+                    <span class="small text-muted"><%= measureCount %> measure<%= measureCount !== 1 ? 's' : '' %></span>
+                  <% } %>
+                </div>
+                <% if (contributions.length > 0) { %>
+                <div class="d-flex flex-wrap gap-1 mt-1">
+                  <% contributions.forEach(c => { %><span class="construct-tag"><%= c %></span><% }) %>
+                </div>
+                <% } %>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+          <% } %>
+      </div> </div>
+
+<!-- Funding -->
+          <% if (funding.length > 0) { %>
+          <%
+            const fundingNames = funding.map(p => p.fields["Name"] || "").filter(Boolean);
+            let fundingStr;
+            if (fundingNames.length === 1) {
+              fundingStr = fundingNames[0];
+            } else if (fundingNames.length === 2) {
+              fundingStr = fundingNames[0] + " and " + fundingNames[1];
+            } else {
+              fundingStr = fundingNames.slice(0, -1).join(", ") + ", and " + fundingNames[fundingNames.length - 1];
+            }
+          %>
+            <div class="row justify-content-center mt-3 mb-5">
+            
+           <div class="col-md-10">
+          <h4 class="mb-3">Funding</h4>
+          <p>ManyScale is supported by <%= fundingStr %>.</p>
+          <% } %>
+
+      </div>
+      </div>
       </div>
 
     </section><!-- /Team Section -->
@@ -347,6 +420,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	
 	
 
+<script>applyConstructTagColors();</script>
 <script>
 (function () {
   const input = document.getElementById("index-search-input");
