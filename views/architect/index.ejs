@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Master Admin — ManyScale</title>
+  <title>Architect Admin — ManyScale</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
@@ -46,10 +46,10 @@
   <div class="wrap">
 
     <header>
-      <h1>ManyScale — Master Admin</h1>
+      <h1>ManyScale — Architect Admin</h1>
       <div style="display:flex;align-items:center;gap:.5rem">
-        <a href="/master/tenants/new" class="btn">+ New Tenant</a>
-        <form method="POST" action="/master/logout">
+        <a href="/architect/tenants/new" class="btn">+ New Tenant</a>
+        <form method="POST" action="/architect/logout">
           <button type="submit" class="btn btn-ghost">Log out</button>
         </form>
       </div>
@@ -89,15 +89,15 @@
                 <td><span class="status <%= t.active ? 'active' : 'inactive' %>"><%= t.active ? "Active" : "Inactive" %></span></td>
                 <td>
                   <div class="row-actions">
-                    <form method="POST" action="/master/tenants/<%= t.slug %>/refresh-cache">
+                    <form method="POST" action="/architect/tenants/<%= t.slug %>/refresh-cache">
                       <button type="submit" class="btn btn-ghost btn-sm">Refresh Cache</button>
                     </form>
-                    <form method="POST" action="/master/tenants/<%= t.slug %>/toggle-active">
+                    <form method="POST" action="/architect/tenants/<%= t.slug %>/toggle-active">
                       <button type="submit" class="btn <%= t.active ? 'btn-danger' : 'btn-ghost' %> btn-sm"><%= t.active ? "Deactivate" : "Activate" %></button>
                     </form>
                     <details class="delete-toggle">
                       <summary class="btn btn-ghost btn-sm" title="Delete tenant" aria-label="Delete tenant">&times;</summary>
-                      <form method="POST" action="/master/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">
+                      <form method="POST" action="/architect/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">
                         <input type="text" name="confirmSlug" placeholder="type slug" aria-label="Type slug to confirm deletion">
                         <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                       </form>

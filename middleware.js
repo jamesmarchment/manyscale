@@ -35,9 +35,9 @@ export function requireAdmin(req, res, next) {
   res.redirect(res.locals.basePath + "/admin/login");
 }
 
-export function requireMasterAdmin(req, res, next) {
-  if (req.session?.masterLoggedIn) return next();
-  res.redirect("/master/login");
+export function requireArchitectAdmin(req, res, next) {
+  if (req.session?.architectLoggedIn) return next();
+  res.redirect("/architect/login");
 }
 
 // In-memory rate limiter: max 5 submissions per IP per hour

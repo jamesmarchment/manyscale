@@ -1,51 +1,51 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { requireMasterAdmin } from "../middleware.js";
-import { MASTER_ADMIN_PASSWORD_HASH, MULTI_TENANT, _tenantsList, TENANTS_FILE, updateEnvVar } from "../config.js";
+import { requireArchitectAdmin } from "../middleware.js";
+import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, _tenantsList, TENANTS_FILE, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { tenantCaches, lastRefreshTimes, resolveTableIDs, runFullRefresh, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
 
 const router = Router();
 
-router.get("/master/login", (req, res) => {
-  if (req.session?.masterLoggedIn) return res.redirect("/master");
-  res.render("master/login", { error: null });
+router.get("/architect/login", (req, res) => {
+  if (req.session?.architectLoggedIn) return res.redirect("/architect");
+  res.render("architect/login", { error: null });
 });
 
-router.post("/master/login", (req, res) => {
-  if (!MASTER_ADMIN_PASSWORD_HASH) {
-    return res.render("master/login", { error: "Master admin password is not configured. Run npm run hash-password and set MASTER_ADMIN_PASSWORD_HASH in .env." });
+router.post("/architect/login", (req, res) => {
+  if (!ARCHITECT_ADMIN_PASSWORD_HASH) {
+    return res.render("architect/login", { error: "Architect admin password is not configured. Run npm run hash-password and set ARCHITECT_ADMIN_PASSWORD_HASH in .env." });
   }
-  if (verifyPassword(req.body.password || "", MASTER_ADMIN_PASSWORD_HASH)) {
-    req.session.masterLoggedIn = true;
-    return res.redirect("/master");
+  if (verifyPassword(req.body.password || "", ARCHITECT_ADMIN_PASSWORD_HASH)) {
+    req.session.architectLoggedIn = true;
+    return res.redirect("/architect");
   }
-  res.render("master/login", { error: "Incorrect password." });
+  res.render("architect/login", { error: "Incorrect password." });
 });
 
-router.post("/master/logout", (req, res) => {
-  req.session.destroy(() => res.redirect("/master/login"));
+router.post("/architect/logout", (req, res) => {
+  req.session.destroy(() => res.redirect("/architect/login"));
 });
 
-router.get("/master", requireMasterAdmin, (req, res) => {
+router.get("/architect", requireArchitectAdmin, (req, res) => {
   const tenants = _tenantsList.map(t => ({
     ...t,
     recordCount: (tenantCaches.get(t.slug) || []).length,
     lastRefresh: lastRefreshTimes.get(t.slug) || null,
     active: t.active !== false,
   }));
-  const flash = req.session.masterFlash || null;
-  delete req.session.masterFlash;
-  res.render("master/index", { tenants, flash });
+  const flash = req.session.architectFlash || null;
+  delete req.session.architectFlash;
+  res.render("architect/index", { tenants, flash });
 });
 
-router.get("/master/tenants/new", requireMasterAdmin, (req, res) => {
-  res.render("master/tenant-form", { errors: null, values: {} });
+router.get("/architect/tenants/new", requireArchitectAdmin, (req, res) => {
+  res.render("architect/tenant-form", { errors: null, values: {} });
 });
 
-router.post("/master/tenants", requireMasterAdmin, async (req, res) => {
+router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   const { name, slug, contact_email, baseId, pat, adminPassword, scaffoldTables } = req.body;
   const values = { name, slug, contact_email, baseId, pat: "", adminPassword: "", scaffoldTables };
 
@@ -61,8 +61,8 @@ router.post("/master/tenants", requireMasterAdmin, async (req, res) => {
   if (trimmedSlug && !/^[a-z0-9-]+$/.test(trimmedSlug)) {
     errors.push("Slug can only contain lowercase letters, numbers, and hyphens.");
   }
-  if (trimmedSlug === "master") {
-    errors.push('Slug "master" is reserved for the master admin panel.');
+  if (trimmedSlug === "architect") {
+    errors.push('Slug "architect" is reserved for the architect admin panel.');
   }
   if (trimmedSlug && _tenantsList.some(t => t.slug === trimmedSlug)) {
     errors.push(`A tenant with slug "${trimmedSlug}" already exists.`);
@@ -72,7 +72,7 @@ router.post("/master/tenants", requireMasterAdmin, async (req, res) => {
   }
 
   if (errors.length) {
-    return res.render("master/tenant-form", { errors, values });
+    return res.render("architect/tenant-form", { errors, values });
   }
 
   const patEnvVar = trimmedSlug.toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_PAT";
@@ -143,7 +143,7 @@ router.post("/master/tenants", requireMasterAdmin, async (req, res) => {
     console.error(`[${tenant.slug}] Onboarding email failed to send:`, err);
   }
 
-  res.render("master/tenant-created", {
+  res.render("architect/tenant-created", {
     tenant,
     airtableSyncOk,
     adminUrl,
@@ -152,56 +152,56 @@ router.post("/master/tenants", requireMasterAdmin, async (req, res) => {
   });
 });
 
-router.post("/master/tenants/:slug/refresh-cache", requireMasterAdmin, async (req, res) => {
+router.post("/architect/tenants/:slug/refresh-cache", requireArchitectAdmin, async (req, res) => {
   const { slug } = req.params;
   const tenant = _tenantsList.find(t => t.slug === slug);
   if (!tenant) {
-    req.session.masterFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
-    return res.redirect("/master");
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
   }
   try {
     await runFullRefresh(slug);
     const count = (tenantCaches.get(slug) || []).length;
-    req.session.masterFlash = { type: "ok", msg: `Cache refreshed for "${tenant.name}" — ${count} records loaded.` };
+    req.session.architectFlash = { type: "ok", msg: `Cache refreshed for "${tenant.name}" — ${count} records loaded.` };
   } catch (err) {
-    console.error(`[${slug}] Master cache refresh error:`, err);
-    req.session.masterFlash = { type: "err", msg: `Cache refresh failed for "${tenant.name}": ${err.message}` };
+    console.error(`[${slug}] Architect cache refresh error:`, err);
+    req.session.architectFlash = { type: "err", msg: `Cache refresh failed for "${tenant.name}": ${err.message}` };
   }
-  res.redirect("/master");
+  res.redirect("/architect");
 });
 
-router.post("/master/tenants/:slug/toggle-active", requireMasterAdmin, (req, res) => {
+router.post("/architect/tenants/:slug/toggle-active", requireArchitectAdmin, (req, res) => {
   const { slug } = req.params;
   const tenant = _tenantsList.find(t => t.slug === slug);
   if (!tenant) {
-    req.session.masterFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
-    return res.redirect("/master");
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
   }
   const wasActive = tenant.active !== false;
   tenant.active = !wasActive;
   fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
-  req.session.masterFlash = { type: "ok", msg: `Tenant "${tenant.name}" ${tenant.active ? "activated" : "deactivated"}.` };
-  res.redirect("/master");
+  req.session.architectFlash = { type: "ok", msg: `Tenant "${tenant.name}" ${tenant.active ? "activated" : "deactivated"}.` };
+  res.redirect("/architect");
 });
 
-router.post("/master/tenants/:slug/delete", requireMasterAdmin, (req, res) => {
+router.post("/architect/tenants/:slug/delete", requireArchitectAdmin, (req, res) => {
   const { slug } = req.params;
   const { confirmSlug } = req.body;
   const idx = _tenantsList.findIndex(t => t.slug === slug);
   if (idx === -1) {
-    req.session.masterFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
-    return res.redirect("/master");
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
   }
   if (confirmSlug !== slug) {
-    req.session.masterFlash = { type: "err", msg: `Deletion not confirmed — typed slug didn't match "${slug}".` };
-    return res.redirect("/master");
+    req.session.architectFlash = { type: "err", msg: `Deletion not confirmed — typed slug didn't match "${slug}".` };
+    return res.redirect("/architect");
   }
   const [removed] = _tenantsList.splice(idx, 1);
   fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
   tenantCaches.delete(slug);
   lastRefreshTimes.delete(slug);
-  req.session.masterFlash = { type: "ok", msg: `Tenant "${removed.name}" deleted. Its on-disk cache and data files were preserved.` };
-  res.redirect("/master");
+  req.session.architectFlash = { type: "ok", msg: `Tenant "${removed.name}" deleted. Its on-disk cache and data files were preserved.` };
+  res.redirect("/architect");
 });
 
 export default router;

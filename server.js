@@ -19,7 +19,7 @@ import formsRouter from "./routes/forms.js";
 import publicRouter from "./routes/public.js";
 import adminRouter from "./routes/admin.js";
 import landingRouter from "./routes/landing.js";
-import masterRouter from "./routes/master.js";
+import architectRouter from "./routes/architect.js";
 
 const app = express();
 
@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(express.static("public"));
 app.use(tenantLocalsMiddleware);
-app.use(masterRouter);
+app.use(architectRouter);
 
 if (MULTI_TENANT) {
   app.use("/:slug", resolveTenant, apiRouter, formsRouter, publicRouter, adminRouter);

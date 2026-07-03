@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>New Tenant — Master Admin</title>
+  <title>New Tenant — Architect Admin</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
@@ -35,7 +35,7 @@
 
     <header>
       <h1>New Tenant</h1>
-      <a href="/master" class="btn btn-ghost">Back to dashboard</a>
+      <a href="/architect" class="btn btn-ghost">Back to dashboard</a>
     </header>
 
     <% if (locals.errors && errors.length) { %>
@@ -49,7 +49,7 @@
     <% } %>
 
     <div class="card">
-      <form method="POST" action="/master/tenants">
+      <form method="POST" action="/architect/tenants">
         <table>
           <tr>
             <th><label for="name">Name</label></th>
@@ -59,7 +59,7 @@
             <th><label for="slug">Slug</label></th>
             <td>
               <input type="text" id="slug" name="slug" value="<%= locals.values?.slug || '' %>">
-              <p class="hint">Lowercase letters, numbers, and hyphens only. Cannot be changed later, and cannot be "master".</p>
+              <p class="hint">Lowercase letters, numbers, and hyphens only. Cannot be changed later, and cannot be "architect".</p>
             </td>
           </tr>
           <tr>

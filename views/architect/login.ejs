@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Master Admin Login</title>
+  <title>Architect Admin Login</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f4f4f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
@@ -19,11 +19,11 @@
 </head>
 <body>
   <div class="card">
-    <h1>Master Admin Login</h1>
+    <h1>Architect Admin Login</h1>
     <% if (locals.error) { %>
       <div class="error"><%= error %></div>
     <% } %>
-    <form method="POST" action="/master/login">
+    <form method="POST" action="/architect/login">
       <label for="password">Password</label>
       <input type="password" id="password" name="password" autofocus autocomplete="current-password">
       <button type="submit">Log in</button>

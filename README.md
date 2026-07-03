@@ -103,7 +103,7 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `SMTP_PASS` | Yes* | SMTP password for `SMTP_USER` |
 | `ADMIN_PASSWORD` | Yes | Password for the `/admin` panel |
 | `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
-| `MASTER_ADMIN_PASSWORD_HASH` | No | Password hash for the cross-tenant `/master` panel — see [Master Admin Panel](#master-admin-panel) |
+| `ARCHITECT_ADMIN_PASSWORD_HASH` | No | Password hash for the cross-tenant `/architect` panel — see [Architect Admin Panel](#architect-admin-panel) |
 | `SESSION_SECRET` | Yes | Random string used to sign session cookies |
 | `PORT` | No | Port to listen on (default: `3007`) |
 | `MULTI_TENANT` | No | Set to `true` to enable slug-prefixed URLs (e.g. `/relationships/constructs`). Default is `false` (single-tenant, no slug in URL). |
@@ -134,9 +134,9 @@ In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served 
 | GET | `/admin` | Admin panel (session-protected) |
 | GET | `/admin/refresh-cache?token=` | Trigger a cache refresh (token-protected) |
 | GET | `/admin/sync-pdfs?token=` | Trigger a PDF sync (token-protected) |
-| GET | `/master` | Master admin dashboard listing all tenants (session-protected) |
-| GET | `/master/tenants/new` | New tenant onboarding form |
-| POST | `/master/tenants` | Provision a new tenant |
+| GET | `/architect` | Architect admin dashboard listing all tenants (session-protected) |
+| GET | `/architect/tenants/new` | New tenant onboarding form |
+| POST | `/architect/tenants` | Provision a new tenant |
 
 ---
 
@@ -151,9 +151,9 @@ Navigate to `/admin` and log in with `ADMIN_PASSWORD`. From there you can:
 
 ---
 
-## Master Admin Panel
+## Architect Admin Panel
 
-A separate, cross-tenant panel lives at `/master`. It's always active regardless of `MULTI_TENANT` — unlike the per-tenant `/admin` panel, it isn't gated by that setting. Log in with the password matching `MASTER_ADMIN_PASSWORD_HASH`, generated the same way as a tenant's `adminPasswordHash` (`npm run hash-password`), but pasted into `.env` instead of `tenants.json`.
+A separate, cross-tenant panel lives at `/architect`. It's always active regardless of `MULTI_TENANT` — unlike the per-tenant `/admin` panel, it isn't gated by that setting. Log in with the password matching `ARCHITECT_ADMIN_PASSWORD_HASH`, generated the same way as a tenant's `adminPasswordHash` (`npm run hash-password`), but pasted into `.env` instead of `tenants.json`.
 
 From the dashboard you can:
 
