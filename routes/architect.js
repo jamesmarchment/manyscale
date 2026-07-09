@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import { requireArchitectAdmin } from "../middleware.js";
-import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, _tenantsList, TENANTS_FILE, updateEnvVar } from "../config.js";
+import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { tenantCaches, lastRefreshTimes, resolveTableIDs, runFullRefresh, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
@@ -93,7 +93,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   updateEnvVar(patEnvVar, pat.trim());
   process.env[patEnvVar] = pat.trim();
 
-  const contentFile = path.join(process.cwd(), "data", `${tenant.slug}.json`);
+  const contentFile = path.join(PROJECT_ROOT, "data", `${tenant.slug}.json`);
   fs.writeFileSync(contentFile, JSON.stringify({
     meta: { tagline: "", description: "" },
     submitFormUrl: "",

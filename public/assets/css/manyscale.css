@@ -173,8 +173,14 @@
 	transition: all 0.5s;
 	border-bottom: 1px solid rgba(0,0,0,0);
 	background: #f8f9fa;
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   z-index: 1050;
+  /* Force this fixed-position element onto its own compositing layer immediately.
+     Without this, mobile browsers can mis-size a position:fixed + backdrop-filter
+     element on first paint (too wide) and only recompute it correctly once a
+     scroll event forces a repaint — which reads as "fixed after scrolling". */
+  transform: translateZ(0);
 }
 
 #mainNav.navbar-shrink {
@@ -390,6 +396,18 @@ p.no-break-links a {
 /*--------------------------------------------------------------
 # General Styling & Shared Classes
 --------------------------------------------------------------*/
+
+/* AOS's fade-left/fade-right/etc. animate elements in from a translate3d()
+   offset of up to 100px off-screen. That offset counts toward the page's
+   scrollable width even before the element is visible, which inflates the
+   effective mobile viewport width (100%-sized elements like #mainNav then
+   render too wide) until AOS resets the transform on reveal. Clipping
+   horizontal overflow at the root prevents off-screen transforms from ever
+   affecting layout width. */
+html, section#submit, section#why, header.masthead {
+  overflow-x: hidden;
+}
+
 body {
   color: var(--default-color);
   background-color: var(--background-color);

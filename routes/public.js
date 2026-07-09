@@ -3,13 +3,14 @@ import fs from "fs";
 import path from "path";
 import { tenantCaches, refreshCache, contributorsCache, SUBMIT_FORM_URL } from "../lib/airtable.js";
 import { recordMatchesSearch, SUGGESTION_STOP_WORDS } from "../lib/search.js";
+import { PROJECT_ROOT } from "../config.js";
 
 const router = Router();
 
 router.get("/", (req, res) => {
   let team = [], hero = {}, submitFormUrl = SUBMIT_FORM_URL;
   try {
-    const content = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", `${req.tenant.slug}.json`), "utf8"));
+    const content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`), "utf8"));
     team = content.team || [];
     hero = content.hero || {};
     if (content.submitFormUrl) submitFormUrl = content.submitFormUrl;

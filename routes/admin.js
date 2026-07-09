@@ -4,14 +4,14 @@ import path from "path";
 import multer from "multer";
 import { requireAdmin } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
-import { TENANTS_FILE, updateEnvVar } from "../config.js";
+import { TENANTS_FILE, PROJECT_ROOT, updateEnvVar } from "../config.js";
 import { verifyPassword } from "../lib/auth.js";
 
 const router = Router();
 
 // Photo upload — saves to public/{slug}/team/
 const TEAM_PHOTO_SLUG = "relationships";
-const TEAM_PHOTO_DIR  = path.join(process.cwd(), "public", TEAM_PHOTO_SLUG, "team");
+const TEAM_PHOTO_DIR  = path.join(PROJECT_ROOT, "public", TEAM_PHOTO_SLUG, "team");
 if (!fs.existsSync(TEAM_PHOTO_DIR)) fs.mkdirSync(TEAM_PHOTO_DIR, { recursive: true });
 
 const photoStorage = multer.diskStorage({
@@ -60,7 +60,7 @@ router.get("/admin", requireAdmin, (req, res) => {
   const tenant = req.tenant;
   let hero = {}, submitFormUrl = "", team = [];
   try {
-    const content = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", `${tenant.slug}.json`), "utf8"));
+    const content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${tenant.slug}.json`), "utf8"));
     hero = content.hero || {};
     submitFormUrl = content.submitFormUrl || "";
     team = content.team || [];
@@ -103,7 +103,7 @@ router.post("/admin/config", requireAdmin, (req, res) => {
 
 router.post("/admin/content", requireAdmin, (req, res) => {
   const { hero_heading, hero_subheading, meta_tagline, meta_description, submit_form_url, logo_color } = req.body;
-  const contentFile = path.join(process.cwd(), "data", `${req.tenant.slug}.json`);
+  const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
     let content = {};
     try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
@@ -145,7 +145,7 @@ router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/team", requireAdmin, (req, res) => {
-  const contentFile = path.join(process.cwd(), "data", `${req.tenant.slug}.json`);
+  const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
     let content = {};
     try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}

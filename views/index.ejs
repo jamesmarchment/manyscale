@@ -139,8 +139,8 @@
         <h2 class="text-center mt-0">Submit A Measure</h2>
         <hr class="divider" />
         <div class="text-center mb-4">
-          <a href="<%= locals.submitFormUrl || '#' %>" target="_blank" class="btn btn-primary btn-dark btn-xl me-3">Access Form (Password Required)</a>
-          <a href="#contact" id="request-access-btn" data-subject="<%= locals.siteName || '#' %> Access Request" data-message="Hi! I’d like to request access to the <%= locals.siteName || '#' %> measure upload form." class="btn btn-primary btn-dark btn-xl">Request Access</a>
+          <a href="<%= locals.submitFormUrl || '#' %>" target="_blank" class="btn btn-primary btn-dark btn-xl me-3 py-3 px-4 me-lg-3 mb-4 mb-lg-0">Access Form (Password Required)</a>
+          <a href="#contact" id="request-access-btn" data-subject="<%= locals.siteName || '#' %> Access Request" data-message="Hi! I’d like to request access to the <%= locals.siteName || '#' %> measure upload form." class="btn btn-primary btn-dark btn-xl py-3 px-4 me-lg-3 mb-4 mb-lg-0">Request Access</a>
         </div>
         <p class="text-muted text-center mb-5">If you have a validated self-report measure pertaining to interpersonal relationships, we invite you to add it to the repository by completing a short form.</p>
       </div>
@@ -322,7 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
           <% (locals.team || []).forEach((member, i) => { %>
           <div class="row mb-2 mt-3" data-aos="fade-up" data-aos-delay="<%= 200 + i * 50 %>">
-<div class="col-md-1 text-md-right"> 
+<div class="col-md-1 text-md-right px-5 px-md-2 mb-4 mb-md-0"> 
 <img src="<%= member.photo?.startsWith('/') ? member.photo : 'assets/img/person/' + member.photo %>" alt="<%= member.name %>" class="img-fluid rounded-circle">
 </div>
 <div class="col-md-9 flex-valign">

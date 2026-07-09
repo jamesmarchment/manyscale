@@ -5,6 +5,10 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Anchor point for cache/, data/, and public/ paths — always the project root,
+// regardless of the working directory the process was launched from.
+export const PROJECT_ROOT = __dirname;
+
 dotenv.config();
 
 export const PORT = process.env.PORT || 3007;
