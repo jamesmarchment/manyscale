@@ -89,6 +89,11 @@
                 <td><span class="status <%= t.active ? 'active' : 'inactive' %>"><%= t.active ? "Active" : "Inactive" %></span></td>
                 <td>
                   <div class="row-actions">
+                    <% if (t.adminUrl) { %>
+                      <a href="<%= t.adminUrl %>" class="btn btn-ghost btn-sm">Admin Panel</a>
+                    <% } else { %>
+                      <span class="muted" style="font-size:.78rem" title="Not reachable until MULTI_TENANT=true">Admin N/A</span>
+                    <% } %>
                     <form method="POST" action="/architect/tenants/<%= t.slug %>/refresh-cache">
                       <button type="submit" class="btn btn-ghost btn-sm">Refresh Cache</button>
                     </form>

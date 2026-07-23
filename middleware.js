@@ -17,11 +17,13 @@ export const sessionMiddleware = session({
   cookie: { httpOnly: true, maxAge: 8 * 60 * 60 * 1000 }
 });
 
-// Expose tenant-level locals to all templates
+// Expose tenant-level locals to all templates. Must run after resolveTenant so
+// req.tenant reflects the tenant actually being requested, not always the primary one.
 export function tenantLocalsMiddleware(req, res, next) {
-  res.locals.siteName = primaryTenant.name;
+  const tenant = req.tenant || primaryTenant;
+  res.locals.siteName = tenant.name;
   try {
-    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${primaryTenant.slug}.json`), "utf8"));
+    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${tenant.slug}.json`), "utf8"));
     const meta = content.meta || {};
     res.locals.siteTagline     = meta.tagline     || "";
     res.locals.siteDescription = meta.description || "";
@@ -31,6 +33,7 @@ export function tenantLocalsMiddleware(req, res, next) {
 }
 
 export function requireAdmin(req, res, next) {
+  if (req.session?.architectLoggedIn) return next();
   if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug) return next();
   res.redirect(res.locals.basePath + "/admin/login");
 }

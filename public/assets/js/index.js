@@ -197,12 +197,12 @@ document.addEventListener("DOMContentLoaded", () => {
                   <span class="construct-category">${rec.fields["Construct(s)"]?.join(", ")}</span>
                   <time class="construct-year">${rec.fields.Year}</time>
                 </div>
-                <a href="details/${rec.fields['MeasureID']}">
+                <a href="${window.BASE_PATH || ""}/details/${rec.fields['MeasureID']}">
                   <h3 class="construct-title">${rec.fields["Measure Name"]}</h3>
                 </a>
                 <p class="construct-description">${rec.fields["Primary Reference"]}</p>
                 <div class="overlay-content">
-                  <a href="details/${rec.fields['MeasureID']}">
+                  <a href="${window.BASE_PATH || ""}/details/${rec.fields['MeasureID']}">
                     <i class="bi bi-chevron-double-right"></i>Details
                   </a>
                   ${linkHTML}

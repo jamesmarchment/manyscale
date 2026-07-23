@@ -1,14 +1,14 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { tenantCaches, refreshCache, contributorsCache, SUBMIT_FORM_URL } from "../lib/airtable.js";
+import { tenantCaches, refreshCache, contributorsCache, getSubmitFormUrl } from "../lib/airtable.js";
 import { recordMatchesSearch, SUGGESTION_STOP_WORDS } from "../lib/search.js";
 import { PROJECT_ROOT } from "../config.js";
 
 const router = Router();
 
 router.get("/", (req, res) => {
-  let team = [], hero = {}, submitFormUrl = SUBMIT_FORM_URL;
+  let team = [], hero = {}, submitFormUrl = getSubmitFormUrl(req.tenant.slug);
   try {
     const content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`), "utf8"));
     team = content.team || [];
@@ -18,12 +18,13 @@ router.get("/", (req, res) => {
     console.warn(`[content] Could not load data/${req.tenant.slug}.json:`, err.message);
   }
 
-  const contributors = contributorsCache
+  const tenantContributors = contributorsCache.get(req.tenant.slug) || [];
+
+  const contributors = tenantContributors
     .filter(r => r.fields["Role"] === "Contributor")
     .sort((a, b) => (b.fields["Measures"] || []).length - (a.fields["Measures"] || []).length);
 
-    
-  const funding = contributorsCache
+  const funding = tenantContributors
     .filter(r => r.fields["Role"] === "Funding");
 
   res.render("index", { team, hero, submitFormUrl, contributors, funding,cacheStatsUrl: `/${req.tenant.slug}/cache-stats.json` });
@@ -156,15 +157,17 @@ router.get("/contributors", (req, res) => {
   const byMeasureCount = (a, b) =>
     (b.fields["Measures"] || []).length - (a.fields["Measures"] || []).length;
 
-  const coreTeam = contributorsCache
+  const tenantContributors = contributorsCache.get(req.tenant.slug) || [];
+
+  const coreTeam = tenantContributors
     .filter(r => r.fields["Role"] === "Core Team")
     .sort(byMeasureCount);
 
-  const contributors = contributorsCache
+  const contributors = tenantContributors
     .filter(r => r.fields["Role"] === "Contributor")
     .sort(byMeasureCount);
 
-  const funding = contributorsCache
+  const funding = tenantContributors
     .filter(r => r.fields["Role"] === "Funding");
 
   res.render("contributors", { coreTeam, contributors, funding });

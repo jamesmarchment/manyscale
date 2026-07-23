@@ -6,6 +6,7 @@
     "baseId": "yourAirtableBaseId",
     "contact_recipient": "you@example.com",
     "adminPasswordHash": "run `npm run hash-password` and paste the output here",
+    "primaryTenant": true,
     "secondaryPatEnvVar": "YOUR_SECONDARY_PAT_ENV_VAR",
     "secondaryBaseId": "secondaryAirtableBaseId"
   }

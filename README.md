@@ -63,6 +63,7 @@ cp tenants_example.json tenants.json
 - `patEnvVar` — the name of the `.env` key that holds this tenant's Airtable PAT
 - `baseId` — the Airtable base ID (starts with `app`)
 - `contact_recipient` — where contact form and measure suggestion emails are delivered
+- `primaryTenant` *(optional)* — set to `true` on the tenant that should be treated as primary (served in single-tenant mode, refreshed on the startup/6-hour cycle). If no tenant has this set, the first entry in the list is used.
 
 ### 4. Set up Airtable
 

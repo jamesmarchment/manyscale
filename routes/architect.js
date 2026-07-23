@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import { requireArchitectAdmin } from "../middleware.js";
-import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, updateEnvVar } from "../config.js";
+import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { tenantCaches, lastRefreshTimes, resolveTableIDs, runFullRefresh, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
@@ -35,6 +35,9 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
     recordCount: (tenantCaches.get(t.slug) || []).length,
     lastRefresh: lastRefreshTimes.get(t.slug) || null,
     active: t.active !== false,
+    // In multi-tenant mode every tenant's admin panel is reachable at /{slug}/admin.
+    // In single-tenant mode only the primary tenant is reachable at all, at /admin.
+    adminUrl: MULTI_TENANT ? `/${t.slug}/admin` : (t.slug === primaryTenant.slug ? "/admin" : null),
   }));
   const flash = req.session.architectFlash || null;
   delete req.session.architectFlash;

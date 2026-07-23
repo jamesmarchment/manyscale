@@ -16,7 +16,7 @@ James Marchment and Samantha Joel
 
 async function constructsToArray() {
   try {
-    const response = await fetch("/api/construct-stats");
+    const response = await fetch(`${window.BASE_PATH || ""}/api/construct-stats`);
     const resdata = await response.json();
     return Object.entries(resdata).map(([name, count]) => ({ name, count }));
   } catch (err) {
@@ -27,7 +27,7 @@ async function constructsToArray() {
 
 async function dataToArray(recordId = null) {
   try {
-    let url = "/api/data";
+    let url = `${window.BASE_PATH || ""}/api/data`;
     if (recordId) {
       url += `?id=${encodeURIComponent(recordId)}`;
     }
@@ -44,7 +44,7 @@ async function dataToArray(recordId = null) {
 // Note: loadData may not be used anymore — index.ejs uses dataToArray instead.
 async function loadData() {
   try {
-    const response = await fetch("/api/data");
+    const response = await fetch(`${window.BASE_PATH || ""}/api/data`);
     const data = await response.json();
     return data;
   } catch (err) {
@@ -54,7 +54,7 @@ async function loadData() {
 }
 
 async function loadStats() {
-  const res = await fetch("/api/stats");
+  const res = await fetch(`${window.BASE_PATH || ""}/api/stats`);
   const stats = await res.json();
   document.getElementById("measureCount").textContent = stats.totalMeasures;
   document.getElementById("constructCount").textContent = stats.totalConstructs;

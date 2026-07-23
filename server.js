@@ -11,7 +11,7 @@ James Marchment and Samantha Joel
 import express from "express";
 import cors from "cors";
 
-import { PORT, MULTI_TENANT, primaryTenant } from "./config.js";
+import { PORT, MULTI_TENANT, _tenantsList } from "./config.js";
 import { resolveTableIDs, runFullRefresh } from "./lib/airtable.js";
 import { sessionMiddleware, tenantLocalsMiddleware, resolveTenant } from "./middleware.js";
 import apiRouter from "./routes/api.js";
@@ -30,14 +30,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(sessionMiddleware);
 app.use(express.static("public"));
-app.use(tenantLocalsMiddleware);
 app.use(architectRouter);
 
 if (MULTI_TENANT) {
-  app.use("/:slug", resolveTenant, apiRouter, formsRouter, publicRouter, adminRouter);
+  app.use("/:slug", resolveTenant, tenantLocalsMiddleware, apiRouter, formsRouter, publicRouter, adminRouter);
   app.use("/", landingRouter);
 } else {
   app.use(resolveTenant);
+  app.use(tenantLocalsMiddleware);
   app.use(apiRouter);
   app.use(formsRouter);
   app.use(publicRouter);
@@ -48,22 +48,27 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Resolve table IDs once at startup, then kick off the data refresh cycle.
-// If Airtable is unreachable the server still starts and serves from the local disk cache;
-// the interval keeps retrying so it auto-recovers when connectivity is restored.
-console.log("Starting ManyScale…");
-resolveTableIDs(primaryTenant).then(ok => {
-  if (ok) {
-    runFullRefresh(primaryTenant.slug).catch(err => console.error("[startup] Initial refresh failed:", err));
-  } else {
-    console.warn("[startup] Airtable unavailable — serving from local disk cache if available. Will retry in 6 hours.");
-  }
-  setInterval(async () => {
-    const resolved = await resolveTableIDs(primaryTenant);
-    if (resolved) {
-      await runFullRefresh(primaryTenant.slug).catch(err => console.error("[refresh] Scheduled refresh failed:", err));
-    } else {
-      console.warn("[refresh] Airtable still unavailable — will retry next cycle.");
+// Resolves and refreshes every active tenant, one at a time so one tenant's Airtable
+// outage or misconfiguration can't block the others. If Airtable is unreachable for a
+// given tenant, that tenant just keeps serving from its local disk cache until the next cycle.
+async function refreshAllTenants() {
+  for (const tenant of _tenantsList) {
+    if (tenant.active === false) continue;
+    const pfx = `[${tenant.slug}]`;
+    try {
+      const resolved = await resolveTableIDs(tenant);
+      if (resolved) {
+        await runFullRefresh(tenant.slug);
+      } else {
+        console.warn(`${pfx} Airtable unavailable — serving from local disk cache if available. Will retry next cycle.`);
+      }
+    } catch (err) {
+      console.error(`${pfx} Refresh failed:`, err);
     }
-  }, 6 * 60 * 60 * 1000);
+  }
+}
+
+console.log("Starting ManyScale…");
+refreshAllTenants().then(() => {
+  setInterval(refreshAllTenants, 6 * 60 * 60 * 1000);
 });

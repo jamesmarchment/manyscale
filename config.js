@@ -27,7 +27,9 @@ try {
 }
 
 export { _tenantsList };
-export const primaryTenant = _tenantsList.find(t => t.slug === "relationships") || _tenantsList[0];
+// The primary tenant is whichever entry has "primaryTenant": true in tenants.json;
+// if none is flagged, the first entry in the list is used.
+export const primaryTenant = _tenantsList.find(t => t.primaryTenant === true) || _tenantsList[0];
 
 if (!process.env[primaryTenant.patEnvVar]) {
   console.warn(`[config] ${primaryTenant.patEnvVar} not set in .env — Airtable sync disabled. Server will serve from local disk cache if available.`);
