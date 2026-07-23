@@ -45,6 +45,22 @@
     .photo-meta { display: flex; flex-direction: column; gap: .3rem; }
     .photo-name-display { font-size: .78rem; color: #52525b; font-family: monospace; }
     .photo-msg { font-size: .78rem; margin-top: .15rem; }
+    /* colors section */
+    .color-block { padding: .85rem; }
+    .color-block + .color-block { border-top: 1px solid #f1f1f1; }
+    .color-block-header { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: .25rem; }
+    .color-block-header label { font-weight: 600; font-size: .88rem; }
+    select { padding: .35rem .5rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .85rem; background: #fff; }
+    .swatch-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
+    .swatch-details summary { list-style: none; cursor: pointer; }
+    .swatch-details summary::-webkit-details-marker { display: none; }
+    .swatch-details summary::marker { content: ""; }
+    .swatch { display: block; width: 32px; height: 32px; border-radius: 6px; border: 1px solid rgba(0,0,0,.12); }
+    .swatch-gradient { display: block; width: 48px; height: 32px; border-radius: 6px; border: 1px solid rgba(0,0,0,.12); }
+    .swatch-tag-preview { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 .65rem; border-radius: 999px; font-size: .7rem; font-weight: 600; border: 1px solid; white-space: nowrap; }
+    .swatch-editor { margin-top: .4rem; padding: .6rem; background: #fafafa; border: 1px solid #e4e4e7; border-radius: 6px; display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+    .swatch-editor-col { display: flex; flex-direction: column; gap: .25rem; }
+    .swatch-editor-col .pickr-label { font-size: .72rem; color: #71717a; }
   </style>
 </head>
 <body>
@@ -286,6 +302,269 @@
     })();
     </script>
 
+    <h2>Colors</h2>
+    <div class="card">
+      <form method="POST" action="<%= basePath %>/admin/colors" id="colors-form">
+
+        <div class="color-block">
+          <div class="color-block-header">
+            <label for="bubble-preset-select">Bubble chart palette</label>
+            <select id="bubble-preset-select" name="bubbleChartPreset"></select>
+          </div>
+          <p class="hint">Colors for the homepage's construct bubble chart. Click a swatch to edit it.</p>
+          <div class="swatch-row" id="bubble-swatches"></div>
+        </div>
+
+        <div class="color-block">
+          <div class="color-block-header">
+            <label for="gradient-preset-select">Construct card gradients</label>
+            <select id="gradient-preset-select" name="cardGradientsPreset"></select>
+          </div>
+          <p class="hint">Accent gradients on the left edge of each measure card.</p>
+          <div class="swatch-row" id="gradient-swatches"></div>
+        </div>
+
+        <div class="color-block">
+          <div class="color-block-header">
+            <label for="tag-preset-select">Construct tag colors</label>
+            <select id="tag-preset-select" name="tagColorsPreset"></select>
+          </div>
+          <p class="hint">Background/border/text for construct tags are derived automatically from a single accent color per tag.</p>
+          <div class="swatch-row" id="tag-swatches"></div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn">Save Colors</button>
+        </div>
+      </form>
+    </div>
+
+    <script type="application/json" id="color-presets-json"><%- JSON.stringify(locals.colorPresets || {}).replace(/<\//g, '<\\/') %></script>
+    <script type="application/json" id="current-colors-json"><%- JSON.stringify({
+      bubbleChartPreset:   locals.bubbleChartPreset   || "default",
+      bubbleChartColors:   locals.bubbleChartColors   || [],
+      cardGradientsPreset: locals.cardGradientsPreset || "default",
+      cardGradients:       locals.cardGradients       || [],
+      tagColorsPreset:     locals.tagColorsPreset     || "default",
+      tagColors:           locals.tagColors           || [],
+    }).replace(/<\//g, '<\\/') %></script>
+    <script src="/assets/js/pickr.min.js"></script>
+    <script>
+    (function () {
+      const COLOR_PRESETS = JSON.parse(document.getElementById('color-presets-json').textContent);
+      const CURRENT = JSON.parse(document.getElementById('current-colors-json').textContent);
+
+      // Same HSL tint/shade derivation as lib/colorPresets.js / manyscale.js — used here
+      // purely for live preview of derived tag colors as the admin edits an accent.
+      function hexToHsl(hex) {
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s;
+        const l = (max + min) / 2;
+        if (max === min) { h = s = 0; }
+        else {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            default: h = (r - g) / d + 4; break;
+          }
+          h /= 6;
+        }
+        return [h * 360, s * 100, l * 100];
+      }
+      function hslToHex(h, s, l) {
+        h /= 360; s /= 100; l /= 100;
+        let r, g, b;
+        if (s === 0) { r = g = b = l; }
+        else {
+          const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+          };
+          const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+          const p = 2 * l - q;
+          r = hue2rgb(p, q, h + 1/3);
+          g = hue2rgb(p, q, h);
+          b = hue2rgb(p, q, h - 1/3);
+        }
+        const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+      }
+      // Per-preset derivation targets — mirrors lib/colorPresets.js's TAG_COLOR_RECIPES
+      // exactly. "custom" (and any unrecognized preset) falls back to "default".
+      const TAG_COLOR_RECIPES = {
+        default: { bgL: 95, bgSatCap: 35, borderL: 82, borderSatMin: 30, borderSatMax: 55, textL: 30, textSatMin: 35, textSatMax: 65 },
+        retro:   { bgL: 93, bgSatCap: 22, borderL: 78, borderSatMin: 18, borderSatMax: 38, textL: 34, textSatMin: 22, textSatMax: 42 },
+        dark:    { bgL: 22, bgSatCap: 45, borderL: 38, borderSatMin: 35, borderSatMax: 55, textL: 88, textSatMin: 12, textSatMax: 32 },
+        vibrant: { bgL: 90, bgSatCap: 60, borderL: 68, borderSatMin: 50, borderSatMax: 75, textL: 26, textSatMin: 55, textSatMax: 80 },
+      };
+      function deriveTagShades(hex, presetName) {
+        const recipe = TAG_COLOR_RECIPES[presetName] || TAG_COLOR_RECIPES.default;
+        const [h, s] = hexToHsl(hex);
+        return {
+          bg:     hslToHex(h, Math.min(s, recipe.bgSatCap), recipe.bgL),
+          border: hslToHex(h, Math.min(Math.max(s, recipe.borderSatMin), recipe.borderSatMax), recipe.borderL),
+          text:   hslToHex(h, Math.min(Math.max(s, recipe.textSatMin), recipe.textSatMax), recipe.textL),
+        };
+      }
+      function currentPreset(sectionKey) {
+        const select = document.getElementById(sectionKey + '-preset-select');
+        return select ? select.value : 'default';
+      }
+
+      const state = {
+        bubble:   { values: CURRENT.bubbleChartColors.slice() },
+        gradient: { values: CURRENT.cardGradients.map(g => ({ from: g.from, to: g.to })) },
+        tag:      { values: CURRENT.tagColors.slice() },
+      };
+
+      function presetOptionsHtml(presetObj, current) {
+        return Object.keys(presetObj).map(name =>
+          `<option value="${name}"${name === current ? ' selected' : ''}>${name[0].toUpperCase()}${name.slice(1)}</option>`
+        ).join('') + `<option value="custom"${current === 'custom' ? ' selected' : ''}>Custom</option>`;
+      }
+      document.getElementById('bubble-preset-select').innerHTML   = presetOptionsHtml(COLOR_PRESETS.bubbleChart,   CURRENT.bubbleChartPreset);
+      document.getElementById('gradient-preset-select').innerHTML = presetOptionsHtml(COLOR_PRESETS.cardGradients, CURRENT.cardGradientsPreset);
+      document.getElementById('tag-preset-select').innerHTML      = presetOptionsHtml(COLOR_PRESETS.tagColors,     CURRENT.tagColorsPreset);
+
+      function markCustom(sectionKey) {
+        const select = document.getElementById(sectionKey + '-preset-select');
+        if (select) select.value = 'custom';
+      }
+
+      function makeHexPickr(mountEl, initialHex, onChange) {
+        const pickr = Pickr.create({
+          el: mountEl,
+          theme: 'nano',
+          default: initialHex,
+          comparison: false,
+          components: { preview: true, opacity: false, hue: true, interaction: { hex: true, input: true } },
+        });
+        pickr.on('change', (color) => {
+          onChange(color.toHEXA().toString().substring(0, 7).toLowerCase());
+        });
+        return pickr;
+      }
+
+      function renderSingleColorSection(sectionKey, fieldName, deriveShades, container) {
+        const values = state[sectionKey].values;
+        const preset = currentPreset(sectionKey);
+        container.innerHTML = values.map((hex, i) => {
+          const summary = deriveShades
+            ? (() => { const sh = deriveTagShades(hex, preset); return `<summary class="swatch-tag-preview" style="background:${sh.bg};border-color:${sh.border};color:${sh.text}">Tag ${i + 1}</summary>`; })()
+            : `<summary class="swatch" style="background:${hex}"></summary>`;
+          return `<details class="swatch-details" data-idx="${i}">${summary}
+            <div class="swatch-editor">
+              <input type="hidden" name="${fieldName}[${i}]" value="${hex}" class="color-value-input">
+              <span class="pickr-mount"></span>
+            </div>
+          </details>`;
+        }).join('');
+
+        container.querySelectorAll('.swatch-details').forEach(details => {
+          details.addEventListener('toggle', function () {
+            if (!details.open || details.dataset.initialized) return;
+            details.dataset.initialized = '1';
+            const idx = parseInt(details.dataset.idx, 10);
+            const hiddenInput = details.querySelector('.color-value-input');
+            const summaryEl = details.querySelector('summary');
+            makeHexPickr(details.querySelector('.pickr-mount'), hiddenInput.value, (hex) => {
+              hiddenInput.value = hex;
+              values[idx] = hex;
+              const wasAlreadyCustom = currentPreset(sectionKey) === 'custom';
+              if (deriveShades && wasAlreadyCustom) {
+                // Already custom — the recipe (default) hasn't changed, just refresh this swatch.
+                const sh = deriveTagShades(hex, 'custom');
+                summaryEl.style.background = sh.bg;
+                summaryEl.style.borderColor = sh.border;
+                summaryEl.style.color = sh.text;
+              } else if (deriveShades) {
+                // First edit under a named preset — every other swatch's preview was rendered
+                // with that preset's recipe, so re-render the whole grid under "custom" (default
+                // recipe) to keep the preview consistent with what will actually be saved/rendered.
+                markCustom(sectionKey);
+                renderSingleColorSection(sectionKey, fieldName, deriveShades, container);
+                return;
+              } else {
+                summaryEl.style.background = hex;
+              }
+              markCustom(sectionKey);
+            });
+          });
+        });
+      }
+
+      function renderGradientSection(container) {
+        const values = state.gradient.values;
+        container.innerHTML = values.map((g, i) => `
+          <details class="swatch-details" data-idx="${i}">
+            <summary class="swatch-gradient" style="background:linear-gradient(180deg, ${g.from}, ${g.to})"></summary>
+            <div class="swatch-editor">
+              <input type="hidden" name="cardGradients[${i}][from]" value="${g.from}" class="from-input">
+              <input type="hidden" name="cardGradients[${i}][to]" value="${g.to}" class="to-input">
+              <div class="swatch-editor-col"><span class="pickr-label">From</span><span class="pickr-mount-from"></span></div>
+              <div class="swatch-editor-col"><span class="pickr-label">To</span><span class="pickr-mount-to"></span></div>
+            </div>
+          </details>`).join('');
+
+        container.querySelectorAll('.swatch-details').forEach(details => {
+          details.addEventListener('toggle', function () {
+            if (!details.open || details.dataset.initialized) return;
+            details.dataset.initialized = '1';
+            const idx = parseInt(details.dataset.idx, 10);
+            const fromInput = details.querySelector('.from-input');
+            const toInput   = details.querySelector('.to-input');
+            const summaryEl = details.querySelector('summary');
+            const updateSummary = () => { summaryEl.style.background = `linear-gradient(180deg, ${fromInput.value}, ${toInput.value})`; };
+
+            makeHexPickr(details.querySelector('.pickr-mount-from'), fromInput.value, (hex) => {
+              fromInput.value = hex;
+              values[idx].from = hex;
+              updateSummary();
+              markCustom('gradient');
+            });
+            makeHexPickr(details.querySelector('.pickr-mount-to'), toInput.value, (hex) => {
+              toInput.value = hex;
+              values[idx].to = hex;
+              updateSummary();
+              markCustom('gradient');
+            });
+          });
+        });
+      }
+
+      function applyPreset(sectionKey, presetName) {
+        if (presetName === 'custom') return;
+        if (sectionKey === 'bubble') {
+          state.bubble.values = COLOR_PRESETS.bubbleChart[presetName].slice();
+          renderSingleColorSection('bubble', 'bubbleColors', false, document.getElementById('bubble-swatches'));
+        } else if (sectionKey === 'gradient') {
+          state.gradient.values = COLOR_PRESETS.cardGradients[presetName].map(g => ({ from: g.from, to: g.to }));
+          renderGradientSection(document.getElementById('gradient-swatches'));
+        } else if (sectionKey === 'tag') {
+          state.tag.values = COLOR_PRESETS.tagColors[presetName].slice();
+          renderSingleColorSection('tag', 'tagColors', true, document.getElementById('tag-swatches'));
+        }
+      }
+
+      document.getElementById('bubble-preset-select').addEventListener('change', (e) => applyPreset('bubble', e.target.value));
+      document.getElementById('gradient-preset-select').addEventListener('change', (e) => applyPreset('gradient', e.target.value));
+      document.getElementById('tag-preset-select').addEventListener('change', (e) => applyPreset('tag', e.target.value));
+
+      renderSingleColorSection('bubble', 'bubbleColors', false, document.getElementById('bubble-swatches'));
+      renderGradientSection(document.getElementById('gradient-swatches'));
+      renderSingleColorSection('tag', 'tagColors', true, document.getElementById('tag-swatches'));
+    })();
+    </script>
+
     <h2>Configuration</h2>
     <div class="card">
       <div class="actions" style="border-top: none; border-bottom: 1px solid #f1f1f1;">
@@ -330,7 +609,6 @@
       });
 
     </script>
-    <script src="/assets/js/pickr.min.js"></script>
     <script>
       (function () {
         const hidden   = document.getElementById('logo-color');

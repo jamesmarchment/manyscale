@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import session from "express-session";
 import { primaryTenant, SESSION_SECRET, MULTI_TENANT, _tenantsList } from "./config.js";
+import { COLOR_PRESETS } from "./lib/colorPresets.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -28,7 +29,16 @@ export function tenantLocalsMiddleware(req, res, next) {
     res.locals.siteTagline     = meta.tagline     || "";
     res.locals.siteDescription = meta.description || "";
     res.locals.logoColor       = content.logoColor || "";
-  } catch {}
+    res.locals.bubbleChartColors = content.bubbleChartColors || COLOR_PRESETS.bubbleChart.default;
+    res.locals.cardGradients     = content.cardGradients     || COLOR_PRESETS.cardGradients.default;
+    res.locals.tagColors         = content.tagColors         || COLOR_PRESETS.tagColors.default;
+    res.locals.tagColorsPreset   = content.tagColorsPreset   || "default";
+  } catch {
+    res.locals.bubbleChartColors = COLOR_PRESETS.bubbleChart.default;
+    res.locals.cardGradients     = COLOR_PRESETS.cardGradients.default;
+    res.locals.tagColors         = COLOR_PRESETS.tagColors.default;
+    res.locals.tagColorsPreset   = "default";
+  }
   next();
 }
 

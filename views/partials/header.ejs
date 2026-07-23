@@ -51,6 +51,8 @@
 
   <!-- Tenant base path, for static JS (manyscale.js/index.js) that can't use EJS locals directly -->
   <script>window.BASE_PATH = "<%= locals.basePath || '' %>";</script>
+  <script type="application/json" id="tenant-colors-json"><%- JSON.stringify({ bubbleChart: locals.bubbleChartColors || [], cardGradients: locals.cardGradients || [], tagColors: locals.tagColors || [], tagColorsPreset: locals.tagColorsPreset || "default" }).replace(/<\//g, '<\\/') %></script>
+  <script>window.TENANT_COLORS = JSON.parse(document.getElementById('tenant-colors-json').textContent);</script>
   <script src="/assets/js/manyscale.js"></script>
 </head>
 

@@ -61,21 +61,27 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentPage = 1;
   const selectedFilters = new Set();   // class names without leading "."
 
-  // -- Card accent bar gradients (top → bottom). Add more entries here. ------
-  const CARD_GRADIENTS = [
-    "linear-gradient(180deg, #c9d6f0, #b8a9d9)",  // periwinkle → soft purple
-    "linear-gradient(180deg, #f5c0d0, #f0a0b0)",  // blush → dusty rose
-    "linear-gradient(180deg, #aed4f5, #a0c8e8)",  // powder blue → slate blue
-    "linear-gradient(180deg, #b5e8c8, #9dd4c0)",  // sage → seafoam
-    "linear-gradient(180deg, #f5c8d8, #f5e0a0)",  // petal → buttercup
-    "linear-gradient(180deg, #d4c0e8, #f0c8e0)",  // lavender → lilac blush
-    "linear-gradient(180deg, #f5c8a8, #f5e0b0)",  // peach → cream
-    "linear-gradient(180deg, #b8ecd4, #b8ddf0)",  // mint → sky
-    "linear-gradient(180deg, #f0b8b0, #f0b8d0)",  // dusty coral → mauve
-    "linear-gradient(180deg, #a8d8b8, #a8c8d8)",  // celadon → mist
-    "linear-gradient(180deg, #d8c8f0, #c8d8f0)",  // wisteria → cornflower
-    "linear-gradient(180deg, #f5e0b0, #d8f0f0)",  // warm sand → cool mint
+  // -- Card accent bar gradients (top → bottom). Tenant-customizable — see the tenant
+  // admin panel's Colors section. window.TENANT_COLORS.cardGradients holds {from,to}
+  // pairs; falls back to this hardcoded list if TENANT_COLORS is unavailable. ------
+  const DEFAULT_CARD_GRADIENT_PAIRS = [
+    { from: "#c9d6f0", to: "#b8a9d9" },  // periwinkle → soft purple
+    { from: "#f5c0d0", to: "#f0a0b0" },  // blush → dusty rose
+    { from: "#aed4f5", to: "#a0c8e8" },  // powder blue → slate blue
+    { from: "#b5e8c8", to: "#9dd4c0" },  // sage → seafoam
+    { from: "#f5c8d8", to: "#f5e0a0" },  // petal → buttercup
+    { from: "#d4c0e8", to: "#f0c8e0" },  // lavender → lilac blush
+    { from: "#f5c8a8", to: "#f5e0b0" },  // peach → cream
+    { from: "#b8ecd4", to: "#b8ddf0" },  // mint → sky
+    { from: "#f0b8b0", to: "#f0b8d0" },  // dusty coral → mauve
+    { from: "#a8d8b8", to: "#a8c8d8" },  // celadon → mist
+    { from: "#d8c8f0", to: "#c8d8f0" },  // wisteria → cornflower
+    { from: "#f5e0b0", to: "#d8f0f0" },  // warm sand → cool mint
   ];
+  const CARD_GRADIENT_PAIRS = (window.TENANT_COLORS?.cardGradients?.length)
+    ? window.TENANT_COLORS.cardGradients
+    : DEFAULT_CARD_GRADIENT_PAIRS;
+  const CARD_GRADIENTS = CARD_GRADIENT_PAIRS.map(g => `linear-gradient(180deg, ${g.from}, ${g.to})`);
 
   // -- Filter helpers ---------------------------------------------------------
 

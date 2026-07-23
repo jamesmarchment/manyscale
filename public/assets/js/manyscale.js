@@ -65,10 +65,13 @@ async function loadStats() {
 // Construct Tag Colors
 // Maps construct names to consistent pastel pill colors using an FNV-1a hash,
 // so the same construct always gets the same color across all pages.
-// Add more entries to CONSTRUCT_COLORS to expand the palette.
+// The palette is tenant-customizable (see the tenant admin panel's Colors section);
+// window.TENANT_COLORS.tagColors holds one accent hex per entry, and deriveTagShades()
+// expands each into a {bg, border, text} triple. Falls back to this hardcoded palette
+// if TENANT_COLORS is unavailable for any reason.
 // =============================================================================
 
-const CONSTRUCT_COLORS = [
+const DEFAULT_CONSTRUCT_COLORS = [
   // blues & indigo
   { bg: "#edf3f8", border: "#c2d6ec", text: "#265278" },  // sky
   { bg: "#eef1f8", border: "#c2cef0", text: "#334888" },  // cornflower
@@ -102,6 +105,78 @@ const CONSTRUCT_COLORS = [
   { bg: "#eef6f4", border: "#bededa", text: "#2a6260" },  // eucalyptus
   { bg: "#edf6f8", border: "#bcdee6", text: "#265e6e" },  // teal
 ];
+
+// HSL tint/shade derivation — mirrors lib/colorPresets.js's deriveTagShades() exactly.
+// Duplicated here since static JS files in this project don't share modules.
+function hexToHsl(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s;
+  const l = (max + min) / 2;
+  if (max === min) {
+    h = s = 0;
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      default: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return [h * 360, s * 100, l * 100];
+}
+
+function hslToHex(h, s, l) {
+  h /= 360; s /= 100; l /= 100;
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1 / 3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1 / 3);
+  }
+  const toHex = x => Math.round(x * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+// Per-preset derivation targets — mirrors lib/colorPresets.js's TAG_COLOR_RECIPES exactly.
+// "custom" (and any unrecognized preset name) falls back to "default", since a custom
+// accent-only edit has no inherent theme of its own.
+const TAG_COLOR_RECIPES = {
+  default: { bgL: 95, bgSatCap: 35, borderL: 82, borderSatMin: 30, borderSatMax: 55, textL: 30, textSatMin: 35, textSatMax: 65 },
+  retro:   { bgL: 93, bgSatCap: 22, borderL: 78, borderSatMin: 18, borderSatMax: 38, textL: 34, textSatMin: 22, textSatMax: 42 },
+  dark:    { bgL: 22, bgSatCap: 45, borderL: 38, borderSatMin: 35, borderSatMax: 55, textL: 88, textSatMin: 12, textSatMax: 32 },
+  vibrant: { bgL: 90, bgSatCap: 60, borderL: 68, borderSatMin: 50, borderSatMax: 75, textL: 26, textSatMin: 55, textSatMax: 80 },
+};
+
+function deriveTagShades(hex, presetName = "default") {
+  const recipe = TAG_COLOR_RECIPES[presetName] || TAG_COLOR_RECIPES.default;
+  const [h, s] = hexToHsl(hex);
+  return {
+    bg:     hslToHex(h, Math.min(s, recipe.bgSatCap), recipe.bgL),
+    border: hslToHex(h, Math.min(Math.max(s, recipe.borderSatMin), recipe.borderSatMax), recipe.borderL),
+    text:   hslToHex(h, Math.min(Math.max(s, recipe.textSatMin), recipe.textSatMax), recipe.textL),
+  };
+}
+
+const CONSTRUCT_COLORS = (window.TENANT_COLORS?.tagColors?.length)
+  ? window.TENANT_COLORS.tagColors.map(hex => deriveTagShades(hex, window.TENANT_COLORS.tagColorsPreset))
+  : DEFAULT_CONSTRUCT_COLORS;
 
 function constructColorIndex(name) {
   // FNV-1a: XOR-then-multiply creates strong avalanche on similar strings.
@@ -151,7 +226,7 @@ async function drawBubbleChart(constructs) {
   const root = d3.hierarchy({ children: dataArray }).sum(d => d.value);
   const nodes = pack(root).leaves();
 
-  const color = d3.scaleOrdinal(d3.schemePaired);
+  const color = d3.scaleOrdinal(window.TENANT_COLORS?.bubbleChart?.length ? window.TENANT_COLORS.bubbleChart : d3.schemePaired);
 
   // Pre-assign a stable fill color to each node so circles and labels share it.
   nodes.forEach(d => { d.fillColor = color(d.data.name); });

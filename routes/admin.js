@@ -6,6 +6,18 @@ import { requireAdmin } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
 import { TENANTS_FILE, PROJECT_ROOT, updateEnvVar } from "../config.js";
 import { verifyPassword } from "../lib/auth.js";
+import { COLOR_PRESETS } from "../lib/colorPresets.js";
+
+// Normalizes a bracket-indexed form field (parsed by express.urlencoded as either an
+// array or, if indices have gaps, a plain object keyed by index) into an ordered array.
+function toOrderedArray(raw) {
+  if (raw === undefined) return [];
+  if (Array.isArray(raw)) return raw;
+  const indices = Object.keys(raw).map(Number).sort((a, b) => a - b);
+  return indices.map(i => raw[i]);
+}
+
+const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
 
 const router = Router();
 
@@ -59,11 +71,21 @@ router.post("/admin/logout", (req, res) => {
 router.get("/admin", requireAdmin, (req, res) => {
   const tenant = req.tenant;
   let hero = {}, submitFormUrl = "", team = [];
+  let bubbleChartPreset = "default", cardGradientsPreset = "default", tagColorsPreset = "default";
+  let bubbleChartColors = COLOR_PRESETS.bubbleChart.default;
+  let cardGradients     = COLOR_PRESETS.cardGradients.default;
+  let tagColors         = COLOR_PRESETS.tagColors.default;
   try {
     const content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${tenant.slug}.json`), "utf8"));
     hero = content.hero || {};
     submitFormUrl = content.submitFormUrl || "";
     team = content.team || [];
+    bubbleChartPreset   = content.bubbleChartPreset   || "default";
+    cardGradientsPreset = content.cardGradientsPreset || "default";
+    tagColorsPreset     = content.tagColorsPreset     || "default";
+    bubbleChartColors = content.bubbleChartColors || bubbleChartColors;
+    cardGradients     = content.cardGradients     || cardGradients;
+    tagColors         = content.tagColors         || tagColors;
   } catch {}
   const flash = req.session.flash || null;
   delete req.session.flash;
@@ -72,6 +94,9 @@ router.get("/admin", requireAdmin, (req, res) => {
     hero,
     submitFormUrl,
     team,
+    colorPresets: COLOR_PRESETS,
+    bubbleChartPreset, cardGradientsPreset, tagColorsPreset,
+    bubbleChartColors, cardGradients, tagColors,
     recordCount: (tenantCaches.get(req.tenant.slug) || []).length,
     lastRefresh: lastRefreshTimes.get(req.tenant.slug) || null,
     flash,
@@ -119,6 +144,40 @@ router.post("/admin/content", requireAdmin, (req, res) => {
     req.session.flash = { type: "ok", msg: "Site content saved." };
   } catch (err) {
     console.error("Admin content error:", err);
+    req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect(res.locals.basePath + "/admin");
+});
+
+router.post("/admin/colors", requireAdmin, (req, res) => {
+  const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors } = req.body;
+  const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
+  try {
+    let content = {};
+    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
+
+    const bubbleArr = toOrderedArray(bubbleColors);
+    if (bubbleArr.length === 12 && bubbleArr.every(isHex)) {
+      content.bubbleChartColors = bubbleArr.map(c => c.toLowerCase());
+      content.bubbleChartPreset = bubbleChartPreset || "custom";
+    }
+
+    const gradientArr = toOrderedArray(cardGradients);
+    if (gradientArr.length === 12 && gradientArr.every(g => g && isHex(g.from) && isHex(g.to))) {
+      content.cardGradients = gradientArr.map(g => ({ from: g.from.toLowerCase(), to: g.to.toLowerCase() }));
+      content.cardGradientsPreset = cardGradientsPreset || "custom";
+    }
+
+    const tagArr = toOrderedArray(tagColors);
+    if (tagArr.length === 24 && tagArr.every(isHex)) {
+      content.tagColors = tagArr.map(c => c.toLowerCase());
+      content.tagColorsPreset = tagColorsPreset || "custom";
+    }
+
+    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
+    req.session.flash = { type: "ok", msg: "Colors saved." };
+  } catch (err) {
+    console.error("Admin colors error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
   }
   res.redirect(res.locals.basePath + "/admin");
