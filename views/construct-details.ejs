@@ -42,6 +42,8 @@
           <a href="<%= basePath %>/details/<%= item.fields['MeasureID'] %>">
             <p class="measurename"><%= item.fields["Measure Name"] %></p>
             <p class="primaryreference"><%= item.fields["Primary Reference"] %></p>
+            
+                    <p class="construct-tags-list"><% (item.fields["Construct(s)"] || []).forEach(c => { %><span class="construct-tag"><%= c %></span><% }) %></p>
           </a>
         </li>
       <% }) %>
@@ -51,5 +53,8 @@
 </div>
 
   </main>
-
+<script>
+ // -- Construct tag colors --
+  applyConstructTagColors();
+  </script>
 <%- include("partials/footer") %>

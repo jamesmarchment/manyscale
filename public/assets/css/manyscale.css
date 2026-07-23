@@ -1033,6 +1033,15 @@ a.alpha-link:hover {
   text-decoration: none;
 }
 
+/* On the details page, .construct-tag wraps an <a> (elsewhere it's the other way
+   around — plain text directly inside a card-level <a>). A nested <a> has its own
+   stylesheet color rule that would otherwise win over inheriting the tag's inline
+   per-tenant color set by applyConstructTagColors() in manyscale.js. */
+.construct-tag a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
 #sidebar-constructs .construct-tag {
   margin: 0 6px 4px 0;
 }
