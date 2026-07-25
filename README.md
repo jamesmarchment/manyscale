@@ -91,6 +91,8 @@ npm run dev
 
 The server starts on port `3007` by default, or whatever `PORT` is set to in `.env`. On startup it pulls all approved records from Airtable, downloads any PDFs not yet on disk, and writes the result to `cache/{slug}/cache.json`. This cycle repeats every 6 hours. If Airtable is unreachable, the server starts anyway and falls back to the local disk cache.
 
+`npm start` runs the server in the foreground and exits when its terminal/session closes. For a persistent deployment, wrap it in a process manager of your choice (systemd, PM2, Docker, a NAS's built-in task scheduler, etc.) so it survives crashes, restarts on boot, and can be stopped/restarted cleanly.
+
 ---
 
 ## Environment Variables

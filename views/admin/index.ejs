@@ -266,7 +266,7 @@
         const fd = new FormData();
         fd.append('photo', file);
 
-        fetch('<%= basePath %>/admin/team/upload-photo', { method: 'POST', body: fd })
+        fetch('<%= basePath %>/admin/team/upload-photo', { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
           .then(r => r.json())
           .then(data => {
             if (data.error) {

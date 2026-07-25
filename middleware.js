@@ -47,6 +47,12 @@ export function tenantLocalsMiddleware(req, res, next) {
 export function requireAdmin(req, res, next) {
   if (req.session?.architectLoggedIn) return next();
   if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug) return next();
+  // fetch-based admin calls (e.g. photo upload) ask for JSON explicitly — a redirect
+  // to the login page's HTML would otherwise fail client-side JSON parsing with a
+  // cryptic error instead of a clear "session expired" message.
+  if (req.headers.accept?.includes("application/json")) {
+    return res.status(401).json({ error: "Session expired. Please log in again." });
+  }
   res.redirect(res.locals.basePath + "/admin/login");
 }
 
