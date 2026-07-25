@@ -1,6 +1,6 @@
 import express from "express";
 import { transporter } from "../lib/email.js";
-import { contactRateLimitOk } from "../middleware.js";
+import { antiSpamGuard } from "../lib/antispam.js";
 import { getTenantSummaries, getNetworkLanguages, searchNetwork, getNetworkSuggestions } from "../lib/network.js";
 
 const router = express.Router();
@@ -36,25 +36,8 @@ router.get("/search/suggestions", (req, res) => {
   res.json({ suggestions: getNetworkSuggestions(query) });
 });
 
-router.post("/request-repo", async (req, res) => {
-  const { name, email, message, website, _t } = req.body;
-
-  // honeypot: real users leave this blank
-  if (website && website.trim() !== "") {
-    return res.status(200).json({ success: true });
-  }
-
-  // timing: reject submissions that arrive under 3 seconds after page render
-  const elapsed = Date.now() - parseInt(_t || 0, 10);
-  if (elapsed < 3000) {
-    return res.status(429).json({ error: "Submission too fast. Please try again." });
-  }
-
-  // rate limit by IP — shares the same map/budget as the per-tenant contact forms
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.ip;
-  if (!contactRateLimitOk(ip)) {
-    return res.status(429).json({ error: "Too many messages. Please try again later." });
-  }
+router.post("/request-repo", antiSpamGuard, async (req, res) => {
+  const { name, email, message } = req.body;
 
   try {
     await transporter.sendMail({

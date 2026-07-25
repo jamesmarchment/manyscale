@@ -108,6 +108,8 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `SMTP_PORT` | No | SMTP port (default: `465`). Editable from the Architect Admin Panel. |
 | `SMTP_SECURE` | No | Set to `"false"` to disable TLS (default: `true`). Editable from the Architect Admin Panel. |
 | `NETWORK_CONTACT_EMAIL` | No | Where the network landing page's "Request a Repo" form is delivered (falls back to `SMTP_USER`). Editable from the Architect Admin Panel. Multi-tenant mode only. |
+| `PLAUSIBLE_DOMAIN` | No | Plausible Analytics `data-domain` (e.g. `manyscale.org`). Deployment-wide, not per-tenant. Blank disables analytics entirely. Editable from the Architect Admin Panel. |
+| `PLAUSIBLE_SCRIPT_SRC` | No | Plausible script URL (default: `https://analytics.relascale.com/js/script.file-downloads.js`). Editable from the Architect Admin Panel. |
 | `ADMIN_PASSWORD` | Yes | Password for the `/admin` panel |
 | `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
 | `ARCHITECT_ADMIN_PASSWORD_HASH` | No | Password hash for the cross-tenant `/architect` panel — see [Architect Admin Panel](#architect-admin-panel) |
@@ -176,6 +178,7 @@ From the dashboard you can:
 - Onboard a new tenant — name, slug, contact email, Airtable base ID + PAT, and an admin password — with an option to scaffold the Measures/Translations/Contributors tables automatically in a fresh base
 - Refresh a tenant's cache, deactivate/reactivate it, or delete it (deleting only removes the `tenants.json` entry; its cache and data files on disk are preserved)
 - Edit platform-wide email settings (SMTP host/port/TLS, and the network contact email the "Request a Repo" form delivers to) used for contact-form, suggestion, and tenant-onboarding mail across every tenant
+- Edit platform-wide analytics settings (Plausible domain and script URL) used across every tenant
 
 Provisioning a tenant primes its cache and, if requested, scaffolds its Airtable tables immediately — no restart needed. The one exception: a newly-created tenant isn't reachable on the public site until `MULTI_TENANT=true` is set in `.env` and the server is restarted, since single-tenant mode always serves the one configured primary tenant.
 
@@ -196,19 +199,16 @@ Because `resolveTenant`/`tenantLocalsMiddleware` never run for these routes (the
 
 ---
 
-## Analytics (Plausible) — currently unused
+## Analytics (Plausible)
 
-`views/partials/header.ejs` loads a Plausible Analytics script on every page, but it's
-not functional as shipped: the `data-domain` attribute is set to the tenant's display
-name (e.g. `"AggreScale"`) rather than the site's actual registered domain, which is
-what Plausible requires to attribute events. As a result no analytics are currently
-being recorded on any tenant.
-
-This needs to be fixed before relying on it — either by deriving `data-domain` from the
-request host (`req.get("host")` / `locals.siteOrigin`) at render time, or by making the
-Plausible domain (and script src, currently hardcoded to `analytics.relascale.com`)
-configurable per-tenant or platform-wide from the Architect Admin panel, the same way
-email settings are handled.
+`views/partials/header.ejs` loads a Plausible Analytics script, configured from the
+Architect Admin panel's "Analytics" section (or the `PLAUSIBLE_DOMAIN` /
+`PLAUSIBLE_SCRIPT_SRC` env vars directly). This is deployment-wide, not per-tenant:
+every tenant lives at a path under one shared domain (e.g. `manyscale.org/aggression`),
+and Plausible attributes events by domain, not path — so there's one `data-domain` for
+the whole deployment, the same way there's one SMTP configuration for the whole
+deployment. Leaving `PLAUSIBLE_DOMAIN` blank disables analytics entirely; no script tag
+is rendered.
 
 ---
 

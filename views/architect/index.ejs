@@ -150,6 +150,29 @@
       </form>
     </div>
 
+    <h2>Analytics</h2>
+    <div class="card">
+      <form method="POST" action="/architect/settings/analytics">
+        <table>
+          <tr>
+            <th style="width:38%"><label for="plausible-domain">Plausible domain</label></th>
+            <td>
+              <input type="text" id="plausible-domain" name="plausibleDomain" value="<%= analyticsSettings.plausibleDomain %>" placeholder="manyscale.org">
+              <p class="hint" style="font-size:.78rem;color:#71717a;margin-top:.25rem;">The site domain registered in Plausible, e.g. <code>manyscale.org</code> — not a tenant name. Every tenant lives at a path under this one domain, so this is deployment-wide, not per-tenant. Leave blank to disable analytics entirely (no script is loaded).</p>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="plausible-src">Plausible script URL</label></th>
+            <td><input type="text" id="plausible-src" name="plausibleScriptSrc" value="<%= analyticsSettings.plausibleScriptSrc %>"></td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Save Analytics Settings</button>
+          <span class="muted">Restart the server to apply changes.</span>
+        </div>
+      </form>
+    </div>
+
   </div>
 </body>
 </html>

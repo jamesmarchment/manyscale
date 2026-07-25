@@ -47,7 +47,11 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
     secure: process.env.SMTP_SECURE !== "false",
     networkContactEmail: process.env.NETWORK_CONTACT_EMAIL || "",
   };
-  res.render("architect/index", { tenants, flash, emailSettings });
+  const analyticsSettings = {
+    plausibleDomain: process.env.PLAUSIBLE_DOMAIN || "",
+    plausibleScriptSrc: process.env.PLAUSIBLE_SCRIPT_SRC || "https://analytics.relascale.com/js/script.file-downloads.js",
+  };
+  res.render("architect/index", { tenants, flash, emailSettings, analyticsSettings });
 });
 
 router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
@@ -60,6 +64,21 @@ router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
     req.session.architectFlash = { type: "ok", msg: "Email settings saved. Restart the server to apply." };
   } catch (err) {
     console.error("Architect email settings error:", err);
+    req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect("/architect");
+});
+
+router.post("/architect/settings/analytics", requireArchitectAdmin, (req, res) => {
+  const { plausibleDomain, plausibleScriptSrc } = req.body;
+  try {
+    // Blank domain intentionally disables the Plausible script tag (see header.ejs) —
+    // there's no separate on/off toggle needed.
+    updateEnvVar("PLAUSIBLE_DOMAIN", (plausibleDomain || "").trim());
+    updateEnvVar("PLAUSIBLE_SCRIPT_SRC", (plausibleScriptSrc || "").trim());
+    req.session.architectFlash = { type: "ok", msg: "Analytics settings saved. Restart the server to apply." };
+  } catch (err) {
+    console.error("Architect analytics settings error:", err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
   }
   res.redirect("/architect");

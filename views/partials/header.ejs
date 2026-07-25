@@ -10,7 +10,12 @@
   <meta name="description" content="<%= locals.siteDescription %>">
   <meta name="keywords" content="">
 
-  <script defer data-domain="<%= locals.siteName || 'ManyScale' %>" src="https://analytics.relascale.com/js/script.file-downloads.js"></script>
+  <!-- Plausible Analytics — configured in Architect Admin under Platform Settings.
+       All tenants share one path-based domain, so data-domain is deployment-wide,
+       not per-tenant. Omitted entirely when no domain is set. -->
+  <% if (process.env.PLAUSIBLE_DOMAIN) { %>
+  <script defer data-domain="<%= process.env.PLAUSIBLE_DOMAIN %>" src="<%= process.env.PLAUSIBLE_SCRIPT_SRC || 'https://analytics.relascale.com/js/script.file-downloads.js' %>"></script>
+  <% } %>
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
