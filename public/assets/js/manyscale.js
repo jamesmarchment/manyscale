@@ -53,13 +53,6 @@ async function loadData() {
   }
 }
 
-async function loadStats() {
-  const res = await fetch(`${window.BASE_PATH || ""}/api/stats`);
-  const stats = await res.json();
-  document.getElementById("measureCount").textContent = stats.totalMeasures;
-  document.getElementById("constructCount").textContent = stats.totalConstructs;
-}
-
 
 // =============================================================================
 // Construct Tag Colors
@@ -266,6 +259,10 @@ async function drawBubbleChart(constructs) {
   // Labels — wraps long names into multiple lines; hides if the bubble is too small.
   // Uses dark grey text when the bubble fill is too light for white to be readable.
 
+  // Below this radius, text can't render legibly (too cramped / overlaps neighbors),
+  // so skip the label entirely rather than trying to wrap it.
+  const MIN_LABEL_RADIUS = 16;
+
   function blendedLuminance(hex, opacity) {
     // WCAG relative luminance of hex blended over a white background at given opacity.
     const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -284,6 +281,11 @@ async function drawBubbleChart(constructs) {
   }
 
   function wrapBubbleLabel(textEl, name, r, cx, cy, fillColor) {
+    if (r < MIN_LABEL_RADIUS) {
+      textEl.style("display", "none");
+      return;
+    }
+
     const fontSize   = 10;
     const lineHeight = fontSize * 1.3;
     const maxWidth   = r * 1.7;
@@ -332,7 +334,7 @@ async function drawBubbleChart(constructs) {
     .style("font-size", "10px")
     .style("cursor", "pointer")
     .on("click", (event, d) => {
-      window.location.href = `/constructs/${encodeURIComponent(d.data.name)}`;
+      window.location.href = `${window.BASE_PATH || ""}/constructs/${encodeURIComponent(d.data.name)}`;
     })
     .each(function(d) {
       wrapBubbleLabel(d3.select(this), d.data.name, d.r, d.x, d.y, d.fillColor);
@@ -372,7 +374,7 @@ function renderConstructButtons(rec) {
   container.innerHTML = "";
   constructs.forEach(c => {
     const a = document.createElement("a");
-    a.href      = `/constructs/${encodeURIComponent(c)}`;
+    a.href      = `${window.BASE_PATH || ""}/constructs/${encodeURIComponent(c)}`;
     a.className = "tech-tag";
     a.textContent = c;
     container.appendChild(a);
@@ -386,17 +388,17 @@ function renderLinkButtons(rec) {
     const f_pdflink = rec.fields["Final PDF"][0]["f_localPath"];
     container.innerHTML += `
       <a href="${f_pdflink}" class="view-project" aria-label="View full measure" target="_blank">
-        <button type="button" class="btn btn-primary"><i class="bi bi-file-pdf"></i>Download Measure (PDF)</button>
+        <button type="button" class="btn-download btn-download-pdf"><i class="bi bi-file-pdf"></i>Download Measure (PDF)</button>
       </a>`;
   } else if (rec.fields["Missing PDF"]) {
     container.innerHTML += `
-      <button type="button" class="btn btn-primary no-pdf-download" disabled><i class="bi bi-ban"></i>${rec.fields["Missing PDF"]}</button>`;
+      <button type="button" class="btn-download no-pdf-download" disabled><i class="bi bi-ban"></i>${rec.fields["Missing PDF"]}</button>`;
   }
   if (rec.fields["json file"]?.[0]?.["j_localPath"]) {
     const jsonLink = rec.fields["json file"][0]["j_localPath"];
     container.innerHTML += `
       <a href="${jsonLink}" class="view-project" aria-label="Download measure data (JSON)" target="_blank" download>
-        <button type="button" class="btn btn-primary"><i class="bi bi-filetype-json"></i>Download Measure (JSON)</button>
+        <button type="button" class="btn-download btn-download-json"><i class="bi bi-filetype-json"></i>Download Measure (JSON)</button>
       </a>`;
   }
 }

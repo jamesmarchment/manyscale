@@ -366,6 +366,10 @@ function renderMeasureStats(stats) {
       <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${stats.totalItems}" data-purecounter-duration="1"></div>
       <div class="stat-label text-center">Total Items</div>
     </div>
+    <div class="stat-item">
+      <div class="stat-number purecounter" data-purecounter-start="0" data-purecounter-end="${stats.totalTranslations || 0}" data-purecounter-duration="1"></div>
+      <div class="stat-label text-center">Translations</div>
+    </div>
   `;
   if (window.PureCounter) new PureCounter();
 }

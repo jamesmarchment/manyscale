@@ -41,7 +41,26 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
   }));
   const flash = req.session.architectFlash || null;
   delete req.session.architectFlash;
-  res.render("architect/index", { tenants, flash });
+  const emailSettings = {
+    host: process.env.SMTP_HOST || "mail.manyscale.org",
+    port: process.env.SMTP_PORT || "465",
+    secure: process.env.SMTP_SECURE !== "false",
+  };
+  res.render("architect/index", { tenants, flash, emailSettings });
+});
+
+router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
+  const { smtpHost, smtpPort, smtpSecure } = req.body;
+  try {
+    if (smtpHost?.trim()) updateEnvVar("SMTP_HOST", smtpHost.trim());
+    if (smtpPort?.trim()) updateEnvVar("SMTP_PORT", smtpPort.trim());
+    updateEnvVar("SMTP_SECURE", smtpSecure === "on" ? "true" : "false");
+    req.session.architectFlash = { type: "ok", msg: "Email settings saved. Restart the server to apply." };
+  } catch (err) {
+    console.error("Architect email settings error:", err);
+    req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect("/architect");
 });
 
 router.get("/architect/tenants/new", requireArchitectAdmin, (req, res) => {

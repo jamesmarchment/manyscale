@@ -21,13 +21,13 @@ const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
 
 const router = Router();
 
-// Photo upload — saves to public/{slug}/team/
-const TEAM_PHOTO_SLUG = "relationships";
-const TEAM_PHOTO_DIR  = path.join(PROJECT_ROOT, "public", TEAM_PHOTO_SLUG, "team");
-if (!fs.existsSync(TEAM_PHOTO_DIR)) fs.mkdirSync(TEAM_PHOTO_DIR, { recursive: true });
-
+// Photo upload — saves to public/{tenant-slug}/team/
 const photoStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, TEAM_PHOTO_DIR),
+  destination: (req, file, cb) => {
+    const dir = path.join(PROJECT_ROOT, "public", req.tenant.slug, "team");
+    fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
     const base = path.basename(file.originalname, path.extname(file.originalname))
@@ -199,7 +199,7 @@ router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
   photoUpload.single("photo")(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message || "Upload failed." });
     if (!req.file) return res.status(400).json({ error: "No file uploaded or unsupported type." });
-    res.json({ path: `/${TEAM_PHOTO_SLUG}/team/${req.file.filename}` });
+    res.json({ path: `/${req.tenant.slug}/team/${req.file.filename}` });
   });
 });
 

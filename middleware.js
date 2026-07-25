@@ -23,6 +23,8 @@ export const sessionMiddleware = session({
 export function tenantLocalsMiddleware(req, res, next) {
   const tenant = req.tenant || primaryTenant;
   res.locals.siteName = tenant.name;
+  res.locals.siteOrigin = `${req.protocol}://${req.get("host")}`;
+  res.locals.canonicalUrl = `${res.locals.siteOrigin}${req.originalUrl}`;
   try {
     const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${tenant.slug}.json`), "utf8"));
     const meta = content.meta || {};

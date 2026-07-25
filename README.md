@@ -102,6 +102,9 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `BASE_ID_2` | No | Base ID for the secondary Airtable source |
 | `SMTP_USER` | Yes* | Email address used to send contact and suggestion form emails |
 | `SMTP_PASS` | Yes* | SMTP password for `SMTP_USER` |
+| `SMTP_HOST` | No | SMTP host (default: `mail.manyscale.org`). Editable from the [Architect Admin Panel](#architect-admin-panel) — restart the server to apply. |
+| `SMTP_PORT` | No | SMTP port (default: `465`). Editable from the Architect Admin Panel. |
+| `SMTP_SECURE` | No | Set to `"false"` to disable TLS (default: `true`). Editable from the Architect Admin Panel. |
 | `ADMIN_PASSWORD` | Yes | Password for the `/admin` panel |
 | `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
 | `ARCHITECT_ADMIN_PASSWORD_HASH` | No | Password hash for the cross-tenant `/architect` panel — see [Architect Admin Panel](#architect-admin-panel) |
@@ -109,7 +112,7 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `PORT` | No | Port to listen on (default: `3007`) |
 | `MULTI_TENANT` | No | Set to `true` to enable slug-prefixed URLs (e.g. `/relationships/constructs`). Default is `false` (single-tenant, no slug in URL). |
 
-*Required if you want the contact or measure suggestion forms to send email. The SMTP host is hardcoded to `mail.manyscale.org` — update the `transporter` config in `lib/email.js` to use a different mail provider.
+*Required if you want the contact or measure suggestion forms to send email.
 
 ---
 
@@ -161,8 +164,25 @@ From the dashboard you can:
 - See every tenant's record count, last refresh time, and active/inactive status
 - Onboard a new tenant — name, slug, contact email, Airtable base ID + PAT, and an admin password — with an option to scaffold the Measures/Translations/Contributors tables automatically in a fresh base
 - Refresh a tenant's cache, deactivate/reactivate it, or delete it (deleting only removes the `tenants.json` entry; its cache and data files on disk are preserved)
+- Edit platform-wide email settings (SMTP host/port/TLS) used for contact-form, suggestion, and tenant-onboarding mail across every tenant
 
 Provisioning a tenant primes its cache and, if requested, scaffolds its Airtable tables immediately — no restart needed. The one exception: a newly-created tenant isn't reachable on the public site until `MULTI_TENANT=true` is set in `.env` and the server is restarted, since single-tenant mode always serves the one configured primary tenant.
+
+---
+
+## Analytics (Plausible) — currently unused
+
+`views/partials/header.ejs` loads a Plausible Analytics script on every page, but it's
+not functional as shipped: the `data-domain` attribute is set to the tenant's display
+name (e.g. `"AggreScale"`) rather than the site's actual registered domain, which is
+what Plausible requires to attribute events. As a result no analytics are currently
+being recorded on any tenant.
+
+This needs to be fixed before relying on it — either by deriving `data-domain` from the
+request host (`req.get("host")` / `locals.siteOrigin`) at render time, or by making the
+Plausible domain (and script src, currently hardcoded to `analytics.relascale.com`)
+configurable per-tenant or platform-wide from the Architect Admin panel, the same way
+email settings are handled.
 
 ---
 

@@ -17,9 +17,20 @@ router.get("/api/data", async (req, res) => {
     return res.json({ records: record ? [record] : [] });
   }
 
-  const sorted = [...cache].sort((a, b) =>
-    (b.fields["Favorite"] ?? -Infinity) - (a.fields["Favorite"] ?? -Infinity)
-  );
+  // Preferred (Favorite) records always lead, but shouldn't render in the same
+  // order every time — shuffle within each group rather than a stable sort.
+  const shuffle = arr => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const preferred = cache.filter(r => r.fields["Favorite"]);
+  const rest = cache.filter(r => !r.fields["Favorite"]);
+  const sorted = [...shuffle(preferred), ...shuffle(rest)];
   res.json({ records: sorted });
 });
 

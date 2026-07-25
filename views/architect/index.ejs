@@ -40,6 +40,9 @@
     .status.active { background: #f0fdf4; color: #15803d; }
     .status.inactive { background: #f4f4f5; color: #71717a; }
     .empty { padding: 1.5rem .85rem; text-align: center; }
+    input[type=text] { padding: .4rem .55rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .9rem; font-family: monospace; }
+    input:focus { outline: 2px solid #333; outline-offset: 1px; }
+    .actions { padding: .75rem .85rem; background: #fafafa; border-top: 1px solid #f1f1f1; display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -114,6 +117,30 @@
           </tbody>
         </table>
       <% } %>
+    </div>
+
+    <h2>Platform Settings</h2>
+    <div class="card">
+      <form method="POST" action="/architect/settings/email">
+        <table>
+          <tr>
+            <th style="width:38%"><label for="smtp-host">SMTP Host</label></th>
+            <td><input type="text" id="smtp-host" name="smtpHost" value="<%= emailSettings.host %>"></td>
+          </tr>
+          <tr>
+            <th><label for="smtp-port">SMTP Port</label></th>
+            <td><input type="text" id="smtp-port" name="smtpPort" value="<%= emailSettings.port %>"></td>
+          </tr>
+          <tr>
+            <th><label for="smtp-secure">Use TLS (secure)</label></th>
+            <td><input type="checkbox" id="smtp-secure" name="smtpSecure" <%= emailSettings.secure ? "checked" : "" %>></td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Save Email Settings</button>
+          <span class="muted">Used for contact, suggestion, and tenant-onboarding email across every tenant. Restart the server to apply changes.</span>
+        </div>
+      </form>
     </div>
 
   </div>
