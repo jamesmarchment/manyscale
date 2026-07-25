@@ -33,8 +33,13 @@ app.use(express.static("public"));
 app.use(architectRouter);
 
 if (MULTI_TENANT) {
-  app.use("/:slug", resolveTenant, tenantLocalsMiddleware, apiRouter, formsRouter, publicRouter, adminRouter);
+  // landingRouter only defines specific paths (/, /search, /search/suggestions,
+  // POST /request-repo) — it must be tried before the /:slug catch-all, otherwise
+  // resolveTenant treats e.g. "search" as a candidate slug and 404s "Unknown tenant"
+  // before landingRouter ever sees the request. Anything not matching those exact
+  // paths falls through via next() to the /:slug chain below, unchanged.
   app.use("/", landingRouter);
+  app.use("/:slug", resolveTenant, tenantLocalsMiddleware, apiRouter, formsRouter, publicRouter, adminRouter);
 } else {
   app.use(resolveTenant);
   app.use(tenantLocalsMiddleware);

@@ -1,28 +1,321 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ManyScale</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: #f4f4f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; color: #18181b; }
-    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; padding: 2.5rem 3rem; min-width: 280px; }
-    h1 { font-size: 1.3rem; margin: 0 0 1.5rem; font-weight: 600; }
-    ul { list-style: none; padding: 0; margin: 0; }
-    li + li { margin-top: 0.6rem; }
-    a { font-size: 1rem; text-decoration: none; color: #18181b; padding: 0.4rem 0.6rem; border-radius: 4px; display: block; }
-    a:hover { background: #f4f4f5; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>ManyScale</h1>
-    <ul>
-      <% tenants.forEach(t => { %>
-        <li><a href="/<%= t.slug %>"><%= t.name %></a></li>
-      <% }) %>
-    </ul>
-  </div>
-</body>
-</html>
+<%- include("partials/header", { title: "ManyScale — A Network of Measure Repositories" }) %>
+
+<body id="page-top">
+
+  <nav class="navbar navbar-expand-xl navbar-light fixed-top py-3 landing-nav" id="mainNav">
+    <div class="container px-4 px-lg-5">
+      <a class="navbar-brand" href="/">
+        <h1 class="sitename" style="display: inline; line-height: 0.25; font-size: 28px; letter-spacing: -1px; font-weight: 500;">ManyScale</h1>
+      </a>
+      <button class="navbar-toggler navbar-toggler-right" type="button" data-bs-toggle="collapse" data-bs-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarResponsive">
+        <ul class="navbar-nav ms-auto my-2 my-lg-0">
+          <li class="nav-item"><a class="nav-link" href="#repos">Repositories</a></li>
+          <li class="nav-item"><a class="nav-link" href="#languages">Languages</a></li>
+          <li class="nav-item"><a class="nav-link" href="#request-repo">Request a Repo</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- Hero: logo + network-wide search -->
+    <header class="masthead">
+      <div class="container px-5">
+        <div class="landing-hero">
+          <svg class="landing-logo" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" height="56"
+               viewBox="0 0 47.1 50.8" style="enable-background:new 0 0 47.1 50.8;" xml:space="preserve" fill="currentColor">
+            <path d="M25.5,50.8c-1.9,0-3.8-0.5-5.4-1.4c-1.7-1-3.1-2.3-4-3.9c-1-1.7-1.5-3.5-1.5-5.4c0-0.8,0.1-1.6,0.3-2.4
+              c0.1-0.6-0.1-1.2-0.7-1.5C14,36.1,13.8,36,13.6,36c-0.4,0-0.7,0.1-1,0.4c-0.1,0.1-0.2,0.2-0.3,0.3C11,38,9.2,38.8,7.2,38.8
+              s-3.9-0.7-5.2-2c-1.3-1.3-2-3.1-2-5.2c0-2.1,0.7-3.9,2-5.2s3.1-1.9,5.2-1.9c1.4,0,2.7,0.4,3.8,1c0.2,0.1,0.5,0.2,0.7,0.2
+              c0.3,0,0.6-0.1,0.8-0.3c0.4-0.3,0.6-0.9,0.5-1.4c-0.2-0.7-0.3-1.4-0.3-2.2c0-1.5,0.5-2.9,1.4-4.2c0.3-0.5,0.3-1.1,0-1.5
+              s-0.7-0.6-1.1-0.6c-0.1,0-0.2,0-0.4,0.1c-0.6,0.2-1.3,0.3-2,0.3c-2.1,0-3.9-0.7-5.2-1.9c-1.3-1.3-1.9-3.1-1.9-5.2
+              c0-2,0.7-3.8,2.1-5.1c1.3-1.3,3.1-2,5.1-2s3.7,0.7,5,2c0.6,0.6,1.1,1.2,1.4,2c0.2,0.4,0.7,0.7,1.2,0.7h0.1c0.5-0.1,1-0.4,1.1-1
+              c0.3-1.2,1-2.3,1.9-3.2C22.8,0.8,24.6,0,26.5,0s3.7,0.8,5.1,2.2c1.5,1.5,2.3,3.3,2.3,5.1c0,1.2-0.4,2.4-1.1,3.6
+              c-0.3,0.5-0.3,1.1,0.1,1.6c0.3,0.3,0.6,0.5,1,0.5c0.2,0,0.3,0,0.5-0.1c1.1-0.4,2.2-0.6,3.3-0.6c2.9,0,5.2,1.7,6.6,3
+              c1.8,1.8,2.8,4.1,2.8,6.6c0,2.6-1,5-2.7,6.7s-4.1,2.7-6.7,2.7c-0.9,0-1.9-0.1-2.7-0.4c-0.1,0-0.2-0.1-0.4-0.1
+              c-0.4,0-0.9,0.2-1.1,0.6c-0.3,0.5-0.3,1.1,0.1,1.6s0.8,1,1.1,1.6c0.9,1.6,1.4,3.4,1.4,5.4c0,2.3-0.4,4.1-1.2,5.5
+              c-0.8,1.4-2.2,2.6-4.1,3.8C29.1,50.3,27.3,50.8,25.5,50.8z M15.6,27.9c-0.3,0-0.6,0.1-0.8,0.3c-0.4,0.3-0.6,0.9-0.4,1.4
+              c0.2,0.7,0.3,1.3,0.3,2c0,0.2,0,0.5,0,0.7c-0.1,0.6,0.3,1.1,0.8,1.4c0.2,0.1,0.3,0.1,0.5,0.1c0.4,0,0.8-0.2,1-0.5
+              c0.6-0.7,1.3-1.4,2.1-2c0.4-0.3,0.6-0.8,0.5-1.4c-0.1-0.5-0.5-0.9-1-1c-0.8-0.2-1.6-0.5-2.3-0.9C16,27.9,15.8,27.9,15.6,27.9z
+              M27.6,24.4c-0.5,0-1,0.3-1.2,0.8c-0.3,0.6-0.7,1.2-1.1,1.7c-0.4,0.4-0.5,0.9-0.3,1.4s0.6,0.8,1.1,0.8c0.9,0.1,1.7,0.3,2.6,0.6
+              c0.2,0.1,0.3,0.1,0.5,0.1c0.4,0,0.8-0.2,1.1-0.5c0.4-0.5,0.3-1.1,0-1.6c-0.6-0.8-1.1-1.6-1.4-2.4C28.6,24.7,28.1,24.4,27.6,24.4
+              L27.6,24.4z M25.1,16.6c0.5,0.5,0.9,1.1,1.2,1.8c0.2,0.5,0.7,0.8,1.2,0.8l0,0c0.5,0,1-0.3,1.2-0.8c0.3-0.8,0.7-1.5,1.2-2.2
+              c0.3-0.5,0.3-1.1,0-1.5s-0.7-0.6-1.1-0.6c-0.1,0-0.2,0-0.3,0c-0.6,0.2-1.2,0.2-1.9,0.2c-0.2,0-0.4,0-0.5,0H26c-0.5,0-1,0.3-1.2,0.8
+              C24.6,15.6,24.7,16.2,25.1,16.6L25.1,16.6L25.1,16.6z M18.9,9.7h-0.1c-0.5,0-1,0.4-1.2,0.9c-0.2,0.7-0.6,1.4-1,2.1
+              c-0.3,0.5-0.3,1.1,0,1.5s0.7,0.5,1.1,0.5c0.1,0,0.3,0,0.4-0.1c0.6-0.2,1.2-0.3,1.8-0.3c0.1,0,0.2,0,0.3,0c0,0,0,0,0.1,0
+              c0.5,0,1-0.3,1.2-0.8s0.1-1.1-0.2-1.5c-0.5-0.5-0.9-1.1-1.2-1.8C19.9,10,19.4,9.7,18.9,9.7z"/>
+          </svg>
+          <p class="lead text-muted mb-0">A network of searchable databases of self-report measures, one repository per research area.</p>
+
+          <div class="search-container">
+            <form action="/search" method="get" id="network-search-form">
+              <div class="search-wrapper" style="position: relative">
+                <input type="text" name="query" id="network-search-input" class="form-control search-input" placeholder="Search every repository…" autocomplete="off">
+                <i class="bi bi-search search-icon"></i>
+                <ul id="network-suggestions-list" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:1000; list-style:none; margin:0; padding:0; background:#fff; border:1px solid #ddd; border-radius:0 0 8px 8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); text-align:left;"></ul>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Repositories -->
+    <section class="page-section" id="repos">
+      <div class="container px-5">
+        <div class="section-title title-wrapper text-center mb-5">
+          <h2>Repositories</h2>
+          <p class="text-muted">Each repository is an independently maintained collection for one research area.</p>
+        </div>
+        <% if (!tenants.length) { %>
+          <p class="text-muted text-center">No repositories are active yet.</p>
+        <% } else { %>
+          <div class="repo-grid">
+            <% tenants.forEach(t => { %>
+              <a class="repo-card" href="/<%= t.slug %>">
+                <div class="repo-accent-bar" style="background: <%= t.logoColor || '#6c757d' %>"></div>
+                <div class="repo-card-body">
+                  <div class="repo-card-header">
+                    <h3><%= t.name %></h3>
+                    <span class="repo-measure-count"><%= t.measureCount %> measure<%= t.measureCount !== 1 ? 's' : '' %></span>
+                  </div>
+                  <% if (t.description) { %><p><%= t.description %></p><% } %>
+                </div>
+              </a>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    </section>
+
+    <!-- Languages -->
+    <section class="page-section" id="languages">
+      <div class="container px-5">
+        <div class="section-title title-wrapper text-center mb-5">
+          <h2>Languages</h2>
+          <p class="text-muted">Browse translated measures across every repository by language.</p>
+        </div>
+        <% if (!languages.length) { %>
+          <p class="text-muted text-center">No translations are available yet.</p>
+        <% } else { %>
+          <div class="lang-pill-list justify-content-center">
+            <% languages.forEach(lang => { %>
+              <a class="lang-pill" href="/search?lang=<%= encodeURIComponent(lang) %>"><%= lang %></a>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    </section>
+
+    <!-- Request a Repo -->
+    <section class="page-section" id="request-repo">
+      <div class="container px-5">
+        <div class="section-title title-wrapper text-center mb-4">
+          <h2>Request a Repo</h2>
+          <p class="text-muted">Want to see a repository for your research area, or have a question about the network? Send us a message.</p>
+        </div>
+
+        <div class="row gx-4 gx-lg-5 justify-content-center mb-5">
+          <div class="col-lg-8 col-md-10">
+
+            <form action="/request-repo" method="post" class="php-email-form" id="request-repo-form">
+
+              <!-- honeypot -->
+              <div class="form-trap" aria-hidden="true">
+                <label for="request-repo-website">Website</label>
+                <input type="text" name="website" id="request-repo-website" tabindex="-1" autocomplete="off">
+              </div>
+
+              <!-- timing token -->
+              <input type="hidden" name="_t" value="<%= Date.now() %>">
+
+              <div class="row gx-3">
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input class="form-control" id="request-repo-name" name="name" type="text" placeholder="Your name" required />
+                    <label for="request-repo-name">Full Name</label>
+                    <div class="invalid-feedback">A name is required.</div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-floating mb-3">
+                    <input class="form-control" id="request-repo-email" name="email" type="email" placeholder="name@example.com" required />
+                    <label for="request-repo-email">Email Address</label>
+                    <div class="invalid-feedback">A valid email is required.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-floating mb-3">
+                <textarea class="form-control" id="request-repo-message" name="message" placeholder="Your message" style="height: 10rem" required></textarea>
+                <label for="request-repo-message">Which research area, or what's your question?</label>
+                <div class="invalid-feedback">A message is required.</div>
+              </div>
+
+              <div class="my-3">
+                <div class="loading" style="display:none">Loading</div>
+                <div class="error-message"></div>
+                <div class="sent-message fade">Your message has been sent. Thank you!</div>
+              </div>
+
+              <div class="d-grid">
+                <button type="submit" class="btn btn-primary btn-xl">Send Message</button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.querySelector("#request-repo-form");
+  const loadingEl = form.querySelector(".loading");
+  const errorEl = form.querySelector(".error-message");
+  const sentEl = form.querySelector(".sent-message");
+  const submitBtn = form.querySelector("button[type='submit']");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    loadingEl.classList.add("d-block");
+    errorEl.classList.remove("d-block");
+    sentEl.classList.remove("show");
+
+    const formData = Object.fromEntries(new FormData(form).entries());
+
+    try {
+      const response = await fetch(form.getAttribute("action") || "/request-repo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+
+      const result = await response.json();
+      loadingEl.classList.remove("d-block");
+
+      if (result.success) {
+        submitBtn.style.transition = "opacity 0.5s";
+        submitBtn.style.opacity = 0;
+        submitBtn.disabled = true;
+        sentEl.style.display = "block";
+        sentEl.classList.add("show");
+        form.reset();
+      } else {
+        errorEl.textContent = result.error || "Failed to send message.";
+        errorEl.classList.add("d-block");
+      }
+    } catch (err) {
+      loadingEl.classList.remove("d-block");
+      errorEl.textContent = err.message || "An error occurred.";
+      errorEl.classList.add("d-block");
+    }
+  });
+});
+</script>
+
+<script>
+(function () {
+  const input = document.getElementById("network-search-input");
+  const list  = document.getElementById("network-suggestions-list");
+  const form  = document.getElementById("network-search-form");
+  let activeIndex = -1;
+  let debounceTimer = null;
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  const stopWords = new Set(['a','an','the','and','or','of','in','to','for','with','on','at','by','from']);
+
+  function renderSuggestions(suggestions, query) {
+    list.innerHTML = "";
+    activeIndex = -1;
+    if (!suggestions.length) { list.style.display = "none"; return; }
+    const lower = query.toLowerCase();
+    suggestions.forEach(function (s) {
+      const li = document.createElement("li");
+      li.style.cssText = "padding:8px 16px; cursor:pointer; font-size:0.95rem;";
+      const wordRe = /\w+/g;
+      let m, pos = -1;
+      while ((m = wordRe.exec(s)) !== null) {
+        if (m[0].toLowerCase().startsWith(lower) && !stopWords.has(m[0].toLowerCase())) {
+          pos = m.index; break;
+        }
+      }
+      li.innerHTML = pos >= 0
+        ? escapeHtml(s.slice(0, pos)) + "<strong>" + escapeHtml(s.slice(pos, pos + query.length)) + "</strong>" + escapeHtml(s.slice(pos + query.length))
+        : escapeHtml(s);
+      li.addEventListener("mousedown", function (e) {
+        e.preventDefault();
+        input.value = s;
+        list.style.display = "none";
+        form.submit();
+      });
+      li.addEventListener("mouseenter", function () {
+        setActive(Array.from(list.children).indexOf(li));
+      });
+      list.appendChild(li);
+    });
+    list.style.display = "block";
+  }
+
+  function setActive(index) {
+    const items = list.children;
+    if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].style.background = "";
+    activeIndex = index;
+    if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].style.background = "#f0f0f0";
+  }
+
+  function fetchSuggestions(query) {
+    if (query.length < 3) { list.style.display = "none"; return; }
+    fetch("/search/suggestions?query=" + encodeURIComponent(query))
+      .then(function (r) { return r.json(); })
+      .then(function (data) { renderSuggestions(data.suggestions, query); })
+      .catch(function () { list.style.display = "none"; });
+  }
+
+  input.addEventListener("input", function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function () { fetchSuggestions(input.value.trim()); }, 180);
+  });
+
+  input.addEventListener("keydown", function (e) {
+    const items = list.children;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive(Math.min(activeIndex + 1, items.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive(Math.max(activeIndex - 1, -1));
+    } else if (e.key === "Enter") {
+      if (activeIndex >= 0 && items[activeIndex]) {
+        e.preventDefault();
+        input.value = items[activeIndex].textContent;
+        list.style.display = "none";
+        form.submit();
+      }
+    } else if (e.key === "Escape") {
+      list.style.display = "none";
+      activeIndex = -1;
+    }
+  });
+
+  document.addEventListener("click", function (e) {
+    if (!form.contains(e.target)) {
+      list.style.display = "none";
+      activeIndex = -1;
+    }
+  });
+})();
+</script>
+
+<%- include("partials/network-footer") %>

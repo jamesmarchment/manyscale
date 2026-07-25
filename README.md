@@ -105,6 +105,7 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `SMTP_HOST` | No | SMTP host (default: `mail.manyscale.org`). Editable from the [Architect Admin Panel](#architect-admin-panel) — restart the server to apply. |
 | `SMTP_PORT` | No | SMTP port (default: `465`). Editable from the Architect Admin Panel. |
 | `SMTP_SECURE` | No | Set to `"false"` to disable TLS (default: `true`). Editable from the Architect Admin Panel. |
+| `NETWORK_CONTACT_EMAIL` | No | Where the network landing page's "Request a Repo" form is delivered (falls back to `SMTP_USER`). Editable from the Architect Admin Panel. Multi-tenant mode only. |
 | `ADMIN_PASSWORD` | Yes | Password for the `/admin` panel |
 | `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
 | `ARCHITECT_ADMIN_PASSWORD_HASH` | No | Password hash for the cross-tenant `/architect` panel — see [Architect Admin Panel](#architect-admin-panel) |
@@ -118,11 +119,11 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 
 ## Routes
 
-In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served at the paths below. In **multi-tenant** mode (`MULTI_TENANT=true`) every tenant route is prefixed with `/{slug}` (e.g. `/relationships/constructs`), and `GET /` serves the tenant index instead.
+In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served at the paths below. In **multi-tenant** mode (`MULTI_TENANT=true`) every tenant route is prefixed with `/{slug}` (e.g. `/relationships/constructs`), and `GET /` serves the network landing page instead (see below).
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/` | Homepage (single-tenant) — or tenant index listing all tenants (multi-tenant only) |
+| GET | `/` | Homepage (single-tenant) — or the network landing page (multi-tenant only) |
 | GET | `/search?query=` | Search measures by name, construct, reference, description, or translation language |
 | GET | `/constructs` | Browse all constructs alphabetically |
 | GET | `/constructs/:name` | All measures tagged with a specific construct |
@@ -141,6 +142,14 @@ In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served 
 | GET | `/architect` | Architect admin dashboard listing all tenants (session-protected) |
 | GET | `/architect/tenants/new` | New tenant onboarding form |
 | POST | `/architect/tenants` | Provision a new tenant |
+
+**Network-level routes** (multi-tenant only, unprefixed — see [Network Landing Page](#network-landing-page)):
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/search?query=&lang=` | Search across every active tenant's cache at once, optionally filtered by translation language |
+| GET | `/search/suggestions?query=` | JSON autocomplete suggestions, merged and deduped across tenants |
+| POST | `/request-repo` | "Request a Repo" form submission — delivered to `NETWORK_CONTACT_EMAIL` |
 
 ---
 
@@ -164,9 +173,24 @@ From the dashboard you can:
 - See every tenant's record count, last refresh time, and active/inactive status
 - Onboard a new tenant — name, slug, contact email, Airtable base ID + PAT, and an admin password — with an option to scaffold the Measures/Translations/Contributors tables automatically in a fresh base
 - Refresh a tenant's cache, deactivate/reactivate it, or delete it (deleting only removes the `tenants.json` entry; its cache and data files on disk are preserved)
-- Edit platform-wide email settings (SMTP host/port/TLS) used for contact-form, suggestion, and tenant-onboarding mail across every tenant
+- Edit platform-wide email settings (SMTP host/port/TLS, and the network contact email the "Request a Repo" form delivers to) used for contact-form, suggestion, and tenant-onboarding mail across every tenant
 
 Provisioning a tenant primes its cache and, if requested, scaffolds its Airtable tables immediately — no restart needed. The one exception: a newly-created tenant isn't reachable on the public site until `MULTI_TENANT=true` is set in `.env` and the server is restarted, since single-tenant mode always serves the one configured primary tenant.
+
+---
+
+## Network Landing Page
+
+In multi-tenant mode, `GET /` no longer just lists tenants — it's a network-wide hub, served by `routes/landing.js` + `views/landing.ejs`:
+
+- A search bar that queries every active tenant's cache at once (`GET /search`, `lib/network.js`'s `searchNetwork()`), with autocomplete (`GET /search/suggestions`) merged and deduped across tenants
+- A card for each active repository (name, accent color, description from that tenant's `data/{slug}.json` `meta.description`, and measure count) linking to `/{slug}`
+- A list of every language with at least one translation somewhere in the network, each linking to `/search?lang=`
+- A "Request a Repo" contact form (`POST /request-repo`), for visitors asking about or suggesting a new repository — delivered to `NETWORK_CONTACT_EMAIL`, not to any one tenant's `contact_recipient`
+
+This page is intentionally its own thing rather than reusing tenant UI: it has its own nav, its own copy, and public-facing text always says "repository"/"repo", never "tenant" — that word is internal terminology and not how visitors think about the site. Deactivated tenants are excluded from the repo list, search, and language index.
+
+Because `resolveTenant`/`tenantLocalsMiddleware` never run for these routes (there's no single "current tenant" on a network-wide page), `routes/landing.js` sets `res.locals.basePath = ""` and `res.locals.siteName = "ManyScale"` itself before rendering.
 
 ---
 

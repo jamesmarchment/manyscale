@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import { tenantCaches, refreshCache, contributorsCache, getSubmitFormUrl } from "../lib/airtable.js";
-import { recordMatchesSearch, SUGGESTION_STOP_WORDS } from "../lib/search.js";
+import { recordMatchesSearch, getSuggestions } from "../lib/search.js";
 import { PROJECT_ROOT } from "../config.js";
 
 const router = Router();
@@ -66,38 +66,8 @@ router.get("/search", (req, res) => {
 
 router.get("/search/suggestions", (req, res) => {
   const query = (req.query.query || "").trim();
-  const lower = query.toLowerCase();
-  if (query.length < 3 || SUGGESTION_STOP_WORDS.has(lower)) return res.json({ suggestions: [] });
-
-  const seen = new Set();
-  const suggestions = [];
-
   const cache = tenantCaches.get(req.tenant.slug) || [];
-  for (const record of cache) {
-    if (suggestions.length >= 6) break;
-    const fields = record.fields;
-    const candidates = [
-      fields["Measure Name"],
-      fields["Primary Reference"],
-      ...(Array.isArray(fields["Construct(s)"]) ? fields["Construct(s)"] : []),
-    ];
-    for (const val of candidates) {
-      if (suggestions.length >= 6) break;
-      if (typeof val !== "string") continue;
-      const hasMatch = val.split(/\W+/).some(
-        w => w.toLowerCase().startsWith(lower) && !SUGGESTION_STOP_WORDS.has(w.toLowerCase())
-      );
-      if (hasMatch) {
-        const key = val.toLowerCase();
-        if (!seen.has(key)) {
-          seen.add(key);
-          suggestions.push(val);
-        }
-      }
-    }
-  }
-
-  res.json({ suggestions });
+  res.json({ suggestions: getSuggestions(cache, query) });
 });
 
 router.get("/constructs", async (req, res) => {

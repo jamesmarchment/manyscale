@@ -45,16 +45,18 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
     host: process.env.SMTP_HOST || "mail.manyscale.org",
     port: process.env.SMTP_PORT || "465",
     secure: process.env.SMTP_SECURE !== "false",
+    networkContactEmail: process.env.NETWORK_CONTACT_EMAIL || "",
   };
   res.render("architect/index", { tenants, flash, emailSettings });
 });
 
 router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
-  const { smtpHost, smtpPort, smtpSecure } = req.body;
+  const { smtpHost, smtpPort, smtpSecure, networkContactEmail } = req.body;
   try {
     if (smtpHost?.trim()) updateEnvVar("SMTP_HOST", smtpHost.trim());
     if (smtpPort?.trim()) updateEnvVar("SMTP_PORT", smtpPort.trim());
     updateEnvVar("SMTP_SECURE", smtpSecure === "on" ? "true" : "false");
+    if (networkContactEmail?.trim()) updateEnvVar("NETWORK_CONTACT_EMAIL", networkContactEmail.trim());
     req.session.architectFlash = { type: "ok", msg: "Email settings saved. Restart the server to apply." };
   } catch (err) {
     console.error("Architect email settings error:", err);
@@ -83,8 +85,9 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   if (trimmedSlug && !/^[a-z0-9-]+$/.test(trimmedSlug)) {
     errors.push("Slug can only contain lowercase letters, numbers, and hyphens.");
   }
-  if (trimmedSlug === "architect") {
-    errors.push('Slug "architect" is reserved for the architect admin panel.');
+  const RESERVED_SLUGS = ["architect", "search", "request-repo"];
+  if (RESERVED_SLUGS.includes(trimmedSlug)) {
+    errors.push(`Slug "${trimmedSlug}" is reserved and can't be used for a tenant.`);
   }
   if (trimmedSlug && _tenantsList.some(t => t.slug === trimmedSlug)) {
     errors.push(`A tenant with slug "${trimmedSlug}" already exists.`);

@@ -135,6 +135,13 @@
             <th><label for="smtp-secure">Use TLS (secure)</label></th>
             <td><input type="checkbox" id="smtp-secure" name="smtpSecure" <%= emailSettings.secure ? "checked" : "" %>></td>
           </tr>
+          <tr>
+            <th><label for="network-contact-email">Network contact email</label></th>
+            <td>
+              <input type="text" id="network-contact-email" name="networkContactEmail" value="<%= emailSettings.networkContactEmail %>" placeholder="you@example.com">
+              <p class="hint" style="font-size:.78rem;color:#71717a;margin-top:.25rem;">Where the landing page's "Request a Repo" form is delivered. Falls back to SMTP Host's user if left blank.</p>
+            </td>
+          </tr>
         </table>
         <div class="actions">
           <button type="submit" class="btn">Save Email Settings</button>
