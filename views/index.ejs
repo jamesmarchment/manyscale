@@ -31,7 +31,7 @@
       </div>
       <!-- buttons -->
                             <div class="d-flex flex-column flex-lg-row align-items-center mb-5">
-                              <a href="#submit" class="btn btn-primary btn-xl py-3 px-4 me-lg-3 mb-4 mb-lg-0">Submit Your Measure</a>
+                              <a href="<%= basePath %>/#submit" class="btn btn-primary btn-xl py-3 px-4 me-lg-3 mb-4 mb-lg-0">Submit Your Measure</a>
                               <a href="#" class="btn btn-primary btn-xl py-3 px-4 me-lg-3 mb-4 mb-lg-0" data-bs-toggle="modal" data-bs-target="#suggestModal" >Suggest A Measure</a>
                             </div>
                             <div class="stats" id="measurestats-output" data-aos="fade-up" data-aos-delay="500"></div>
@@ -140,7 +140,7 @@
         <hr class="divider" />
         <div class="text-center mb-4">
           <a href="<%= locals.submitFormUrl || '#' %>" target="_blank" class="btn btn-primary btn-dark btn-xl me-3 py-3 px-4 me-lg-3 mb-4 mb-lg-0">Submission Form (Password Required)</a>
-          <a href="#contact" id="request-access-btn" data-subject="<%= locals.siteName || '#' %> Access Request" data-message="Hi! I’d like to request access to the <%= locals.siteName || '#' %> measure upload form." class="btn btn-primary btn-dark btn-xl py-3 px-4 me-lg-3 mb-4 mb-lg-0">Request Access</a>
+          <a href="<%= basePath %>/#contact" id="request-access-btn" data-subject="<%= locals.siteName || '#' %> Access Request" data-message="Hi! I’d like to request access to the <%= locals.siteName || '#' %> measure upload form." class="btn btn-primary btn-dark btn-xl py-3 px-4 me-lg-3 mb-4 mb-lg-0">Request Access</a>
         </div>
         <p class="text-muted text-center mb-5">If you have a validated self-report measure pertaining to interpersonal relationships, we invite you to add it to the repository by completing a short form.</p>
       </div>
@@ -158,7 +158,7 @@
 
               <p>Once you have submitted the form, a moderator will review and approve your submission. Please note that at this time, only published self-report measures are eligible for inclusion in the repository.</p>
 			  
-			  <p>If you’ve already obtained the password from an administrator (e.g., at a conference presentation), you may <a href="<%= locals.submitFormUrl || '#' %>">access the form using the direct link.</a> Otherwise, please <a href="#contact" id="request-access-link" data-subject="RelaScale Access Request" data-message="Hi! I’d like to request access to the measure upload form.">request access to the form.</a></p>
+			  <p>If you’ve already obtained the password from an administrator (e.g., at a conference presentation), you may <a href="<%= locals.submitFormUrl || '#' %>">access the form using the direct link.</a> Otherwise, please <a href="<%= basePath %>/#contact" id="request-access-link" data-subject="RelaScale Access Request" data-message="Hi! I’d like to request access to the measure upload form.">request access to the form.</a></p>
             </div>
           </div>
 
@@ -578,7 +578,7 @@ document.querySelectorAll('a[href^="#fn-"]').forEach(link => {
           </div>
 
           <div class="my-3">
-            <div class="loading">Loading</div>
+            <div class="loading" style="display:none">Loading</div>
             <div class="error-message"></div>
             <div class="sent-message fade">Thank you! We'll look into adding this measure.</div>
           </div>

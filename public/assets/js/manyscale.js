@@ -261,7 +261,7 @@ async function drawBubbleChart(constructs) {
 
   // Below this radius, text can't render legibly (too cramped / overlaps neighbors),
   // so skip the label entirely rather than trying to wrap it.
-  const MIN_LABEL_RADIUS = 16;
+  const MIN_LABEL_RADIUS = 26;
 
   function blendedLuminance(hex, opacity) {
     // WCAG relative luminance of hex blended over a white background at given opacity.
