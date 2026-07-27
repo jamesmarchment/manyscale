@@ -123,6 +123,57 @@ router.get("/constructs/:name", async (req, res) => {
   res.render("construct-details", { name, items: list });
 });
 
+router.get("/languages", async (req, res) => {
+  let cache = tenantCaches.get(req.tenant.slug) || [];
+  if (cache.length === 0) {
+    await refreshCache(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
+  }
+
+  const languageMap = {};
+  for (const record of cache) {
+    for (const tr of (record.fields.translations || [])) {
+      const lang = (tr["Language"] || "").trim();
+      if (!lang) continue;
+      if (!languageMap[lang]) languageMap[lang] = [];
+      languageMap[lang].push(record);
+    }
+  }
+
+  const languagesList = Object.keys(languageMap)
+    .sort((a, b) => a.localeCompare(b))
+    .map(name => ({ name, items: languageMap[name] }));
+
+  res.render("languages", { languages: languagesList });
+});
+
+router.get("/languages/:name", async (req, res) => {
+  const name = req.params.name.trim();
+
+  let cache = tenantCaches.get(req.tenant.slug) || [];
+  if (cache.length === 0) {
+    await refreshCache(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
+  }
+
+  const languageMap = {};
+  for (const record of cache) {
+    for (const tr of (record.fields.translations || [])) {
+      const lang = (tr["Language"] || "").trim();
+      if (!lang) continue;
+      if (!languageMap[lang]) languageMap[lang] = [];
+      languageMap[lang].push(record);
+    }
+  }
+
+  const list = languageMap[name];
+  if (!list) {
+    return res.status(404).send("Language not found");
+  }
+
+  res.render("language-details", { name, items: list });
+});
+
 router.get("/contributors", (req, res) => {
   const byMeasureCount = (a, b) =>
     (b.fields["Measures"] || []).length - (a.fields["Measures"] || []).length;

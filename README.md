@@ -131,6 +131,8 @@ In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served 
 | GET | `/search?query=` | Search measures by name, construct, reference, description, or translation language |
 | GET | `/constructs` | Browse all constructs alphabetically |
 | GET | `/constructs/:name` | All measures tagged with a specific construct |
+| GET | `/languages` | Browse all translation languages alphabetically |
+| GET | `/languages/:name` | All measures with a translation into a specific language |
 | GET | `/details/:id` | Individual measure detail page |
 | GET | `/contributors` | Team and contributors listing |
 | GET | `/terms` | Terms of service |
@@ -232,7 +234,7 @@ is rendered.
 ├── routes/
 │   ├── api.js                 # GET /api/data, /api/search, /api/construct-stats
 │   ├── forms.js               # POST /contact, POST /suggest
-│   ├── public.js              # All public page routes (/, /search, /constructs, etc.)
+│   ├── public.js              # All public page routes (/, /search, /constructs, /languages, etc.)
 │   ├── admin.js               # All /admin/* routes and multer photo upload
 │   └── landing.js             # GET / tenant index (multi-tenant mode only)
 │
