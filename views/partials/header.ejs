@@ -23,14 +23,14 @@
   <meta property="og:title" content="<%= locals.title || (locals.siteName + (locals.siteTagline ? ' · ' + locals.siteTagline : '')) %>">
   <meta property="og:description" content="<%= locals.siteDescription %>">
   <meta property="og:url" content="<%= locals.canonicalUrl || 'https://manyscale.org' %>">
-  <meta property="og:image" content="<%= (locals.siteOrigin || 'https://manyscale.org') + '/assets/img/manyscale_meta.jpg' %>">
+  <meta property="og:image" content="<%= (locals.siteOrigin || 'https://manyscale.org') + (locals.metaImagePath || '/assets/img/manyscale_meta.jpg') %>">
   <meta property="og:image:alt" content="<%= locals.siteName || 'ManyScale' %>">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="<%= locals.title || (locals.siteName + (locals.siteTagline ? ' · ' + locals.siteTagline : '')) %>">
   <meta name="twitter:description" content="<%= locals.siteDescription %>">
-  <meta name="twitter:image" content="<%= (locals.siteOrigin || 'https://manyscale.org') + '/assets/img/manyscale_meta.jpg' %>">
+  <meta name="twitter:image" content="<%= (locals.siteOrigin || 'https://manyscale.org') + (locals.metaImagePath || '/assets/img/manyscale_meta.jpg') %>">
 
   <!-- Favicons -->
   <link href="/assets/img/favicon.png" rel="icon">

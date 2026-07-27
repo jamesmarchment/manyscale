@@ -1,6 +1,7 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
+import multer from "multer";
 import { requireArchitectAdmin } from "../middleware.js";
 import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
@@ -8,6 +9,33 @@ import { tenantCaches, lastRefreshTimes, resolveTableIDs, runFullRefresh, scaffo
 import { transporter } from "../lib/email.js";
 
 const router = Router();
+
+// Branding uploads (logo / social preview image) — saves to public/{tenant-slug}/branding/.
+// Filename is fixed per kind (logo.<ext> / meta.<ext>), not derived from the original
+// upload's name, since this is a single canonical current image per kind, not a growing
+// gallery — any existing file for that kind is removed first so a re-upload with a
+// different extension doesn't leave a stale orphan behind.
+function brandingStorage(kind) {
+  return multer.diskStorage({
+    destination: (req, file, cb) => {
+      const dir = path.join(PROJECT_ROOT, "public", req.params.slug, "branding");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.readdirSync(dir)
+        .filter(f => f.startsWith(`${kind}.`))
+        .forEach(f => fs.unlinkSync(path.join(dir, f)));
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+      cb(null, `${kind}${ext}`);
+    },
+  });
+}
+const brandingFileFilter = (req, file, cb) => {
+  cb(null, /\.(jpe?g|png|webp|gif)$/i.test(file.originalname));
+};
+const logoUpload = multer({ storage: brandingStorage("logo"), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: brandingFileFilter });
+const metaImageUpload = multer({ storage: brandingStorage("meta"), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: brandingFileFilter });
 
 router.get("/architect/login", (req, res) => {
   if (req.session?.architectLoggedIn) return res.redirect("/architect");
@@ -226,6 +254,73 @@ router.post("/architect/tenants/:slug/toggle-active", requireArchitectAdmin, (re
   fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
   req.session.architectFlash = { type: "ok", msg: `Tenant "${tenant.name}" ${tenant.active ? "activated" : "deactivated"}.` };
   res.redirect("/architect");
+});
+
+router.get("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, res) => {
+  const { slug } = req.params;
+  const tenant = _tenantsList.find(t => t.slug === slug);
+  if (!tenant) {
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
+  }
+  let content = {};
+  try {
+    content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${slug}.json`), "utf8"));
+  } catch {
+    // No content file yet — defaults below cover it.
+  }
+  const flash = req.session.architectFlash || null;
+  delete req.session.architectFlash;
+  res.render("architect/tenant-branding", {
+    tenant,
+    logoUrl: content.logoUrl || "",
+    metaImageUrl: content.metaImageUrl || "",
+    logoColor: content.logoColor || "",
+    flash,
+  });
+});
+
+router.post("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, res) => {
+  const { slug } = req.params;
+  const tenant = _tenantsList.find(t => t.slug === slug);
+  if (!tenant) {
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
+  }
+  const { logoUrl, metaImageUrl } = req.body;
+  const contentFile = path.join(PROJECT_ROOT, "data", `${slug}.json`);
+  try {
+    let content = {};
+    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
+    content.logoUrl = (logoUrl || "").trim();
+    content.metaImageUrl = (metaImageUrl || "").trim();
+    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
+    req.session.architectFlash = { type: "ok", msg: "Branding saved." };
+  } catch (err) {
+    console.error(`[${slug}] Architect branding save error:`, err);
+    req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect(`/architect/tenants/${slug}/branding`);
+});
+
+router.post("/architect/tenants/:slug/branding/upload-logo", requireArchitectAdmin, (req, res) => {
+  const tenant = _tenantsList.find(t => t.slug === req.params.slug);
+  if (!tenant) return res.status(404).json({ error: "Unknown tenant." });
+  logoUpload.single("image")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || "Upload failed." });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded or unsupported type." });
+    res.json({ path: `/${req.params.slug}/branding/${req.file.filename}` });
+  });
+});
+
+router.post("/architect/tenants/:slug/branding/upload-meta-image", requireArchitectAdmin, (req, res) => {
+  const tenant = _tenantsList.find(t => t.slug === req.params.slug);
+  if (!tenant) return res.status(404).json({ error: "Unknown tenant." });
+  metaImageUpload.single("image")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || "Upload failed." });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded or unsupported type." });
+    res.json({ path: `/${req.params.slug}/branding/${req.file.filename}` });
+  });
 });
 
 router.post("/architect/tenants/:slug/delete", requireArchitectAdmin, (req, res) => {

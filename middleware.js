@@ -31,11 +31,14 @@ export function tenantLocalsMiddleware(req, res, next) {
     res.locals.siteTagline     = meta.tagline     || "";
     res.locals.siteDescription = meta.description || "";
     res.locals.logoColor       = content.logoColor || "";
+    res.locals.logoUrl         = content.logoUrl || "";
+    res.locals.metaImagePath   = content.metaImageUrl || "/assets/img/manyscale_meta.jpg";
     res.locals.bubbleChartColors = content.bubbleChartColors || COLOR_PRESETS.bubbleChart.default;
     res.locals.cardGradients     = content.cardGradients     || COLOR_PRESETS.cardGradients.default;
     res.locals.tagColors         = content.tagColors         || COLOR_PRESETS.tagColors.default;
     res.locals.tagColorsPreset   = content.tagColorsPreset   || "default";
   } catch {
+    res.locals.metaImagePath = "/assets/img/manyscale_meta.jpg";
     res.locals.bubbleChartColors = COLOR_PRESETS.bubbleChart.default;
     res.locals.cardGradients     = COLOR_PRESETS.cardGradients.default;
     res.locals.tagColors         = COLOR_PRESETS.tagColors.default;

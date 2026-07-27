@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Branding — <%= tenant.name %> — Architect Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
+    header h1 { font-size: 1.2rem; margin: 0; }
+    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    tr + tr td, tr + tr th { border-top: 1px solid #f1f1f1; }
+    th, td { padding: .55rem .85rem; text-align: left; font-size: .9rem; vertical-align: top; }
+    th { width: 32%; color: #52525b; font-weight: 500; }
+    .hint { font-size: .78rem; color: #71717a; margin-top: .25rem; }
+    .actions { padding: .75rem .85rem; background: #fafafa; border-top: 1px solid #f1f1f1; display: flex; align-items: center; gap: .75rem; }
+    .btn { padding: .4rem .9rem; background: #18181b; color: #fff; border: none; border-radius: 4px; font-size: .85rem; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn:hover { background: #3f3f46; }
+    .btn-ghost { background: transparent; color: #52525b; border: 1px solid #d4d4d8; }
+    .btn-ghost:hover { background: #f4f4f5; }
+    .flash { border-radius: 4px; padding: .55rem .85rem; font-size: .875rem; margin-bottom: 1rem; }
+    .flash.ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .photo-row { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .photo-thumb { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 1px solid #e4e4e7; flex-shrink: 0; background: #fff; }
+    .photo-meta { display: flex; flex-direction: column; gap: .3rem; }
+    .photo-name-display { font-size: .78rem; color: #52525b; font-family: monospace; }
+    .photo-msg { font-size: .78rem; margin-top: .15rem; }
+    .reset-link { font-size: .78rem; color: #71717a; background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <header>
+      <h1>Branding — <%= tenant.name %></h1>
+      <a href="/architect" class="btn btn-ghost">Back to dashboard</a>
+    </header>
+
+    <% if (locals.flash) { %>
+      <div class="flash <%= flash.type %>"><%= flash.msg %></div>
+    <% } %>
+
+    <div class="card">
+      <form method="POST" action="/architect/tenants/<%= tenant.slug %>/branding">
+        <table>
+          <tr>
+            <th>Logo</th>
+            <td>
+              <div class="photo-row">
+                <img class="photo-thumb" id="logo-thumb" <% if (logoUrl) { %>src="<%= logoUrl %>"<% } %> alt="" style="<%= logoUrl ? '' : 'display:none' %>">
+                <svg id="logo-thumb-default" width="52" height="52" viewBox="0 0 47.1 50.8" style="border:1px solid #e4e4e7;border-radius:50%;padding:8px;flex-shrink:0;<%= logoUrl ? 'display:none' : '' %>" fill="<%= logoColor || '#18181b' %>">
+                  <path d="M25.5,50.8c-1.9,0-3.8-0.5-5.4-1.4c-1.7-1-3.1-2.3-4-3.9c-1-1.7-1.5-3.5-1.5-5.4c0-0.8,0.1-1.6,0.3-2.4c0.1-0.6-0.1-1.2-0.7-1.5C14,36.1,13.8,36,13.6,36c-0.4,0-0.7,0.1-1,0.4c-0.1,0.1-0.2,0.2-0.3,0.3C11,38,9.2,38.8,7.2,38.8s-3.9-0.7-5.2-2c-1.3-1.3-2-3.1-2-5.2c0-2.1,0.7-3.9,2-5.2s3.1-1.9,5.2-1.9c1.4,0,2.7,0.4,3.8,1c0.2,0.1,0.5,0.2,0.7,0.2c0.3,0,0.6-0.1,0.8-0.3c0.4-0.3,0.6-0.9,0.5-1.4c-0.2-0.7-0.3-1.4-0.3-2.2c0-1.5,0.5-2.9,1.4-4.2c0.3-0.5,0.3-1.1,0-1.5s-0.7-0.6-1.1-0.6c-0.1,0-0.2,0-0.4,0.1c-0.6,0.2-1.3,0.3-2,0.3c-2.1,0-3.9-0.7-5.2-1.9c-1.3-1.3-1.9-3.1-1.9-5.2c0-2,0.7-3.8,2.1-5.1c1.3-1.3,3.1-2,5.1-2s3.7,0.7,5,2c0.6,0.6,1.1,1.2,1.4,2c0.2,0.4,0.7,0.7,1.2,0.7h0.1c0.5-0.1,1-0.4,1.1-1c0.3-1.2,1-2.3,1.9-3.2C22.8,0.8,24.6,0,26.5,0s3.7,0.8,5.1,2.2c1.5,1.5,2.3,3.3,2.3,5.1c0,1.2-0.4,2.4-1.1,3.6c-0.3,0.5-0.3,1.1,0.1,1.6c0.3,0.3,0.6,0.5,1,0.5c0.2,0,0.3,0,0.5-0.1c1.1-0.4,2.2-0.6,3.3-0.6c2.9,0,5.2,1.7,6.6,3c1.8,1.8,2.8,4.1,2.8,6.6c0,2.6-1,5-2.7,6.7s-4.1,2.7-6.7,2.7c-0.9,0-1.9-0.1-2.7-0.4c-0.1,0-0.2-0.1-0.4-0.1c-0.4,0-0.9,0.2-1.1,0.6c-0.3,0.5-0.3,1.1,0.1,1.6s0.8,1,1.1,1.6c0.9,1.6,1.4,3.4,1.4,5.4c0,2.3-0.4,4.1-1.2,5.5c-0.8,1.4-2.2,2.6-4.1,3.8C29.1,50.3,27.3,50.8,25.5,50.8z"/>
+                </svg>
+                <div class="photo-meta">
+                  <input type="hidden" name="logoUrl" id="logo-url-val" value="<%= logoUrl %>">
+                  <label class="btn btn-ghost" style="padding:.3rem .7rem;font-size:.82rem;cursor:pointer;margin:0">
+                    Choose Image
+                    <input type="file" id="logo-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+                  </label>
+                  <span class="photo-name-display" id="logo-name-display"><%= logoUrl || 'Using default ManyScale mark' %></span>
+                  <button type="button" class="reset-link" id="logo-reset" style="<%= logoUrl ? '' : 'display:none' %>">Reset to default</button>
+                  <span class="photo-msg" id="logo-msg" style="display:none"></span>
+                </div>
+              </div>
+              <p class="hint">Replaces the nav bar logo mark entirely. Falls back to the default recolorable ManyScale mark when unset.</p>
+            </td>
+          </tr>
+          <tr>
+            <th>Social preview image</th>
+            <td>
+              <div class="photo-row">
+                <img class="photo-thumb" id="meta-thumb" src="<%= metaImageUrl || '/assets/img/manyscale_meta.jpg' %>" alt="">
+                <div class="photo-meta">
+                  <input type="hidden" name="metaImageUrl" id="meta-url-val" value="<%= metaImageUrl %>">
+                  <label class="btn btn-ghost" style="padding:.3rem .7rem;font-size:.82rem;cursor:pointer;margin:0">
+                    Choose Image
+                    <input type="file" id="meta-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+                  </label>
+                  <span class="photo-name-display" id="meta-name-display"><%= metaImageUrl || 'Using default ManyScale image' %></span>
+                  <button type="button" class="reset-link" id="meta-reset" style="<%= metaImageUrl ? '' : 'display:none' %>">Reset to default</button>
+                  <span class="photo-msg" id="meta-msg" style="display:none"></span>
+                </div>
+              </div>
+              <p class="hint">Used for both the <code>og:image</code> and <code>twitter:image</code> tags — the preview shown when this site is shared on Slack, Twitter/X, Facebook, etc.</p>
+            </td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Save Branding</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+<script>
+(function () {
+  function handleUpload(fileInput, uploadUrl, thumbId, nameId, msgId, hiddenId, resetId) {
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const msgEl = document.getElementById(msgId);
+      const thumbEl = document.getElementById(thumbId);
+      const nameEl = document.getElementById(nameId);
+      const hiddenEl = document.getElementById(hiddenId);
+
+      msgEl.style.color = '#52525b';
+      msgEl.textContent = 'Uploading…';
+      msgEl.style.display = 'block';
+
+      const fd = new FormData();
+      fd.append('image', file);
+
+      fetch(uploadUrl, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            msgEl.style.color = '#b91c1c';
+            msgEl.textContent = data.error;
+            return;
+          }
+          hiddenEl.value = data.path;
+          nameEl.textContent = data.path;
+          thumbEl.src = data.path;
+          thumbEl.style.display = '';
+          const defaultEl = document.getElementById(thumbId + '-default');
+          if (defaultEl) defaultEl.style.display = 'none';
+          document.getElementById(resetId).style.display = '';
+          msgEl.style.color = '#15803d';
+          msgEl.textContent = 'Uploaded.';
+          setTimeout(() => { msgEl.style.display = 'none'; }, 2500);
+        })
+        .catch(err => {
+          msgEl.style.color = '#b91c1c';
+          msgEl.textContent = 'Upload failed: ' + err.message;
+        });
+    });
+  }
+
+  // For the logo, the "default" is an inline SVG sibling element (no plain image file
+  // backs it), so resetting hides the <img> and reveals that sibling. For the meta
+  // image, the default IS a real image file, so resetting just points the same <img>
+  // back at it — defaultSrc distinguishes the two cases.
+  function handleReset(resetId, hiddenId, nameId, thumbId, defaultLabel, defaultSrc) {
+    const btn = document.getElementById(resetId);
+    btn.addEventListener('click', () => {
+      document.getElementById(hiddenId).value = '';
+      document.getElementById(nameId).textContent = defaultLabel;
+      const thumbEl = document.getElementById(thumbId);
+      if (defaultSrc) {
+        thumbEl.src = defaultSrc;
+      } else {
+        thumbEl.style.display = 'none';
+        const defaultEl = document.getElementById(thumbId + '-default');
+        if (defaultEl) defaultEl.style.display = '';
+      }
+      btn.style.display = 'none';
+    });
+  }
+
+  handleUpload(document.getElementById('logo-file'), '<%= "/architect/tenants/" + tenant.slug + "/branding/upload-logo" %>', 'logo-thumb', 'logo-name-display', 'logo-msg', 'logo-url-val', 'logo-reset');
+  handleUpload(document.getElementById('meta-file'), '<%= "/architect/tenants/" + tenant.slug + "/branding/upload-meta-image" %>', 'meta-thumb', 'meta-name-display', 'meta-msg', 'meta-url-val', 'meta-reset');
+  handleReset('logo-reset', 'logo-url-val', 'logo-name-display', 'logo-thumb', 'Using default ManyScale mark');
+  handleReset('meta-reset', 'meta-url-val', 'meta-name-display', 'meta-thumb', 'Using default ManyScale image', '/assets/img/manyscale_meta.jpg');
+})();
+</script>
+
+</body>
+</html>
