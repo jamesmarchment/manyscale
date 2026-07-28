@@ -34,8 +34,24 @@ function brandingStorage(kind) {
 const brandingFileFilter = (req, file, cb) => {
   cb(null, /\.(jpe?g|png|webp|gif)$/i.test(file.originalname));
 };
-const logoUpload = multer({ storage: brandingStorage("logo"), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: brandingFileFilter });
+// Logos may also be SVG (vector logos are the common case) — social preview images stay
+// raster-only since Facebook/Twitter/Slack link-unfurlers don't render SVG.
+const logoFileFilter = (req, file, cb) => {
+  cb(null, /\.(jpe?g|png|webp|gif|svg)$/i.test(file.originalname));
+};
+const logoUpload = multer({ storage: brandingStorage("logo"), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: logoFileFilter });
 const metaImageUpload = multer({ storage: brandingStorage("meta"), limits: { fileSize: 5 * 1024 * 1024 }, fileFilter: brandingFileFilter });
+
+// Strips the parts of an uploaded SVG that could execute script if the file were ever
+// opened directly as a top-level document (uploads embedded via <img src> never execute
+// scripts regardless, but this is served from the same origin as the tenant site, so a
+// direct visit to the file's URL should still be safe even for a maliciously crafted SVG).
+function sanitizeSvg(svg) {
+  return svg
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/(xlink:href|href)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '$1=""');
+}
 
 router.get("/architect/login", (req, res) => {
   if (req.session?.architectLoggedIn) return res.redirect("/architect");
@@ -309,6 +325,15 @@ router.post("/architect/tenants/:slug/branding/upload-logo", requireArchitectAdm
   logoUpload.single("image")(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message || "Upload failed." });
     if (!req.file) return res.status(400).json({ error: "No file uploaded or unsupported type." });
+    if (path.extname(req.file.filename).toLowerCase() === ".svg") {
+      try {
+        const raw = fs.readFileSync(req.file.path, "utf8");
+        fs.writeFileSync(req.file.path, sanitizeSvg(raw), "utf8");
+      } catch (err) {
+        console.error(`[${req.params.slug}] SVG sanitization error:`, err);
+        return res.status(400).json({ error: "Could not process SVG file." });
+      }
+    }
     res.json({ path: `/${req.params.slug}/branding/${req.file.filename}` });
   });
 });

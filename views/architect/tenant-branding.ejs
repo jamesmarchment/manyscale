@@ -59,7 +59,7 @@
                   <input type="hidden" name="logoUrl" id="logo-url-val" value="<%= logoUrl %>">
                   <label class="btn btn-ghost" style="padding:.3rem .7rem;font-size:.82rem;cursor:pointer;margin:0">
                     Choose Image
-                    <input type="file" id="logo-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+                    <input type="file" id="logo-file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml" style="display:none">
                   </label>
                   <span class="photo-name-display" id="logo-name-display"><%= logoUrl || 'Using default ManyScale mark' %></span>
                   <button type="button" class="reset-link" id="logo-reset" style="<%= logoUrl ? '' : 'display:none' %>">Reset to default</button>
