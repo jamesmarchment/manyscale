@@ -7,6 +7,7 @@
     "contact_recipient": "you@example.com",
     "adminPasswordHash": "run `npm run hash-password` and paste the output here",
     "primaryTenant": true,
+    "externalUrl": "https://example.com (optional — set from the Architect Admin panel; makes the network landing page's repo card link out here instead of /your-slug)",
     "secondaryPatEnvVar": "YOUR_SECONDARY_PAT_ENV_VAR",
     "secondaryBaseId": "secondaryAirtableBaseId"
   }

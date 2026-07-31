@@ -4,8 +4,8 @@ import path from "path";
 import multer from "multer";
 import { requireAdmin } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
-import { TENANTS_FILE, PROJECT_ROOT, updateEnvVar } from "../config.js";
-import { verifyPassword } from "../lib/auth.js";
+import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar } from "../config.js";
+import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { COLOR_PRESETS } from "../lib/colorPresets.js";
 
 // Normalizes a bracket-indexed form field (parsed by express.urlencoded as either an
@@ -126,8 +126,37 @@ router.post("/admin/config", requireAdmin, (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
+router.post("/admin/password", requireAdmin, (req, res) => {
+  const { current_password, new_password, confirm_password } = req.body;
+  const tenant = req.tenant;
+  if (!verifyPassword(current_password || "", tenant.adminPasswordHash || "")) {
+    req.session.flash = { type: "err", msg: "Current password is incorrect." };
+    return res.redirect(res.locals.basePath + "/admin");
+  }
+  if (!new_password || new_password.length < 8) {
+    req.session.flash = { type: "err", msg: "New password must be at least 8 characters." };
+    return res.redirect(res.locals.basePath + "/admin");
+  }
+  if (new_password !== confirm_password) {
+    req.session.flash = { type: "err", msg: "New password and confirmation don't match." };
+    return res.redirect(res.locals.basePath + "/admin");
+  }
+  try {
+    // tenant is the same object reference held in _tenantsList (see resolveTenant in
+    // middleware.js), so this mutation is visible to every request immediately —
+    // no server restart needed, unlike the PAT/Base ID fields below.
+    tenant.adminPasswordHash = hashPassword(new_password);
+    fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+    req.session.flash = { type: "ok", msg: "Password changed." };
+  } catch (err) {
+    console.error("Admin password change error:", err);
+    req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect(res.locals.basePath + "/admin");
+});
+
 router.post("/admin/content", requireAdmin, (req, res) => {
-  const { hero_heading, hero_subheading, meta_tagline, meta_description, submit_form_url, logo_color } = req.body;
+  const { hero_heading, hero_subheading, meta_tagline, meta_description, landing_tagline, submit_form_url, logo_color } = req.body;
   const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
     let content = {};
@@ -138,6 +167,7 @@ router.post("/admin/content", requireAdmin, (req, res) => {
     if (hero_subheading   !== undefined) content.hero.subheading  = hero_subheading;
     if (meta_tagline      !== undefined) content.meta.tagline     = meta_tagline;
     if (meta_description  !== undefined) content.meta.description = meta_description;
+    if (landing_tagline   !== undefined) content.landingTagline   = landing_tagline;
     if (submit_form_url   !== undefined) content.submitFormUrl    = submit_form_url;
     if (logo_color        !== undefined && /^#[0-9a-f]{6}$/i.test(logo_color)) content.logoColor = logo_color;
     fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");

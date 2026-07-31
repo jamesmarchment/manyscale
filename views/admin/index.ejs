@@ -114,7 +114,17 @@
           </tr>
           <tr>
             <th><label for="meta-desc">Meta description</label></th>
-            <td><input type="text" id="meta-desc" name="meta_description" value="<%= locals.siteDescription || '' %>"></td>
+            <td>
+              <input type="text" id="meta-desc" name="meta_description" value="<%= locals.siteDescription || '' %>">
+              <p class="hint">Used for search engines and social-share previews (og:description). Not shown on the network landing page — see "Landing page tagline" below.</p>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="landing-tagline">Landing page tagline</label></th>
+            <td>
+              <input type="text" id="landing-tagline" name="landing_tagline" value="<%= locals.landingTagline || '' %>">
+              <p class="hint">Shown under <%= tenant.name %>'s card in the "Repositories" list on the main ManyScale network page. Separate from the meta description above — write it for a person browsing the list, not a search engine.</p>
+            </td>
           </tr>
           <tr>
             <th><label for="submit-form-url">Submit form URL</label></th>
@@ -564,6 +574,30 @@
       renderSingleColorSection('tag', 'tagColors', true, document.getElementById('tag-swatches'));
     })();
     </script>
+
+    <h2>Password</h2>
+    <div class="card">
+      <form method="POST" action="<%= basePath %>/admin/password">
+        <table>
+          <tr>
+            <th><label for="pw-current">Current password</label></th>
+            <td><input type="password" id="pw-current" name="current_password" autocomplete="current-password" required></td>
+          </tr>
+          <tr>
+            <th><label for="pw-new">New password</label></th>
+            <td><input type="password" id="pw-new" name="new_password" autocomplete="new-password" minlength="8" required></td>
+          </tr>
+          <tr>
+            <th><label for="pw-confirm">Confirm new password</label></th>
+            <td><input type="password" id="pw-confirm" name="confirm_password" autocomplete="new-password" minlength="8" required></td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Change Password</button>
+          <span class="muted">Takes effect immediately — no restart needed.</span>
+        </div>
+      </form>
+    </div>
 
     <h2>Configuration</h2>
     <div class="card">

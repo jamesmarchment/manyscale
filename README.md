@@ -64,6 +64,7 @@ cp tenants_example.json tenants.json
 - `baseId` — the Airtable base ID (starts with `app`)
 - `contact_recipient` — where contact form and measure suggestion emails are delivered
 - `primaryTenant` *(optional)* — set to `true` on the tenant that should be treated as primary (served in single-tenant mode, refreshed on the startup/6-hour cycle). If no tenant has this set, the first entry in the list is used.
+- `externalUrl` *(optional)* — for a tenant that's actually hosted on its own server (e.g. RelaScale) but kept here as a live tenant so it's included in cross-tenant search. The network landing page's repository card links here instead of `/{slug}`; `/{slug}` itself keeps working. Set from Architect Admin rather than editing this file directly.
 
 ### 4. Set up Airtable
 
@@ -179,6 +180,7 @@ From the dashboard you can:
 - See every tenant's record count, last refresh time, and active/inactive status
 - Onboard a new tenant — name, slug, contact email, Airtable base ID + PAT, and an admin password — with an option to scaffold the Measures/Translations/Contributors tables automatically in a fresh base
 - Refresh a tenant's cache, deactivate/reactivate it, or delete it (deleting only removes the `tenants.json` entry; its cache and data files on disk are preserved)
+- Set or clear a tenant's external link — for a tenant actually hosted on its own server, points the landing page's repository card at that URL instead of `/{slug}`, while `/{slug}` keeps working so the tenant still participates in cross-tenant search
 - Edit platform-wide email settings (SMTP host/port/TLS, and the network contact email the "Request a Repo" form delivers to) used for contact-form, suggestion, and tenant-onboarding mail across every tenant
 - Edit platform-wide analytics settings (Plausible domain and script URL) used across every tenant
 
@@ -191,7 +193,7 @@ Provisioning a tenant primes its cache and, if requested, scaffolds its Airtable
 In multi-tenant mode, `GET /` no longer just lists tenants — it's a network-wide hub, served by `routes/landing.js` + `views/landing.ejs`:
 
 - A search bar that queries every active tenant's cache at once (`GET /search`, `lib/network.js`'s `searchNetwork()`), with autocomplete (`GET /search/suggestions`) merged and deduped across tenants
-- A card for each active repository (name, accent color, description from that tenant's `data/{slug}.json` `meta.description`, and measure count) linking to `/{slug}`
+- A card for each active repository (name, accent color, tagline from that tenant's `data/{slug}.json` `landingTagline` — falling back to `meta.description` if unset — and measure count) linking to `/{slug}`, or to the tenant's `externalUrl` (set in `tenants.json` via Architect Admin) if it's hosted on its own server
 - A list of every language with at least one translation somewhere in the network, each linking to `/search?lang=`
 - A "Request a Repo" contact form (`POST /request-repo`), for visitors asking about or suggesting a new repository — delivered to `NETWORK_CONTACT_EMAIL`, not to any one tenant's `contact_recipient`
 

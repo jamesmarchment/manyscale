@@ -30,6 +30,7 @@ export function tenantLocalsMiddleware(req, res, next) {
     const meta = content.meta || {};
     res.locals.siteTagline     = meta.tagline     || "";
     res.locals.siteDescription = meta.description || "";
+    res.locals.landingTagline  = content.landingTagline || "";
     res.locals.logoColor       = content.logoColor || "";
     res.locals.logoUrl         = content.logoUrl || "";
     res.locals.metaImagePath   = content.metaImageUrl || "/assets/img/manyscale_meta.jpg";

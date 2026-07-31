@@ -1333,9 +1333,25 @@ ol.bracket-list > li::before {
 /* ── Network landing page ────────────────────────────────────────────────── */
 .landing-nav .navbar-nav .nav-link { font-weight: 500; }
 
+/* Nav mark stays hidden until scrolled — .navbar-shrink is already toggled globally by
+   scripts.js's navbarShrink() based on scroll position; width animates alongside opacity
+   so the "ManyScale" text doesn't jump sideways when the mark fades in. */
+.landing-nav .navbar-brand .nav-icon-mark {
+  height: 26px; width: 0; margin-right: 0; opacity: 0; overflow: hidden;
+  transition: opacity 0.3s ease, width 0.3s ease, margin-right 0.3s ease;
+  vertical-align: middle;
+}
+.landing-nav.navbar-shrink .navbar-brand .nav-icon-mark {
+  width: 26px; margin-right: 0.5rem; opacity: 1;
+}
+
 .landing-hero { text-align: center; padding: 2.5rem 0 1rem; }
-.landing-hero .landing-logo { height: 56px; margin-bottom: 1rem; }
+.landing-hero .landing-logo { width: 100%; max-width: 420px; height: auto; margin-bottom: 1rem; }
 .landing-hero .search-container { max-width: 560px; margin: 1.75rem auto 0; }
+
+@media (max-width: 576px) {
+  .landing-hero .landing-logo { max-width: 280px; }
+}
 
 .repo-grid {
   display: flex;

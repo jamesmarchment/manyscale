@@ -128,6 +128,30 @@ router.post("/architect/settings/analytics", requireArchitectAdmin, (req, res) =
   res.redirect("/architect");
 });
 
+router.post("/architect/settings/password", requireArchitectAdmin, (req, res) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+  if (!ARCHITECT_ADMIN_PASSWORD_HASH || !verifyPassword(currentPassword || "", ARCHITECT_ADMIN_PASSWORD_HASH)) {
+    req.session.architectFlash = { type: "err", msg: "Current password is incorrect." };
+    return res.redirect("/architect");
+  }
+  if (!newPassword || newPassword.length < 8) {
+    req.session.architectFlash = { type: "err", msg: "New password must be at least 8 characters." };
+    return res.redirect("/architect");
+  }
+  if (newPassword !== confirmPassword) {
+    req.session.architectFlash = { type: "err", msg: "New password and confirmation don't match." };
+    return res.redirect("/architect");
+  }
+  try {
+    updateEnvVar("ARCHITECT_ADMIN_PASSWORD_HASH", hashPassword(newPassword));
+    req.session.architectFlash = { type: "ok", msg: "Architect password changed. Restart the server to apply — until then, the old password remains active." };
+  } catch (err) {
+    console.error("Architect password change error:", err);
+    req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect("/architect");
+});
+
 router.get("/architect/tenants/new", requireArchitectAdmin, (req, res) => {
   res.render("architect/tenant-form", { errors: null, values: {} });
 });
@@ -255,6 +279,51 @@ router.post("/architect/tenants/:slug/refresh-cache", requireArchitectAdmin, asy
     console.error(`[${slug}] Architect cache refresh error:`, err);
     req.session.architectFlash = { type: "err", msg: `Cache refresh failed for "${tenant.name}": ${err.message}` };
   }
+  res.redirect("/architect");
+});
+
+router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, (req, res) => {
+  const { slug } = req.params;
+  const { newPassword } = req.body;
+  const tenant = _tenantsList.find(t => t.slug === slug);
+  if (!tenant) {
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
+  }
+  if (!newPassword || newPassword.length < 8) {
+    req.session.architectFlash = { type: "err", msg: "New password must be at least 8 characters." };
+    return res.redirect("/architect");
+  }
+  // No current-password check here — this is the recovery path for a forgotten or
+  // never-configured tenant admin password, which the self-service form on /admin
+  // (routes/admin.js) can't handle since it requires knowing the current one.
+  tenant.adminPasswordHash = hashPassword(newPassword);
+  fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+  req.session.architectFlash = { type: "ok", msg: `Password reset for "${tenant.name}".` };
+  res.redirect("/architect");
+});
+
+router.post("/architect/tenants/:slug/link", requireArchitectAdmin, (req, res) => {
+  const { slug } = req.params;
+  const { externalUrl } = req.body;
+  const tenant = _tenantsList.find(t => t.slug === slug);
+  if (!tenant) {
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
+  }
+  const trimmed = (externalUrl || "").trim();
+  if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+    req.session.architectFlash = { type: "err", msg: "External URL must start with http:// or https://." };
+    return res.redirect("/architect");
+  }
+  // Used by the network landing page's repository card to link out to a tenant hosted
+  // on its own server (e.g. RelaScale) instead of this deployment's /{slug} route — the
+  // /{slug} route stays live either way so the tenant still participates in cross-tenant
+  // search.
+  if (trimmed) tenant.externalUrl = trimmed;
+  else delete tenant.externalUrl;
+  fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+  req.session.architectFlash = { type: "ok", msg: trimmed ? `External link set for "${tenant.name}".` : `External link cleared for "${tenant.name}".` };
   res.redirect("/architect");
 });
 
