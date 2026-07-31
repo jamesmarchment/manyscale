@@ -5,6 +5,7 @@ import multer from "multer";
 import { requireArchitectAdmin } from "../middleware.js";
 import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
+import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
 import { tenantCaches, lastRefreshTimes, resolveTableIDs, runFullRefresh, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
 
@@ -172,7 +173,6 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   if (trimmedSlug && !/^[a-z0-9-]+$/.test(trimmedSlug)) {
     errors.push("Slug can only contain lowercase letters, numbers, and hyphens.");
   }
-  const RESERVED_SLUGS = ["architect", "search", "request-repo"];
   if (RESERVED_SLUGS.includes(trimmedSlug)) {
     errors.push(`Slug "${trimmedSlug}" is reserved and can't be used for a tenant.`);
   }
