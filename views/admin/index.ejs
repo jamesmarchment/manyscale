@@ -182,7 +182,7 @@
       }
 
       function photoUrl(p) {
-        return p ? (p.startsWith('/') ? p : '/assets/img/person/' + p) : '';
+        return p ? (p.startsWith('/') ? p : '/assets/img/person/' + p) : '/assets/img/person/person-blank.webp';
       }
 
       function memberBlock(i, m) {
@@ -197,7 +197,7 @@
               <th>Photo</th>
               <td>
                 <div class="photo-row">
-                  <img class="photo-thumb" src="${photoSrc}" alt=""${m.photo ? '' : ' style="display:none"'}>
+                  <img class="photo-thumb" src="${photoSrc}" alt="">
                   <div class="photo-meta">
                     <input type="hidden" name="team[${i}][photo]" value="${esc(m.photo)}" class="photo-val">
                     <label class="btn btn-ghost" style="padding:.3rem .7rem;font-size:.82rem;cursor:pointer;margin:0">

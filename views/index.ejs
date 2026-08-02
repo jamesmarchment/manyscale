@@ -323,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <% (locals.team || []).forEach((member, i) => { %>
           <div class="row mb-2 mt-3" data-aos="fade-up" data-aos-delay="<%= 200 + i * 50 %>">
 <div class="col-md-1 text-md-right px-5 px-md-2 mb-4 mb-md-0"> 
-<img src="<%= member.photo?.startsWith('/') ? member.photo : 'assets/img/person/' + member.photo %>" alt="<%= member.name %>" class="img-fluid rounded-circle">
+<img src="<%= member.photo ? (member.photo.startsWith('/') ? member.photo : 'assets/img/person/' + member.photo) : 'assets/img/person/person-blank.webp' %>" alt="<%= member.name %>" class="img-fluid rounded-circle">
 </div>
 <div class="col-md-9 flex-valign">
 <h5 class="text-letter-spacing-xs mt-0 mb-1 text-dark font-weight-bold"><%= member.name %></h5>
