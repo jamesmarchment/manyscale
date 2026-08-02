@@ -24,14 +24,17 @@
     .btn-danger { background: transparent; color: #b91c1c; border: 1px solid #fecaca; }
     .btn-danger:hover { background: #fef2f2; }
     .btn-sm { padding: .25rem .6rem; font-size: .78rem; }
-    .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
-    .row-actions form { display: inline-flex; align-items: center; gap: .3rem; margin: 0; }
-    .row-actions input[type=text] { width: 7rem; padding: .25rem .4rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .78rem; font-family: monospace; }
-    .delete-toggle summary { list-style: none; width: 1.6rem; text-align: center; padding-left: 0; padding-right: 0; }
-    .delete-toggle summary::-webkit-details-marker { display: none; }
-    .delete-toggle summary::marker { content: ""; }
+    .actions-toggle[aria-expanded="true"] { background: #e4e4e7; }
+    .actions-row td { padding: 0; background: #fafafa; }
+    .actions-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem; padding: 1rem 1.25rem; }
+    .actions-panel form { display: inline-flex; align-items: center; gap: .4rem; margin: 0; }
+    .actions-panel input[type=text] { width: 9rem; padding: .3rem .5rem; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .8rem; font-family: monospace; }
+    .detail-toggle summary { list-style: none; }
+    .detail-toggle summary::-webkit-details-marker { display: none; }
+    .detail-toggle summary::marker { content: ""; }
+    .detail-toggle form { display: inline-flex; align-items: center; gap: .3rem; margin-top: .4rem; }
+    .delete-toggle summary { width: 1.6rem; text-align: center; }
     .delete-toggle[open] summary { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-    .delete-toggle form { display: inline-flex; align-items: center; gap: .3rem; margin-top: .4rem; }
     .flash { border-radius: 4px; padding: .55rem .85rem; font-size: .875rem; margin-bottom: 1rem; }
     .flash.ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
     .flash.err { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
@@ -92,14 +95,19 @@
                 <td><%= t.lastRefresh ? new Date(t.lastRefresh).toLocaleString() : "Never" %></td>
                 <td><span class="status <%= t.active ? 'active' : 'inactive' %>"><%= t.active ? "Active" : "Inactive" %></span></td>
                 <td>
-                  <div class="row-actions">
+                  <button type="button" class="btn btn-ghost btn-sm actions-toggle" aria-expanded="false" aria-controls="actions-<%= t.slug %>">Actions</button>
+                </td>
+              </tr>
+              <tr class="actions-row" id="actions-<%= t.slug %>" hidden>
+                <td colspan="8">
+                  <div class="actions-panel">
                     <% if (t.adminUrl) { %>
                       <a href="<%= t.adminUrl %>" class="btn btn-ghost btn-sm">Admin Panel</a>
                     <% } else { %>
                       <span class="muted" style="font-size:.78rem" title="Not reachable until MULTI_TENANT=true">Admin N/A</span>
                     <% } %>
                     <a href="/architect/tenants/<%= t.slug %>/branding" class="btn btn-ghost btn-sm">Branding</a>
-                    <details class="delete-toggle">
+                    <details class="detail-toggle">
                       <summary class="btn btn-ghost btn-sm" title="External link (landing page card)" aria-label="External link"><%= t.externalUrl ? "External ✓" : "Link" %></summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/link">
                         <input type="text" name="externalUrl" value="<%= t.externalUrl || '' %>" placeholder="https://example.com" style="width:12rem" aria-label="External URL">
@@ -112,14 +120,14 @@
                     <form method="POST" action="/architect/tenants/<%= t.slug %>/toggle-active">
                       <button type="submit" class="btn <%= t.active ? 'btn-danger' : 'btn-ghost' %> btn-sm"><%= t.active ? "Deactivate" : "Activate" %></button>
                     </form>
-                    <details class="delete-toggle">
+                    <details class="detail-toggle">
                       <summary class="btn btn-ghost btn-sm" title="Reset admin password" aria-label="Reset admin password">Reset PW</summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/reset-password" onsubmit="return confirm('Reset the admin password for &quot;<%= t.slug %>&quot;? The old password will stop working immediately.');">
                         <input type="password" name="newPassword" placeholder="new password" minlength="8" required aria-label="New admin password">
                         <button type="submit" class="btn btn-ghost btn-sm">Set</button>
                       </form>
                     </details>
-                    <details class="delete-toggle">
+                    <details class="detail-toggle delete-toggle">
                       <summary class="btn btn-ghost btn-sm" title="Delete tenant" aria-label="Delete tenant">&times;</summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">
                         <input type="text" name="confirmSlug" placeholder="type slug" aria-label="Type slug to confirm deletion">
@@ -208,11 +216,26 @@
         </table>
         <div class="actions">
           <button type="submit" class="btn">Change Password</button>
-          <span class="muted">Stored in <code>.env</code> — restart the server to apply.</span>
+          <span class="muted">Stored in <code>.env</code> — will only apply after server restart.</span>
         </div>
       </form>
     </div>
 
   </div>
+
+  <script>
+    document.querySelectorAll(".actions-toggle").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const row = document.getElementById(btn.getAttribute("aria-controls"));
+        const wasOpen = !row.hidden;
+        document.querySelectorAll(".actions-row").forEach(r => { r.hidden = true; });
+        document.querySelectorAll(".actions-toggle").forEach(b => b.setAttribute("aria-expanded", "false"));
+        if (!wasOpen) {
+          row.hidden = false;
+          btn.setAttribute("aria-expanded", "true");
+        }
+      });
+    });
+  </script>
 </body>
 </html>
