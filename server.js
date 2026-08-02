@@ -2,8 +2,8 @@
 /*
 
 ManyScale Server
-v0.1.0
-2026-07-02
+v0.1.2
+2026-08-02
 James Marchment and Samantha Joel
 
 */
