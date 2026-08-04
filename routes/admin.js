@@ -6,7 +6,7 @@ import { requireAdmin } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
-import { COLOR_PRESETS } from "../lib/colorPresets.js";
+import { COLOR_PRESETS, TAG_COLOR_RECIPES, DEFAULT_RECIPE_FOR_PRESET } from "../lib/colorPresets.js";
 
 // Normalizes a bracket-indexed form field (parsed by express.urlencoded as either an
 // array or, if indices have gaps, a plain object keyed by index) into an ordered array.
@@ -75,6 +75,7 @@ router.get("/admin", requireAdmin, (req, res) => {
   let bubbleChartColors = COLOR_PRESETS.bubbleChart.default;
   let cardGradients     = COLOR_PRESETS.cardGradients.default;
   let tagColors         = COLOR_PRESETS.tagColors.default;
+  let tagRecipe         = "pastel";
   try {
     const content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${tenant.slug}.json`), "utf8"));
     hero = content.hero || {};
@@ -85,7 +86,13 @@ router.get("/admin", requireAdmin, (req, res) => {
     tagColorsPreset     = content.tagColorsPreset     || "default";
     bubbleChartColors = content.bubbleChartColors || bubbleChartColors;
     cardGradients     = content.cardGradients     || cardGradients;
-    tagColors         = content.tagColors         || tagColors;
+    // A tenant saved before palettes shrank to 16 accents may still hold a 24-entry
+    // snapshot — self-heal by re-pulling the current preset's array (see middleware.js
+    // for the matching public-site fallback).
+    tagColors = (Array.isArray(content.tagColors) && content.tagColors.length === 16)
+      ? content.tagColors
+      : (COLOR_PRESETS.tagColors[tagColorsPreset] || tagColors);
+    tagRecipe = content.tagRecipe || DEFAULT_RECIPE_FOR_PRESET[tagColorsPreset] || "pastel";
   } catch {}
   const flash = req.session.flash || null;
   delete req.session.flash;
@@ -96,7 +103,7 @@ router.get("/admin", requireAdmin, (req, res) => {
     team,
     colorPresets: COLOR_PRESETS,
     bubbleChartPreset, cardGradientsPreset, tagColorsPreset,
-    bubbleChartColors, cardGradients, tagColors,
+    bubbleChartColors, cardGradients, tagColors, tagRecipe,
     recordCount: (tenantCaches.get(req.tenant.slug) || []).length,
     lastRefresh: lastRefreshTimes.get(req.tenant.slug) || null,
     flash,
@@ -180,7 +187,7 @@ router.post("/admin/content", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/colors", requireAdmin, (req, res) => {
-  const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors } = req.body;
+  const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors, tagRecipe } = req.body;
   const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
     let content = {};
@@ -199,9 +206,15 @@ router.post("/admin/colors", requireAdmin, (req, res) => {
     }
 
     const tagArr = toOrderedArray(tagColors);
-    if (tagArr.length === 24 && tagArr.every(isHex)) {
+    if (tagArr.length === 16 && tagArr.every(isHex)) {
       content.tagColors = tagArr.map(c => c.toLowerCase());
       content.tagColorsPreset = tagColorsPreset || "custom";
+    }
+
+    // Recipe/style is always one of the 4 fixed names (never "custom" — it has no
+    // per-palette variant to fall back to), independent of which palette was saved above.
+    if (Object.prototype.hasOwnProperty.call(TAG_COLOR_RECIPES, tagRecipe)) {
+      content.tagRecipe = tagRecipe;
     }
 
     fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");

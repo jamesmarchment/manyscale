@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import session from "express-session";
 import { primaryTenant, SESSION_SECRET, MULTI_TENANT, _tenantsList } from "./config.js";
-import { COLOR_PRESETS } from "./lib/colorPresets.js";
+import { COLOR_PRESETS, DEFAULT_RECIPE_FOR_PRESET } from "./lib/colorPresets.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,14 +36,23 @@ export function tenantLocalsMiddleware(req, res, next) {
     res.locals.metaImagePath   = content.metaImageUrl || "/assets/img/manyscale_meta.jpg";
     res.locals.bubbleChartColors = content.bubbleChartColors || COLOR_PRESETS.bubbleChart.default;
     res.locals.cardGradients     = content.cardGradients     || COLOR_PRESETS.cardGradients.default;
-    res.locals.tagColors         = content.tagColors         || COLOR_PRESETS.tagColors.default;
-    res.locals.tagColorsPreset   = content.tagColorsPreset   || "default";
+    const tagColorsPreset = content.tagColorsPreset || "default";
+    // A tenant saved before palettes shrank to 16 accents may still hold a 24-entry
+    // snapshot — self-heal by re-pulling the current preset's array instead of trusting
+    // a stale one (no tenant has ever hand-edited individual tagColors, only picked a
+    // named preset, so nothing is lost by re-deriving from the preset name).
+    res.locals.tagColors = (Array.isArray(content.tagColors) && content.tagColors.length === 16)
+      ? content.tagColors
+      : (COLOR_PRESETS.tagColors[tagColorsPreset] || COLOR_PRESETS.tagColors.default);
+    res.locals.tagColorsPreset = tagColorsPreset;
+    res.locals.tagRecipe = content.tagRecipe || DEFAULT_RECIPE_FOR_PRESET[tagColorsPreset] || "pastel";
   } catch {
     res.locals.metaImagePath = "/assets/img/manyscale_meta.jpg";
     res.locals.bubbleChartColors = COLOR_PRESETS.bubbleChart.default;
     res.locals.cardGradients     = COLOR_PRESETS.cardGradients.default;
     res.locals.tagColors         = COLOR_PRESETS.tagColors.default;
     res.locals.tagColorsPreset   = "default";
+    res.locals.tagRecipe         = "pastel";
   }
   next();
 }

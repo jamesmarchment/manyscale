@@ -56,47 +56,20 @@ async function loadData() {
 
 // =============================================================================
 // Construct Tag Colors
-// Maps construct names to consistent pastel pill colors using an FNV-1a hash,
-// so the same construct always gets the same color across all pages.
-// The palette is tenant-customizable (see the tenant admin panel's Colors section);
-// window.TENANT_COLORS.tagColors holds one accent hex per entry, and deriveTagShades()
-// expands each into a {bg, border, text} triple. Falls back to this hardcoded palette
-// if TENANT_COLORS is unavailable for any reason.
+// Maps construct names to consistent pill colors using an FNV-1a hash, so the same
+// construct always gets the same color across all pages.
+// The palette (which hues) and the recipe (which rendering style) are two independent
+// tenant choices — see the tenant admin panel's Colors section. window.TENANT_COLORS
+// .tagColors holds one accent hex per palette entry (16 today); .tagRecipe names one of
+// the 4 styles in TAG_COLOR_RECIPES. Each accent expands into 2 {bg,border,text} looks
+// (deriveTagShades' variant 0/1), so 16 accents produce 32 available tag colors. Falls
+// back to DEFAULT_TAG_ACCENTS/"pastel" if TENANT_COLORS is unavailable for any reason.
 // =============================================================================
 
-const DEFAULT_CONSTRUCT_COLORS = [
-  // blues & indigo
-  { bg: "#edf3f8", border: "#c2d6ec", text: "#265278" },  // sky
-  { bg: "#eef1f8", border: "#c2cef0", text: "#334888" },  // cornflower
-  { bg: "#f0eff8", border: "#cecce8", text: "#464298" },  // periwinkle
-  // purples & violet
-  { bg: "#f3eff8", border: "#d8ccec", text: "#5a3888" },  // lavender
-  { bg: "#f5eef8", border: "#dec4ee", text: "#683090" },  // lilac
-  { bg: "#f7eef5", border: "#e4c6e2", text: "#773060" },  // mauve
-  // pinks & rose
-  { bg: "#f8eef1", border: "#eac4d2", text: "#882e46" },  // dusty rose
-  { bg: "#faf0f3", border: "#efcdd8", text: "#882e52" },  // blush
-  { bg: "#f8eef4", border: "#e8cad6", text: "#7a3260" },  // rose
-  // reds & terracotta
-  { bg: "#f8f0ee", border: "#e8c4b8", text: "#7e3e2e" },  // terracotta
-  { bg: "#f7f0ed", border: "#e6c8bc", text: "#7c3e2e" },  // clay
-  { bg: "#f8f2ee", border: "#ead8c0", text: "#7a4828" },  // warm sand
-  // oranges & peach
-  { bg: "#fefae8", border: "#ddb59d", text: "#864c22" },  // peach
-  { bg: "#f9f1ea", border: "#ecd6b4", text: "#7e4c20" },  // apricot
-  { bg: "#faf3ed", border: "#eedac4", text: "#7c4a26" },  // melon
-  // yellows
-  { bg: "#faf7e8", border: "#ede3a4", text: "#725c16" },  // buttercup
-  { bg: "#faf5e0", border: "#edda96", text: "#785808" },  // amber
-  { bg: "#f8f6e4", border: "#ece4a0", text: "#706014" },  // straw
-  // greens
-  { bg: "#f0f7ee", border: "#c6dfc2", text: "#3a6236" },  // sage
-  { bg: "#eef7ec", border: "#c4e2c0", text: "#366432" },  // grass
-  { bg: "#e1f5f5", border: "#89b9b9", text: "#28645e" },  // mint
-  // teals & seafoam
-  { bg: "#def5f0", border: "#a0d5cb", text: "#28605e" },  // seafoam
-  { bg: "#eef6f4", border: "#bededa", text: "#2a6260" },  // eucalyptus
-  { bg: "#edf6f8", border: "#bcdee6", text: "#265e6e" },  // teal
+// Mirrors lib/colorPresets.js's COLOR_PRESETS.tagColors.default exactly.
+const DEFAULT_TAG_ACCENTS = [
+  "#6bb9d1", "#2260b1", "#9bd567", "#33a02c", "#e0635d", "#d52834", "#da593f", "#d66e29",
+  "#8d6dc4", "#842da8", "#d6cd29", "#b14f28", "#b18628", "#da973f", "#d6b429", "#e0985d",
 ];
 
 // HSL tint/shade derivation — mirrors lib/colorPresets.js's deriveTagShades() exactly.
@@ -124,6 +97,7 @@ function hexToHsl(hex) {
 }
 
 function hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
   h /= 360; s /= 100; l /= 100;
   let r, g, b;
   if (s === 0) {
@@ -147,29 +121,103 @@ function hslToHex(h, s, l) {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
-// Per-preset derivation targets — mirrors lib/colorPresets.js's TAG_COLOR_RECIPES exactly.
-// "custom" (and any unrecognized preset name) falls back to "default", since a custom
-// accent-only edit has no inherent theme of its own.
+// The 4 tag-button "recipes" — mirrors lib/colorPresets.js's TAG_COLOR_RECIPES exactly.
 const TAG_COLOR_RECIPES = {
-  default: { bgL: 95, bgSatCap: 35, borderL: 82, borderSatMin: 30, borderSatMax: 55, textL: 30, textSatMin: 35, textSatMax: 65 },
-  retro:   { bgL: 93, bgSatCap: 22, borderL: 78, borderSatMin: 18, borderSatMax: 38, textL: 34, textSatMin: 22, textSatMax: 42 },
-  dark:    { bgL: 22, bgSatCap: 45, borderL: 38, borderSatMin: 35, borderSatMax: 55, textL: 88, textSatMin: 12, textSatMax: 32 },
-  vibrant: { bgL: 90, bgSatCap: 60, borderL: 68, borderSatMin: 50, borderSatMax: 75, textL: 26, textSatMin: 55, textSatMax: 80 },
+  pastel: {
+    bgL: 95, bgSatCap: 35, borderL: 82, borderSatMin: 30, borderSatMax: 55,
+    textL: 30, textSatMin: 35, textSatMax: 65,
+    variant2: "hue", hueShift: 18,
+  },
+  dark: {
+    bgLCap: 48, bgSatCap: 60, borderL: 55, borderSatMin: 40, borderSatMax: 60,
+    textL: 92, textSatMin: 5, textSatMax: 20,
+    variant2: "lighten", lightenDelta: 12, bgLCap2: 64,
+  },
+  vibrant: {
+    bgL: 90, bgSatCap: 70, borderL: 66, borderSatMin: 50, borderSatMax: 75,
+    textL: 30, textSatMin: 50, textSatMax: 75,
+    variant2: "hue", hueShift: 18,
+  },
+  solid: {
+    bgLCap: 70, bgSatCap: 85,
+    borderDarkDelta: 32, borderLFloor: 6, borderSatMin: 75, borderSatMax: 90,
+    textMode: "autoTint",
+    textLightL: 85, textLightSatMin: 45, textLightSatMax: 65,
+    textDarkL: 25, textDarkSatMin: 55, textDarkSatMax: 80,
+    swapBorderAndDarkText: true,
+    variant2: "hue", hueShift: 18,
+  },
 };
 
-function deriveTagShades(hex, presetName = "default") {
-  const recipe = TAG_COLOR_RECIPES[presetName] || TAG_COLOR_RECIPES.default;
-  const [h, s] = hexToHsl(hex);
-  return {
-    bg:     hslToHex(h, Math.min(s, recipe.bgSatCap), recipe.bgL),
-    border: hslToHex(h, Math.min(Math.max(s, recipe.borderSatMin), recipe.borderSatMax), recipe.borderL),
-    text:   hslToHex(h, Math.min(Math.max(s, recipe.textSatMin), recipe.textSatMax), recipe.textL),
-  };
+function relLuminance(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const lin = c => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 }
 
-const CONSTRUCT_COLORS = (window.TENANT_COLORS?.tagColors?.length)
-  ? window.TENANT_COLORS.tagColors.map(hex => deriveTagShades(hex, window.TENANT_COLORS.tagColorsPreset))
-  : DEFAULT_CONSTRUCT_COLORS;
+function contrastRatio(l1, l2) {
+  const lighter = Math.max(l1, l2), darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function deriveTagShades(hex, recipeName = "pastel", variant = 0) {
+  const recipe = TAG_COLOR_RECIPES[recipeName] || TAG_COLOR_RECIPES.pastel;
+  let [h, s, l] = hexToHsl(hex);
+  if (variant === 1 && recipe.variant2 === "hue") h += recipe.hueShift;
+
+  let bgL;
+  if (recipe.bgLCap != null) {
+    bgL = (variant === 1 && recipe.variant2 === "lighten")
+      ? Math.min(l + recipe.lightenDelta, recipe.bgLCap2)
+      : Math.min(l, recipe.bgLCap);
+  } else {
+    bgL = recipe.bgL;
+  }
+
+  const bg = hslToHex(h, Math.min(s, recipe.bgSatCap), bgL);
+
+  const borderSat = Math.min(Math.max(s, recipe.borderSatMin), recipe.borderSatMax);
+  const borderL = recipe.borderDarkDelta != null
+    ? Math.max(bgL - recipe.borderDarkDelta, recipe.borderLFloor)
+    : recipe.borderL;
+  let border = hslToHex(h, borderSat, borderL);
+
+  let text;
+  if (recipe.textMode === "autoTint") {
+    const lightCandidate = hslToHex(h, Math.min(Math.max(s, recipe.textLightSatMin), recipe.textLightSatMax), recipe.textLightL);
+    const darkCandidate  = hslToHex(h, Math.min(Math.max(s, recipe.textDarkSatMin), recipe.textDarkSatMax), recipe.textDarkL);
+    const bgL2 = relLuminance(bg);
+    const useLight = contrastRatio(relLuminance(lightCandidate), bgL2) >= contrastRatio(relLuminance(darkCandidate), bgL2);
+    if (useLight) {
+      text = lightCandidate;
+    } else if (recipe.swapBorderAndDarkText) {
+      // Plain swap: text takes the bg-relative border formula, border takes the fixed
+      // dark-candidate formula.
+      text = border;
+      border = darkCandidate;
+    } else {
+      text = darkCandidate;
+    }
+  } else {
+    text = hslToHex(h, Math.min(Math.max(s, recipe.textSatMin), recipe.textSatMax), recipe.textL);
+  }
+
+  return { bg, border, text };
+}
+
+const TAG_ACCENTS = (window.TENANT_COLORS?.tagColors?.length)
+  ? window.TENANT_COLORS.tagColors
+  : DEFAULT_TAG_ACCENTS;
+const TAG_RECIPE = window.TENANT_COLORS?.tagRecipe || "pastel";
+
+// Each accent expands into 2 looks (variant 0/1), so 16 accents -> 32 available tag
+// colors, computed once here rather than per-render.
+const CONSTRUCT_COLORS = TAG_ACCENTS.flatMap(hex => [
+  deriveTagShades(hex, TAG_RECIPE, 0),
+  deriveTagShades(hex, TAG_RECIPE, 1),
+]);
 
 function constructColorIndex(name) {
   // FNV-1a: XOR-then-multiply creates strong avalanche on similar strings.
@@ -224,6 +272,12 @@ async function drawBubbleChart(constructs) {
   // Pre-assign a stable fill color to each node so circles and labels share it.
   nodes.forEach(d => { d.fillColor = color(d.data.name); });
 
+  // d3.pack() lays bubbles out with padding so they never overlap, so opacity below 1
+  // buys no compositing benefit — it just washes out preset colors against the page
+  // background. Kept slightly soft rather than fully opaque; label contrast below is
+  // computed against this exact blended value so text stays legible regardless.
+  const BUBBLE_OPACITY = 0.85;
+
   // Tooltip
   const tooltip = d3.select("body")
     .append("div")
@@ -246,7 +300,7 @@ async function drawBubbleChart(constructs) {
     .attr("cy", d => d.y)
     .attr("r",  d => d.r)
     .attr("fill", d => d.fillColor)
-    .attr("opacity", 0.7)
+    .attr("opacity", BUBBLE_OPACITY)
     .on("mouseover", (event, d) => {
       tooltip
         .style("left", event.pageX + 10 + "px")
@@ -273,11 +327,22 @@ async function drawBubbleChart(constructs) {
     return 0.2126 * lin(blend(r)) + 0.7152 * lin(blend(g)) + 0.0722 * lin(blend(b));
   }
 
+  const DARK_TEXT = "#333333";
+
+  function contrastRatio(l1, l2) {
+    const lighter = Math.max(l1, l2), darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
   function labelColor(fillHex, opacity) {
-    const L = blendedLuminance(fillHex, opacity);
-    // Use white unless the background is clearly too light. Raise this value to
-    // keep white on more bubbles; lower it to be more conservative.
-    return L <= 0.69 ? "white" : "#333";
+    const bgL = blendedLuminance(fillHex, opacity);
+    // Pick whichever of white/dark text actually contrasts better against this
+    // bubble's rendered (opacity-blended) color, rather than a fixed luminance
+    // cutoff — a cutoff of "light enough for white" and "dark enough for #333"
+    // aren't the same threshold, so a single number can't get both right.
+    const whiteContrast = contrastRatio(1, bgL);
+    const darkContrast  = contrastRatio(blendedLuminance(DARK_TEXT, 1), bgL);
+    return whiteContrast >= darkContrast ? "white" : DARK_TEXT;
   }
 
   function wrapBubbleLabel(textEl, name, r, cx, cy, fillColor) {
@@ -314,7 +379,7 @@ async function drawBubbleChart(constructs) {
       return;
     }
 
-    textEl.attr("fill", labelColor(fillColor, 0.7));
+    textEl.attr("fill", labelColor(fillColor, BUBBLE_OPACITY));
 
     const startY = cy - ((lines.length - 1) / 2) * lineHeight;
     lines.forEach((line, i) => {

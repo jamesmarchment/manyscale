@@ -54,7 +54,8 @@ cp tenants_example.json tenants.json
     "name": "Your Organization",
     "patEnvVar": "YOUR_AIRTABLE_PAT_ENV_VAR",
     "baseId": "yourAirtableBaseId",
-    "contact_recipient": "you@example.com"
+    "contact_recipient": "you@example.com",
+    "adminPasswordHash": "run `npm run hash-password` and paste the output here"
   }
 ]
 ```
@@ -63,6 +64,7 @@ cp tenants_example.json tenants.json
 - `patEnvVar` — the name of the `.env` key that holds this tenant's Airtable PAT
 - `baseId` — the Airtable base ID (starts with `app`)
 - `contact_recipient` — where contact form and measure suggestion emails are delivered
+- `adminPasswordHash` — password hash for this tenant's `/admin` panel, generated with `npm run hash-password`. Without it, `/admin/login` refuses to log anyone in. Resettable later from the Architect Admin Panel without needing the old password.
 - `primaryTenant` *(optional)* — set to `true` on the tenant that should be treated as primary (served in single-tenant mode, refreshed on the startup/6-hour cycle). If no tenant has this set, the first entry in the list is used.
 - `externalUrl` *(optional)* — for a tenant that's actually hosted on its own server (e.g. RelaScale) but kept here as a live tenant so it's included in cross-tenant search. The network landing page's repository card links here instead of `/{slug}`; `/{slug}` itself keeps working. Set from Architect Admin rather than editing this file directly.
 
@@ -111,7 +113,6 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `NETWORK_CONTACT_EMAIL` | No | Where the network landing page's "Request a Repo" form is delivered (falls back to `SMTP_USER`). Editable from the Architect Admin Panel. Multi-tenant mode only. |
 | `PLAUSIBLE_DOMAIN` | No | Plausible Analytics `data-domain` (e.g. `manyscale.org`). Deployment-wide, not per-tenant. Blank disables analytics entirely. Editable from the Architect Admin Panel. |
 | `PLAUSIBLE_SCRIPT_SRC` | No | Plausible script URL (default: `https://analytics.relascale.com/js/script.file-downloads.js`). Editable from the Architect Admin Panel. |
-| `ADMIN_PASSWORD` | Yes | Password for the `/admin` panel |
 | `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
 | `ARCHITECT_ADMIN_PASSWORD_HASH` | No | Password hash for the cross-tenant `/architect` panel — see [Architect Admin Panel](#architect-admin-panel) |
 | `SESSION_SECRET` | Yes | Random string used to sign session cookies |
@@ -162,7 +163,7 @@ In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served 
 
 ## Admin Panel
 
-Navigate to `/admin` and log in with `ADMIN_PASSWORD`. From there you can:
+Navigate to `/admin` and log in with the tenant's admin password (set via `adminPasswordHash` in `tenants.json`, or reset from the [Architect Admin Panel](#architect-admin-panel)). From there you can:
 
 - Edit site content (hero heading, tagline, description, logo color)
 - Edit Airtable connection settings (name, base ID, PAT, contact email)
@@ -180,6 +181,8 @@ From the dashboard you can:
 - See every tenant's record count, last refresh time, and active/inactive status
 - Onboard a new tenant — name, slug, contact email, Airtable base ID + PAT, and an admin password — with an option to scaffold the Measures/Translations/Contributors tables automatically in a fresh base
 - Refresh a tenant's cache, deactivate/reactivate it, or delete it (deleting only removes the `tenants.json` entry; its cache and data files on disk are preserved)
+- Reset a tenant's `/admin` password without needing the old one
+- Edit a tenant's branding — logo (including SVG, sanitized on upload) and social-share meta image
 - Set or clear a tenant's external link — for a tenant actually hosted on its own server, points the landing page's repository card at that URL instead of `/{slug}`, while `/{slug}` keeps working so the tenant still participates in cross-tenant search
 - Edit platform-wide email settings (SMTP host/port/TLS, and the network contact email the "Request a Repo" form delivers to) used for contact-form, suggestion, and tenant-onboarding mail across every tenant
 - Edit platform-wide analytics settings (Plausible domain and script URL) used across every tenant
@@ -231,13 +234,19 @@ is rendered.
 ├── lib/
 │   ├── airtable.js            # Cache, Airtable sync, PDF sync, startup refresh cycle
 │   ├── email.js               # Nodemailer transporter
-│   └── search.js              # recordMatchesSearch(), stop-word set
+│   ├── search.js              # recordMatchesSearch(), stop-word set
+│   ├── network.js             # Cross-tenant search/suggestions for the network landing page
+│   ├── auth.js                # Password hashing/verification (scrypt) for admin/architect logins
+│   ├── antispam.js            # Honeypot + timing-token + rate-limit guard for public forms
+│   ├── colorPresets.js        # Shared palette presets for tenant-customizable colors
+│   └── reservedSlugs.js       # RESERVED_SLUGS + startup assertion guarding tenant slugs from route collisions
 │
 ├── routes/
 │   ├── api.js                 # GET /api/data, /api/search, /api/construct-stats
 │   ├── forms.js               # POST /contact, POST /suggest
 │   ├── public.js              # All public page routes (/, /search, /constructs, /languages, etc.)
 │   ├── admin.js               # All /admin/* routes and multer photo upload
+│   ├── architect.js           # All /architect/* routes: tenant onboarding, branding, settings
 │   └── landing.js             # GET / tenant index (multi-tenant mode only)
 │
 ├── data/
@@ -254,17 +263,27 @@ is rendered.
 │   ├── details.ejs
 │   ├── constructs.ejs
 │   ├── construct-details.ejs
+│   ├── languages.ejs
+│   ├── language-details.ejs
 │   ├── contributors.ejs
 │   ├── terms.ejs
 │   ├── privacy.ejs
-│   ├── landing.ejs            # Tenant index page (multi-tenant mode only; no partials)
+│   ├── landing.ejs            # Network landing page (multi-tenant mode only; no partials)
+│   ├── network-search.ejs     # Cross-tenant search results page (multi-tenant mode only)
 │   ├── admin/
 │   │   ├── index.ejs
 │   │   └── login.ejs
+│   ├── architect/
+│   │   ├── index.ejs          # Tenant dashboard
+│   │   ├── login.ejs
+│   │   ├── tenant-form.ejs    # New tenant onboarding form
+│   │   ├── tenant-created.ejs
+│   │   └── tenant-branding.ejs
 │   └── partials/
 │       ├── header.ejs
 │       ├── nav.ejs
-│       └── footer.ejs
+│       ├── footer.ejs
+│       └── network-footer.ejs
 │
 └── public/
     ├── assets/

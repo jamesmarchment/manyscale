@@ -338,8 +338,10 @@
           <div class="color-block-header">
             <label for="tag-preset-select">Construct tag colors</label>
             <select id="tag-preset-select" name="tagColorsPreset"></select>
+            <label for="tag-recipe-select">Style</label>
+            <select id="tag-recipe-select" name="tagRecipe"></select>
           </div>
-          <p class="hint">Background/border/text for construct tags are derived automatically from a single accent color per tag.</p>
+          <p class="hint">Palette picks the hues; Style picks the rendering look (pastel, dark, vibrant, solid) — independent choices. Background/border/text are derived automatically from each accent color.</p>
           <div class="swatch-row" id="tag-swatches"></div>
         </div>
 
@@ -357,6 +359,7 @@
       cardGradients:       locals.cardGradients       || [],
       tagColorsPreset:     locals.tagColorsPreset     || "default",
       tagColors:           locals.tagColors           || [],
+      tagRecipe:           locals.tagRecipe           || "pastel",
     }).replace(/<\//g, '<\\/') %></script>
     <script src="/assets/js/pickr.min.js"></script>
     <script>
@@ -387,6 +390,7 @@
         return [h * 360, s * 100, l * 100];
       }
       function hslToHex(h, s, l) {
+        h = ((h % 360) + 360) % 360;
         h /= 360; s /= 100; l /= 100;
         let r, g, b;
         if (s === 0) { r = g = b = l; }
@@ -408,26 +412,93 @@
         const toHex = x => Math.round(x * 255).toString(16).padStart(2, '0');
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
       }
-      // Per-preset derivation targets — mirrors lib/colorPresets.js's TAG_COLOR_RECIPES
-      // exactly. "custom" (and any unrecognized preset) falls back to "default".
+      // The 4 tag-button "recipes" — mirrors lib/colorPresets.js's TAG_COLOR_RECIPES
+      // exactly. Independent of which palette (tagColorsPreset) is active.
       const TAG_COLOR_RECIPES = {
-        default: { bgL: 95, bgSatCap: 35, borderL: 82, borderSatMin: 30, borderSatMax: 55, textL: 30, textSatMin: 35, textSatMax: 65 },
-        retro:   { bgL: 93, bgSatCap: 22, borderL: 78, borderSatMin: 18, borderSatMax: 38, textL: 34, textSatMin: 22, textSatMax: 42 },
-        dark:    { bgL: 22, bgSatCap: 45, borderL: 38, borderSatMin: 35, borderSatMax: 55, textL: 88, textSatMin: 12, textSatMax: 32 },
-        vibrant: { bgL: 90, bgSatCap: 60, borderL: 68, borderSatMin: 50, borderSatMax: 75, textL: 26, textSatMin: 55, textSatMax: 80 },
+        pastel: {
+          bgL: 95, bgSatCap: 35, borderL: 82, borderSatMin: 30, borderSatMax: 55,
+          textL: 30, textSatMin: 35, textSatMax: 65,
+          variant2: 'hue', hueShift: 18,
+        },
+        dark: {
+          bgLCap: 48, bgSatCap: 60, borderL: 55, borderSatMin: 40, borderSatMax: 60,
+          textL: 92, textSatMin: 5, textSatMax: 20,
+          variant2: 'lighten', lightenDelta: 12, bgLCap2: 64,
+        },
+        vibrant: {
+          bgL: 90, bgSatCap: 70, borderL: 66, borderSatMin: 50, borderSatMax: 75,
+          textL: 30, textSatMin: 50, textSatMax: 75,
+          variant2: 'hue', hueShift: 18,
+        },
+        solid: {
+          bgLCap: 70, bgSatCap: 85,
+          borderDarkDelta: 32, borderLFloor: 6, borderSatMin: 75, borderSatMax: 90,
+          textMode: 'autoTint',
+          textLightL: 85, textLightSatMin: 45, textLightSatMax: 65,
+          textDarkL: 25, textDarkSatMin: 55, textDarkSatMax: 80,
+          swapBorderAndDarkText: true,
+          variant2: 'hue', hueShift: 18,
+        },
       };
-      function deriveTagShades(hex, presetName) {
-        const recipe = TAG_COLOR_RECIPES[presetName] || TAG_COLOR_RECIPES.default;
-        const [h, s] = hexToHsl(hex);
-        return {
-          bg:     hslToHex(h, Math.min(s, recipe.bgSatCap), recipe.bgL),
-          border: hslToHex(h, Math.min(Math.max(s, recipe.borderSatMin), recipe.borderSatMax), recipe.borderL),
-          text:   hslToHex(h, Math.min(Math.max(s, recipe.textSatMin), recipe.textSatMax), recipe.textL),
-        };
+      function relLuminance(hex) {
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        const lin = c => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+        return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
       }
-      function currentPreset(sectionKey) {
-        const select = document.getElementById(sectionKey + '-preset-select');
-        return select ? select.value : 'default';
+      function contrastRatio(l1, l2) {
+        const lighter = Math.max(l1, l2), darker = Math.min(l1, l2);
+        return (lighter + 0.05) / (darker + 0.05);
+      }
+      function deriveTagShades(hex, recipeName, variant) {
+        variant = variant || 0;
+        const recipe = TAG_COLOR_RECIPES[recipeName] || TAG_COLOR_RECIPES.pastel;
+        let [h, s, l] = hexToHsl(hex);
+        if (variant === 1 && recipe.variant2 === 'hue') h += recipe.hueShift;
+
+        let bgL;
+        if (recipe.bgLCap != null) {
+          bgL = (variant === 1 && recipe.variant2 === 'lighten')
+            ? Math.min(l + recipe.lightenDelta, recipe.bgLCap2)
+            : Math.min(l, recipe.bgLCap);
+        } else {
+          bgL = recipe.bgL;
+        }
+
+        const bg = hslToHex(h, Math.min(s, recipe.bgSatCap), bgL);
+
+        const borderSat = Math.min(Math.max(s, recipe.borderSatMin), recipe.borderSatMax);
+        const borderL = recipe.borderDarkDelta != null
+          ? Math.max(bgL - recipe.borderDarkDelta, recipe.borderLFloor)
+          : recipe.borderL;
+        let border = hslToHex(h, borderSat, borderL);
+
+        let text;
+        if (recipe.textMode === 'autoTint') {
+          const lightCandidate = hslToHex(h, Math.min(Math.max(s, recipe.textLightSatMin), recipe.textLightSatMax), recipe.textLightL);
+          const darkCandidate  = hslToHex(h, Math.min(Math.max(s, recipe.textDarkSatMin), recipe.textDarkSatMax), recipe.textDarkL);
+          const bgL2 = relLuminance(bg);
+          const useLight = contrastRatio(relLuminance(lightCandidate), bgL2) >= contrastRatio(relLuminance(darkCandidate), bgL2);
+          if (useLight) {
+            text = lightCandidate;
+          } else if (recipe.swapBorderAndDarkText) {
+            // Plain swap: text takes the bg-relative border formula, border takes the
+            // fixed dark-candidate formula.
+            text = border;
+            border = darkCandidate;
+          } else {
+            text = darkCandidate;
+          }
+        } else {
+          text = hslToHex(h, Math.min(Math.max(s, recipe.textSatMin), recipe.textSatMax), recipe.textL);
+        }
+
+        return { bg, border, text };
+      }
+      function currentRecipe() {
+        const select = document.getElementById('tag-recipe-select');
+        return select ? select.value : 'pastel';
       }
 
       const state = {
@@ -444,6 +515,12 @@
       document.getElementById('bubble-preset-select').innerHTML   = presetOptionsHtml(COLOR_PRESETS.bubbleChart,   CURRENT.bubbleChartPreset);
       document.getElementById('gradient-preset-select').innerHTML = presetOptionsHtml(COLOR_PRESETS.cardGradients, CURRENT.cardGradientsPreset);
       document.getElementById('tag-preset-select').innerHTML      = presetOptionsHtml(COLOR_PRESETS.tagColors,     CURRENT.tagColorsPreset);
+      // Recipe/style is a fixed set of 4 named looks, independent of the palette above —
+      // not driven by COLOR_PRESETS, and has no "custom" option since it's always one of
+      // exactly these 4.
+      document.getElementById('tag-recipe-select').innerHTML = Object.keys(TAG_COLOR_RECIPES).map(name =>
+        `<option value="${name}"${name === CURRENT.tagRecipe ? ' selected' : ''}>${name[0].toUpperCase()}${name.slice(1)}</option>`
+      ).join('');
 
       function markCustom(sectionKey) {
         const select = document.getElementById(sectionKey + '-preset-select');
@@ -466,10 +543,9 @@
 
       function renderSingleColorSection(sectionKey, fieldName, deriveShades, container) {
         const values = state[sectionKey].values;
-        const preset = currentPreset(sectionKey);
         container.innerHTML = values.map((hex, i) => {
           const summary = deriveShades
-            ? (() => { const sh = deriveTagShades(hex, preset); return `<summary class="swatch-tag-preview" style="background:${sh.bg};border-color:${sh.border};color:${sh.text}">Tag ${i + 1}</summary>`; })()
+            ? (() => { const sh = deriveTagShades(hex, currentRecipe(), 0); return `<summary class="swatch-tag-preview" style="background:${sh.bg};border-color:${sh.border};color:${sh.text}">Tag ${i + 1}</summary>`; })()
             : `<summary class="swatch" style="background:${hex}"></summary>`;
           return `<details class="swatch-details" data-idx="${i}">${summary}
             <div class="swatch-editor">
@@ -489,20 +565,14 @@
             makeHexPickr(details.querySelector('.pickr-mount'), hiddenInput.value, (hex) => {
               hiddenInput.value = hex;
               values[idx] = hex;
-              const wasAlreadyCustom = currentPreset(sectionKey) === 'custom';
-              if (deriveShades && wasAlreadyCustom) {
-                // Already custom — the recipe (default) hasn't changed, just refresh this swatch.
-                const sh = deriveTagShades(hex, 'custom');
+              // The recipe/style is a separate, always-valid selection (never "custom"),
+              // so editing an accent only ever marks the palette as custom — the preview
+              // recipe stays whatever style is currently selected.
+              if (deriveShades) {
+                const sh = deriveTagShades(hex, currentRecipe(), 0);
                 summaryEl.style.background = sh.bg;
                 summaryEl.style.borderColor = sh.border;
                 summaryEl.style.color = sh.text;
-              } else if (deriveShades) {
-                // First edit under a named preset — every other swatch's preview was rendered
-                // with that preset's recipe, so re-render the whole grid under "custom" (default
-                // recipe) to keep the preview consistent with what will actually be saved/rendered.
-                markCustom(sectionKey);
-                renderSingleColorSection(sectionKey, fieldName, deriveShades, container);
-                return;
               } else {
                 summaryEl.style.background = hex;
               }
@@ -568,6 +638,11 @@
       document.getElementById('bubble-preset-select').addEventListener('change', (e) => applyPreset('bubble', e.target.value));
       document.getElementById('gradient-preset-select').addEventListener('change', (e) => applyPreset('gradient', e.target.value));
       document.getElementById('tag-preset-select').addEventListener('change', (e) => applyPreset('tag', e.target.value));
+      // Style is independent of the palette above — changing it just re-renders the same
+      // 16 accents' previews under the newly-selected recipe.
+      document.getElementById('tag-recipe-select').addEventListener('change', () => {
+        renderSingleColorSection('tag', 'tagColors', true, document.getElementById('tag-swatches'));
+      });
 
       renderSingleColorSection('bubble', 'bubbleColors', false, document.getElementById('bubble-swatches'));
       renderGradientSection(document.getElementById('gradient-swatches'));
