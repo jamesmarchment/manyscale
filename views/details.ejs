@@ -151,11 +151,11 @@ console.log(single.fields);
   const translationButtons = document.getElementById("translation_link_buttons");
   const availableTranslations = (single.fields.translations || [])
     .filter(tr => tr["Language"] && tr["Final PDF"]?.[0]?.f_localPath);
-  translationButtons.innerHTML = availableTranslations.length ? "<h5>Translations</h5>" : "";
+  translationButtons.innerHTML = availableTranslations.length ? "<h5>Translations</h5><br>" : "";
   availableTranslations.forEach(tr => {
     translationButtons.innerHTML += `
       <a href="${tr["Final PDF"][0].f_localPath}" class="view-project" aria-label="Download ${tr["Language"]} translation" target="_blank">
-        <button type="button" class="btn-download-translation"><i class="bi bi-translate"></i>${tr["Language"]} Translation</button>
+        <button type="button" class="btn-download-translation"><i class="bi bi-translate"></i>${tr["Language"]} Adaptation</button>
       </a>`;
   });
 
@@ -189,7 +189,7 @@ console.log(single.fields);
     const translators = [].concat(tr["Name (from Contributed By)"] || []).filter(Boolean);
     if (translators.length > 0 && tr["Language"]) {
       const names = translators.map(n => `<strong>${n}</strong>`).join(" and ");
-      creditLines.push(`<span>${translateIcon}${tr["Language"]} translation added by ${names}</span>`);
+      creditLines.push(`<span>${translateIcon}${tr["Language"]} adaptation added by ${names}</span>`);
     }
   });
 
