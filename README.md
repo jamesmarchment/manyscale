@@ -166,9 +166,18 @@ In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served 
 Navigate to `/admin` and log in with the tenant's admin password (set via `adminPasswordHash` in `tenants.json`, or reset from the [Architect Admin Panel](#architect-admin-panel)). From there you can:
 
 - Edit site content (hero heading, tagline, description, logo color)
+- Write a custom markdown section shown on the homepage (headings, bold/italic, links, and lists — see [Custom Homepage Section](#custom-homepage-section)); leave it blank to hide the section entirely
 - Edit Airtable connection settings (name, base ID, PAT, contact email)
 - Manage the team section (add/edit members, upload photos)
 - Manually trigger a cache refresh from Airtable
+
+---
+
+## Custom Homepage Section
+
+Each tenant can add a free-text section to their homepage, written in markdown from the "Custom section" field on the `/admin` panel. It's stored as `whyMarkdown` in that tenant's `data/{slug}.json`, converted to HTML with `marked` and cleaned with `sanitize-html` on every request (`middleware.js`), then rendered into `views/index.ejs`. Supports headings, bold/italic, links, and bullet/numbered lists.
+
+Leaving the field blank omits the section from the page entirely — no empty heading or leftover markup. There's no separate "enable/disable" toggle; the field's presence is the toggle.
 
 ---
 
