@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { tenantCaches, refreshCache } from "../lib/airtable.js";
+import { tenantCaches, refreshTenantCacheOnly } from "../lib/airtable.js";
 
 const router = Router();
 
 router.get("/api/data", async (req, res) => {
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache(req.tenant.slug);
+    await refreshTenantCacheOnly(req.tenant.slug);
     cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
@@ -40,7 +40,7 @@ router.get("/api/search", async (req, res) => {
 
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache(req.tenant.slug);
+    await refreshTenantCacheOnly(req.tenant.slug);
     cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
@@ -59,7 +59,7 @@ router.get("/api/search", async (req, res) => {
 router.get("/api/construct-stats", async (req, res) => {
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache(req.tenant.slug);
+    await refreshTenantCacheOnly(req.tenant.slug);
     cache = tenantCaches.get(req.tenant.slug) || [];
   }
 

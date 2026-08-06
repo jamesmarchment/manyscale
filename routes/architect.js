@@ -8,7 +8,7 @@ import { requireArchitectAdmin, loginRateLimitOk } from "../middleware.js";
 import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
-import { tenantCaches, lastRefreshTimes, resolveTableIDs, runFullRefresh, scaffoldTenantTables } from "../lib/airtable.js";
+import { tenantCaches, lastRefreshTimes, resolveTableIDs, refreshTenant, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
 import { generateCsrfToken } from "../lib/csrf.js";
@@ -58,6 +58,15 @@ const metaImageUpload = multer({ storage: brandingStorage("meta"), limits: { fil
 const svgPurify = DOMPurify(new JSDOM("").window);
 function sanitizeSvg(svg) {
   return svgPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
+}
+
+// logoUrl/metaImageUrl are normally relative upload paths ("/{slug}/branding/x.png"),
+// so an empty value or one with no URI scheme at all is fine; a value that does carry
+// an explicit scheme must be http/https (blocks javascript:, data:, vbscript:, etc.).
+function isSafeBrandingUrl(value) {
+  if (!value) return true;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) return true;
+  return /^https?:\/\//i.test(value);
 }
 
 router.get("/architect/login", (req, res) => {
@@ -247,7 +256,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   try {
     const resolved = await resolveTableIDs(tenant);
     if (resolved) {
-      await runFullRefresh(tenant.slug);
+      await refreshTenant(tenant.slug);
       airtableSyncOk = true;
     }
   } catch (err) {
@@ -293,7 +302,7 @@ router.post("/architect/tenants/:slug/refresh-cache", requireArchitectAdmin, asy
     return res.redirect("/architect");
   }
   try {
-    await runFullRefresh(slug);
+    await refreshTenant(slug);
     const count = (tenantCaches.get(slug) || []).length;
     req.session.architectFlash = { type: "ok", msg: `Cache refreshed for "${tenant.name}" — ${count} records loaded.` };
   } catch (err) {
@@ -397,10 +406,20 @@ router.post("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, re
     return res.redirect("/architect");
   }
   const { logoUrl, metaImageUrl } = req.body;
+  const trimmedLogoUrl = (logoUrl || "").trim();
+  const trimmedMetaImageUrl = (metaImageUrl || "").trim();
+  // Unlike externalUrl (always a full http(s) link), these are normally relative
+  // upload paths like "/{slug}/branding/logo.png" — so the check isn't "must be
+  // http(s)" but "must not be a dangerous scheme" (javascript:, data:, etc.) when a
+  // scheme is present at all.
+  if (!isSafeBrandingUrl(trimmedLogoUrl) || !isSafeBrandingUrl(trimmedMetaImageUrl)) {
+    req.session.architectFlash = { type: "err", msg: "Logo/meta image URL must be a relative path or an http:// / https:// link." };
+    return res.redirect(`/architect/tenants/${slug}/branding`);
+  }
   try {
     updateTenantContent(slug, (content) => {
-      content.logoUrl = (logoUrl || "").trim();
-      content.metaImageUrl = (metaImageUrl || "").trim();
+      content.logoUrl = trimmedLogoUrl;
+      content.metaImageUrl = trimmedMetaImageUrl;
     });
     req.session.architectFlash = { type: "ok", msg: "Branding saved." };
   } catch (err) {

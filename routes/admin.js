@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 import { requireAdmin, loginRateLimitOk } from "../middleware.js";
-import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
+import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly } from "../lib/airtable.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword, safeTokenEqual } from "../lib/auth.js";
 import { COLOR_PRESETS, TAG_COLOR_RECIPES, DEFAULT_RECIPE_FOR_PRESET } from "../lib/colorPresets.js";
@@ -248,7 +248,7 @@ router.post("/admin/colors", requireAdmin, (req, res) => {
 
 router.post("/admin/cache", requireAdmin, async (req, res) => {
   try {
-    await runFullRefresh(req.tenant.slug);
+    await refreshTenant(req.tenant.slug);
     const count = (tenantCaches.get(req.tenant.slug) || []).length;
     req.session.flash = { type: "ok", msg: `Cache refreshed — ${count} records loaded.` };
   } catch (err) {
@@ -304,7 +304,7 @@ router.get("/admin/sync-pdfs", async (req, res) => {
   if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
     return res.status(401).send("Unauthorized");
   }
-  await syncLocalPDFs(req.tenant.slug);
+  await syncTenantPDFs(req.tenant.slug);
   res.send("PDF sync completed");
 });
 
@@ -312,7 +312,7 @@ router.get("/admin/refresh-cache", async (req, res) => {
   if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
     return res.status(401).send("Unauthorized");
   }
-  await refreshCache(req.tenant.slug);
+  await refreshTenantCacheOnly(req.tenant.slug);
   res.send(`Cache refreshed. ${(tenantCaches.get(req.tenant.slug) || []).length} records loaded.`);
 });
 

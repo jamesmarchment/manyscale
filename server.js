@@ -9,31 +9,36 @@ James Marchment and Samantha Joel
 */
 
 import { PORT, _tenantsList } from "./config.js";
-import { resolveTableIDs, runFullRefresh } from "./lib/airtable.js";
+import { resolveTableIDs, refreshTenant } from "./lib/airtable.js";
 import app from "./lib/app.js";
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-// Resolves and refreshes every active tenant, one at a time so one tenant's Airtable
-// outage or misconfiguration can't block the others. If Airtable is unreachable for a
-// given tenant, that tenant just keeps serving from its local disk cache until the next cycle.
+// Resolves and refreshes every active tenant in parallel — safe because refreshTenant
+// is per-slug locked (lib/airtable.js), so tenants never race on shared files, and each
+// tenant's own try/catch means one tenant's Airtable outage or misconfiguration can't
+// block the others. If Airtable is unreachable for a given tenant, that tenant just
+// keeps serving from its local disk cache until the next cycle.
 async function refreshAllTenants() {
-  for (const tenant of _tenantsList) {
-    if (tenant.active === false) continue;
-    const pfx = `[${tenant.slug}]`;
-    try {
-      const resolved = await resolveTableIDs(tenant);
-      if (resolved) {
-        await runFullRefresh(tenant.slug);
-      } else {
-        console.warn(`${pfx} Airtable unavailable — serving from local disk cache if available. Will retry next cycle.`);
-      }
-    } catch (err) {
-      console.error(`${pfx} Refresh failed:`, err);
-    }
-  }
+  await Promise.allSettled(
+    _tenantsList
+      .filter((tenant) => tenant.active !== false)
+      .map(async (tenant) => {
+        const pfx = `[${tenant.slug}]`;
+        try {
+          const resolved = await resolveTableIDs(tenant);
+          if (resolved) {
+            await refreshTenant(tenant.slug);
+          } else {
+            console.warn(`${pfx} Airtable unavailable — serving from local disk cache if available. Will retry next cycle.`);
+          }
+        } catch (err) {
+          console.error(`${pfx} Refresh failed:`, err);
+        }
+      })
+  );
 }
 
 console.log("Starting ManyScale…");

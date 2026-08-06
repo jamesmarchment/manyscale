@@ -1,7 +1,7 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { tenantCaches, refreshCache, contributorsCache, getSubmitFormUrl } from "../lib/airtable.js";
+import { tenantCaches, refreshTenantCacheOnly, contributorsCache, getSubmitFormUrl } from "../lib/airtable.js";
 import { recordMatchesSearch, getSuggestions } from "../lib/search.js";
 import { PROJECT_ROOT } from "../config.js";
 
@@ -73,7 +73,7 @@ router.get("/search/suggestions", (req, res) => {
 router.get("/constructs", async (req, res) => {
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache(req.tenant.slug);
+    await refreshTenantCacheOnly(req.tenant.slug);
     cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
@@ -100,7 +100,7 @@ router.get("/constructs/:name", async (req, res) => {
 
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache(req.tenant.slug);
+    await refreshTenantCacheOnly(req.tenant.slug);
     cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
@@ -126,7 +126,7 @@ router.get("/constructs/:name", async (req, res) => {
 router.get("/languages", async (req, res) => {
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache(req.tenant.slug);
+    await refreshTenantCacheOnly(req.tenant.slug);
     cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
@@ -152,7 +152,7 @@ router.get("/languages/:name", async (req, res) => {
 
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {
-    await refreshCache(req.tenant.slug);
+    await refreshTenantCacheOnly(req.tenant.slug);
     cache = tenantCaches.get(req.tenant.slug) || [];
   }
 
