@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Branding — <%= tenant.name %> — Architect Admin</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
@@ -46,6 +47,7 @@
 
     <div class="card">
       <form method="POST" action="/architect/tenants/<%= tenant.slug %>/branding">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th>Logo</th>
@@ -115,7 +117,8 @@
       const fd = new FormData();
       fd.append('image', file);
 
-      fetch(uploadUrl, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+      fetch(uploadUrl, { method: 'POST', headers: { 'Accept': 'application/json', 'x-csrf-token': csrfToken }, body: fd })
         .then(r => r.json())
         .then(data => {
           if (data.error) {

@@ -2,11 +2,13 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
-import { requireAdmin } from "../middleware.js";
+import { requireAdmin, loginRateLimitOk } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, runFullRefresh, syncLocalPDFs, refreshCache } from "../lib/airtable.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar } from "../config.js";
-import { verifyPassword, hashPassword } from "../lib/auth.js";
+import { verifyPassword, hashPassword, safeTokenEqual } from "../lib/auth.js";
 import { COLOR_PRESETS, TAG_COLOR_RECIPES, DEFAULT_RECIPE_FOR_PRESET } from "../lib/colorPresets.js";
+import { writeJsonAtomic, getTenantContent, updateTenantContent } from "../lib/jsonStore.js";
+import { generateCsrfToken } from "../lib/csrf.js";
 
 // Normalizes a bracket-indexed form field (parsed by express.urlencoded as either an
 // array or, if indices have gaps, a plain object keyed by index) into an ordered array.
@@ -49,18 +51,37 @@ router.get("/admin/login", (req, res) => {
   if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug) {
     return res.redirect(res.locals.basePath + "/admin");
   }
-  res.render("admin/login", { error: null });
+  // With saveUninitialized:false, express-session won't persist (or keep a stable id
+  // for) a session that nothing has written to — writing this marker now means the
+  // browser gets a real session cookie with this page's response, so the CSRF token
+  // generated below stays valid for the POST that follows.
+  req.session.csrfSeed = true;
+  res.render("admin/login", { error: null, csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/admin/login", (req, res) => {
-  const adminPasswordHash = req.tenant.adminPasswordHash;
-  if (!adminPasswordHash) return res.render("admin/login", { error: "Admin password is not configured for this tenant. Run npm run hash-password to generate one." });
-  if (verifyPassword(req.body.password || "", adminPasswordHash)) {
-    req.session.adminLoggedIn = true;
-    req.session.adminTenantSlug = req.tenant.slug;
-    return res.redirect(res.locals.basePath + "/admin");
+  if (!loginRateLimitOk(`${req.ip}:${req.tenant.slug}`)) {
+    return res.status(429).render("admin/login", { error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
   }
-  res.render("admin/login", { error: "Incorrect password." });
+  const adminPasswordHash = req.tenant.adminPasswordHash;
+  if (!adminPasswordHash) return res.render("admin/login", { error: "Admin password is not configured for this tenant. Run npm run hash-password to generate one.", csrfToken: generateCsrfToken(req, res) });
+  if (verifyPassword(req.body.password || "", adminPasswordHash)) {
+    const tenantSlug = req.tenant.slug;
+    const basePath = res.locals.basePath;
+    // Regenerate on every successful login so a session ID that existed before
+    // authentication (which could have been fixated by an attacker) never becomes
+    // privileged — the client gets a brand-new session ID here.
+    return req.session.regenerate((err) => {
+      if (err) {
+        console.error("Session regenerate error:", err);
+        return res.render("admin/login", { error: "Login failed — please try again.", csrfToken: generateCsrfToken(req, res) });
+      }
+      req.session.adminLoggedIn = true;
+      req.session.adminTenantSlug = tenantSlug;
+      res.redirect(basePath + "/admin");
+    });
+  }
+  res.render("admin/login", { error: "Incorrect password.", csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/admin/logout", (req, res) => {
@@ -77,7 +98,7 @@ router.get("/admin", requireAdmin, (req, res) => {
   let tagColors         = COLOR_PRESETS.tagColors.default;
   let tagRecipe         = "pastel";
   try {
-    const content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${tenant.slug}.json`), "utf8"));
+    const content = getTenantContent(tenant.slug);
     hero = content.hero || {};
     submitFormUrl = content.submitFormUrl || "";
     team = content.team || [];
@@ -109,22 +130,24 @@ router.get("/admin", requireAdmin, (req, res) => {
     recordCount: (tenantCaches.get(req.tenant.slug) || []).length,
     lastRefresh: lastRefreshTimes.get(req.tenant.slug) || null,
     flash,
+    csrfToken: generateCsrfToken(req, res),
   });
 });
 
 router.post("/admin/config", requireAdmin, (req, res) => {
   const { name, baseId, pat, contact_recipient } = req.body;
+  const tenant = req.tenant; // same object reference held in _tenantsList (see resolveTenant
+  // in middleware.js) — mutate it directly, same pattern as /admin/password below.
+  // Previously this route re-parsed tenants.json into a disconnected local array instead
+  // of mutating _tenantsList, so the very next write from any /architect/tenants/* route
+  // (which always serializes the shared _tenantsList) would silently revert this save.
   try {
-    let tenants = JSON.parse(fs.readFileSync(TENANTS_FILE, "utf8"));
-    const idx = tenants.findIndex(t => t.slug === req.tenant.slug);
-    if (idx !== -1) {
-      if (name?.trim())               tenants[idx].name               = name.trim();
-      if (baseId?.trim())             tenants[idx].baseId             = baseId.trim();
-      if (contact_recipient !== undefined) tenants[idx].contact_recipient = contact_recipient.trim();
-      fs.writeFileSync(TENANTS_FILE, JSON.stringify(tenants, null, 2), "utf8");
-    }
+    if (name?.trim())               tenant.name               = name.trim();
+    if (baseId?.trim())             tenant.baseId             = baseId.trim();
+    if (contact_recipient !== undefined) tenant.contact_recipient = contact_recipient.trim();
+    writeJsonAtomic(TENANTS_FILE, _tenantsList);
     if (pat?.trim()) {
-      const patVar = tenants[idx]?.patEnvVar || "AIRTABLE_PAT";
+      const patVar = tenant.patEnvVar || "AIRTABLE_PAT";
       updateEnvVar(patVar, pat.trim());
     }
     req.session.flash = { type: "ok", msg: "Configuration saved. Restart the server to apply PAT or Base ID changes." };
@@ -155,7 +178,7 @@ router.post("/admin/password", requireAdmin, (req, res) => {
     // middleware.js), so this mutation is visible to every request immediately —
     // no server restart needed, unlike the PAT/Base ID fields below.
     tenant.adminPasswordHash = hashPassword(new_password);
-    fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+    writeJsonAtomic(TENANTS_FILE, _tenantsList);
     req.session.flash = { type: "ok", msg: "Password changed." };
   } catch (err) {
     console.error("Admin password change error:", err);
@@ -166,21 +189,19 @@ router.post("/admin/password", requireAdmin, (req, res) => {
 
 router.post("/admin/content", requireAdmin, (req, res) => {
   const { hero_heading, hero_subheading, meta_tagline, meta_description, landing_tagline, submit_form_url, logo_color, why_markdown } = req.body;
-  const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
-    let content = {};
-    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
-    if (!content.hero) content.hero = {};
-    if (!content.meta) content.meta = {};
-    if (hero_heading      !== undefined) content.hero.heading     = hero_heading;
-    if (hero_subheading   !== undefined) content.hero.subheading  = hero_subheading;
-    if (meta_tagline      !== undefined) content.meta.tagline     = meta_tagline;
-    if (meta_description  !== undefined) content.meta.description = meta_description;
-    if (landing_tagline   !== undefined) content.landingTagline   = landing_tagline;
-    if (submit_form_url   !== undefined) content.submitFormUrl    = submit_form_url;
-    if (why_markdown      !== undefined) content.whyMarkdown      = why_markdown;
-    if (logo_color        !== undefined && /^#[0-9a-f]{6}$/i.test(logo_color)) content.logoColor = logo_color;
-    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
+    updateTenantContent(req.tenant.slug, (content) => {
+      if (!content.hero) content.hero = {};
+      if (!content.meta) content.meta = {};
+      if (hero_heading      !== undefined) content.hero.heading     = hero_heading;
+      if (hero_subheading   !== undefined) content.hero.subheading  = hero_subheading;
+      if (meta_tagline      !== undefined) content.meta.tagline     = meta_tagline;
+      if (meta_description  !== undefined) content.meta.description = meta_description;
+      if (landing_tagline   !== undefined) content.landingTagline   = landing_tagline;
+      if (submit_form_url   !== undefined) content.submitFormUrl    = submit_form_url;
+      if (why_markdown      !== undefined) content.whyMarkdown      = why_markdown;
+      if (logo_color        !== undefined && /^#[0-9a-f]{6}$/i.test(logo_color)) content.logoColor = logo_color;
+    });
     req.session.flash = { type: "ok", msg: "Site content saved." };
   } catch (err) {
     console.error("Admin content error:", err);
@@ -191,36 +212,32 @@ router.post("/admin/content", requireAdmin, (req, res) => {
 
 router.post("/admin/colors", requireAdmin, (req, res) => {
   const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors, tagRecipe } = req.body;
-  const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
-    let content = {};
-    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
+    updateTenantContent(req.tenant.slug, (content) => {
+      const bubbleArr = toOrderedArray(bubbleColors);
+      if (bubbleArr.length === 12 && bubbleArr.every(isHex)) {
+        content.bubbleChartColors = bubbleArr.map(c => c.toLowerCase());
+        content.bubbleChartPreset = bubbleChartPreset || "custom";
+      }
 
-    const bubbleArr = toOrderedArray(bubbleColors);
-    if (bubbleArr.length === 12 && bubbleArr.every(isHex)) {
-      content.bubbleChartColors = bubbleArr.map(c => c.toLowerCase());
-      content.bubbleChartPreset = bubbleChartPreset || "custom";
-    }
+      const gradientArr = toOrderedArray(cardGradients);
+      if (gradientArr.length === 12 && gradientArr.every(g => g && isHex(g.from) && isHex(g.to))) {
+        content.cardGradients = gradientArr.map(g => ({ from: g.from.toLowerCase(), to: g.to.toLowerCase() }));
+        content.cardGradientsPreset = cardGradientsPreset || "custom";
+      }
 
-    const gradientArr = toOrderedArray(cardGradients);
-    if (gradientArr.length === 12 && gradientArr.every(g => g && isHex(g.from) && isHex(g.to))) {
-      content.cardGradients = gradientArr.map(g => ({ from: g.from.toLowerCase(), to: g.to.toLowerCase() }));
-      content.cardGradientsPreset = cardGradientsPreset || "custom";
-    }
+      const tagArr = toOrderedArray(tagColors);
+      if (tagArr.length === 16 && tagArr.every(isHex)) {
+        content.tagColors = tagArr.map(c => c.toLowerCase());
+        content.tagColorsPreset = tagColorsPreset || "custom";
+      }
 
-    const tagArr = toOrderedArray(tagColors);
-    if (tagArr.length === 16 && tagArr.every(isHex)) {
-      content.tagColors = tagArr.map(c => c.toLowerCase());
-      content.tagColorsPreset = tagColorsPreset || "custom";
-    }
-
-    // Recipe/style is always one of the 4 fixed names (never "custom" — it has no
-    // per-palette variant to fall back to), independent of which palette was saved above.
-    if (Object.prototype.hasOwnProperty.call(TAG_COLOR_RECIPES, tagRecipe)) {
-      content.tagRecipe = tagRecipe;
-    }
-
-    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
+      // Recipe/style is always one of the 4 fixed names (never "custom" — it has no
+      // per-palette variant to fall back to), independent of which palette was saved above.
+      if (Object.prototype.hasOwnProperty.call(TAG_COLOR_RECIPES, tagRecipe)) {
+        content.tagRecipe = tagRecipe;
+      }
+    });
     req.session.flash = { type: "ok", msg: "Colors saved." };
   } catch (err) {
     console.error("Admin colors error:", err);
@@ -250,30 +267,28 @@ router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/team", requireAdmin, (req, res) => {
-  const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
-    let content = {};
-    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
-    const raw = req.body.team || {};
-    const indices = Array.isArray(raw)
-      ? raw.map((_, i) => i)
-      : Object.keys(raw).map(Number).sort((a, b) => a - b);
-    const members = Array.isArray(raw) ? raw : indices.map(i => raw[i]);
-    content.team = members.map(m => {
-      const entry = {
-        name:  (m.name  || "").trim(),
-        title: (m.title || "").trim(),
-        photo: (m.photo || "").trim(),
-        bio:   (m.bio   || "").trim(),
-      };
-      if (m.linkedin?.trim())  entry.linkedin  = m.linkedin.trim();
-      if (m.twitter?.trim())   entry.twitter   = m.twitter.trim();
-      if (m.github?.trim())    entry.github    = m.github.trim();
-      if (m.instagram?.trim()) entry.instagram = m.instagram.trim();
-      if (m.website?.trim())   entry.website   = m.website.trim();
-      return entry;
+    updateTenantContent(req.tenant.slug, (content) => {
+      const raw = req.body.team || {};
+      const indices = Array.isArray(raw)
+        ? raw.map((_, i) => i)
+        : Object.keys(raw).map(Number).sort((a, b) => a - b);
+      const members = Array.isArray(raw) ? raw : indices.map(i => raw[i]);
+      content.team = members.map(m => {
+        const entry = {
+          name:  (m.name  || "").trim(),
+          title: (m.title || "").trim(),
+          photo: (m.photo || "").trim(),
+          bio:   (m.bio   || "").trim(),
+        };
+        if (m.linkedin?.trim())  entry.linkedin  = m.linkedin.trim();
+        if (m.twitter?.trim())   entry.twitter   = m.twitter.trim();
+        if (m.github?.trim())    entry.github    = m.github.trim();
+        if (m.instagram?.trim()) entry.instagram = m.instagram.trim();
+        if (m.website?.trim())   entry.website   = m.website.trim();
+        return entry;
+      });
     });
-    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
     req.session.flash = { type: "ok", msg: "Team saved." };
   } catch (err) {
     console.error("Admin team error:", err);
@@ -286,7 +301,7 @@ router.post("/admin/team", requireAdmin, (req, res) => {
 // TOKEN-PROTECTED ADMIN API (for scripted access)
 
 router.get("/admin/sync-pdfs", async (req, res) => {
-  if (req.query.token !== process.env.ADMIN_TOKEN) {
+  if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
     return res.status(401).send("Unauthorized");
   }
   await syncLocalPDFs(req.tenant.slug);
@@ -294,7 +309,7 @@ router.get("/admin/sync-pdfs", async (req, res) => {
 });
 
 router.get("/admin/refresh-cache", async (req, res) => {
-  if (req.query.token !== process.env.ADMIN_TOKEN) {
+  if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
     return res.status(401).send("Unauthorized");
   }
   await refreshCache(req.tenant.slug);

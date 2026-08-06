@@ -8,54 +8,9 @@ James Marchment and Samantha Joel
 
 */
 
-import express from "express";
-import cors from "cors";
-
-import { PORT, MULTI_TENANT, _tenantsList } from "./config.js";
+import { PORT, _tenantsList } from "./config.js";
 import { resolveTableIDs, runFullRefresh } from "./lib/airtable.js";
-import { sessionMiddleware, tenantLocalsMiddleware, resolveTenant } from "./middleware.js";
-import apiRouter from "./routes/api.js";
-import formsRouter from "./routes/forms.js";
-import publicRouter from "./routes/public.js";
-import adminRouter from "./routes/admin.js";
-import landingRouter from "./routes/landing.js";
-import architectRouter from "./routes/architect.js";
-import { assertReservedSlugsCover } from "./lib/reservedSlugs.js";
-
-const app = express();
-
-app.set("view engine", "ejs");
-
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(sessionMiddleware);
-app.use(express.static("public"));
-
-// architectRouter and (in multi-tenant mode) landingRouter are mounted at the root, ahead
-// of the /:slug catch-all below — this asserts every top-level path they define is listed
-// in lib/reservedSlugs.js, so a new route added to either without updating that list fails
-// loudly at startup instead of silently shadowing a future tenant of the same slug.
-assertReservedSlugsCover(architectRouter, "architectRouter");
-app.use(architectRouter);
-
-if (MULTI_TENANT) {
-  assertReservedSlugsCover(landingRouter, "landingRouter");
-  // landingRouter only defines specific paths (/, /search, /search/suggestions,
-  // POST /request-repo) — it must be tried before the /:slug catch-all, otherwise
-  // resolveTenant treats e.g. "search" as a candidate slug and 404s "Unknown tenant"
-  // before landingRouter ever sees the request. Anything not matching those exact
-  // paths falls through via next() to the /:slug chain below, unchanged.
-  app.use("/", landingRouter);
-  app.use("/:slug", resolveTenant, tenantLocalsMiddleware, apiRouter, formsRouter, publicRouter, adminRouter);
-} else {
-  app.use(resolveTenant);
-  app.use(tenantLocalsMiddleware);
-  app.use(apiRouter);
-  app.use(formsRouter);
-  app.use(publicRouter);
-  app.use(adminRouter);
-}
+import app from "./lib/app.js";
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);

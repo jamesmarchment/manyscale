@@ -50,6 +50,7 @@
 
     <div class="card">
       <form method="POST" action="/architect/tenants">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th><label for="name">Name</label></th>

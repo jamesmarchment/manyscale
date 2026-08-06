@@ -1,23 +1,15 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import session from "express-session";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { primaryTenant, SESSION_SECRET, MULTI_TENANT, _tenantsList } from "./config.js";
 import { COLOR_PRESETS, DEFAULT_RECIPE_FOR_PRESET } from "./lib/colorPresets.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-if (!process.env.SESSION_SECRET) {
-  console.warn("[session] SESSION_SECRET not set — using insecure default. Set it in .env.");
-}
+import { getTenantContent } from "./lib/jsonStore.js";
 
 export const sessionMiddleware = session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, maxAge: 8 * 60 * 60 * 1000 }
+  cookie: { httpOnly: true, sameSite: "lax", maxAge: 8 * 60 * 60 * 1000 }
 });
 
 // Expose tenant-level locals to all templates. Must run after resolveTenant so
@@ -28,7 +20,7 @@ export function tenantLocalsMiddleware(req, res, next) {
   res.locals.siteOrigin = `${req.protocol}://${req.get("host")}`;
   res.locals.canonicalUrl = `${res.locals.siteOrigin}${req.originalUrl}`;
   try {
-    const content = JSON.parse(fs.readFileSync(path.join(__dirname, "data", `${tenant.slug}.json`), "utf8"));
+    const content = getTenantContent(tenant.slug);
     const meta = content.meta || {};
     res.locals.siteTagline     = meta.tagline     || "";
     res.locals.siteDescription = meta.description || "";
@@ -82,22 +74,27 @@ export function requireArchitectAdmin(req, res, next) {
   res.redirect("/architect/login");
 }
 
-// In-memory rate limiter: max 5 submissions per IP per hour
-export const _contactRateMap = new Map();
-export const RATE_LIMIT_MAX = 5;
-export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-
-export function contactRateLimitOk(ip) {
-  const now = Date.now();
-  const entry = _contactRateMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    _contactRateMap.set(ip, { count: 1, windowStart: now });
+// In-memory fixed-window rate limiter factory, keyed by an arbitrary string (IP,
+// IP+tenant, etc). Each call site gets its own independent Map/window/max.
+export function createRateLimiter(max, windowMs) {
+  const map = new Map();
+  return function rateLimitOk(key) {
+    const now = Date.now();
+    const entry = map.get(key);
+    if (!entry || now - entry.windowStart > windowMs) {
+      map.set(key, { count: 1, windowStart: now });
+      return true;
+    }
+    if (entry.count >= max) return false;
+    entry.count++;
     return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
-  return true;
+  };
 }
+
+// Max 5 submissions per key per hour — same values as before this was factored out.
+export const contactRateLimitOk = createRateLimiter(5, 60 * 60 * 1000);
+// Max 8 login attempts per key per 15 minutes.
+export const loginRateLimitOk = createRateLimiter(8, 15 * 60 * 1000);
 
 export function resolveTenant(req, res, next) {
   if (!MULTI_TENANT) {

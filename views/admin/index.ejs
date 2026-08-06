@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Admin — <%= tenant.name || "ManyScale" %></title>
   <link rel="stylesheet" href="/assets/css/nano.min.css">
   <style>
@@ -69,6 +70,7 @@
     <header>
       <h1><%= tenant.name %> Admin</h1>
       <form method="POST" action="<%= basePath %>/admin/logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <button type="submit" class="btn btn-ghost">Log out</button>
       </form>
     </header>
@@ -96,6 +98,7 @@
       </table>
       <div class="actions">
         <form method="POST" action="<%= basePath %>/admin/cache">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button type="submit" class="btn">Refresh Cache Now</button>
         </form>
       </div>
@@ -104,6 +107,7 @@
     <h2>Site Content</h2>
     <div class="card">
       <form method="POST" action="<%= basePath %>/admin/content">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th><label for="meta-tagline">Page title tagline</label></th>
@@ -179,6 +183,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
     <h2>Team</h2>
     <div class="card">
       <form method="POST" action="<%= basePath %>/admin/team" id="team-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div id="team-members"></div>
         <div class="actions" style="justify-content: space-between;">
           <button type="button" class="btn btn-ghost" id="add-member-btn">+ Add Member</button>
@@ -293,7 +298,8 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
         const fd = new FormData();
         fd.append('photo', file);
 
-        fetch('<%= basePath %>/admin/team/upload-photo', { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        fetch('<%= basePath %>/admin/team/upload-photo', { method: 'POST', headers: { 'Accept': 'application/json', 'x-csrf-token': csrfToken }, body: fd })
           .then(r => r.json())
           .then(data => {
             if (data.error) {
@@ -332,6 +338,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
     <h2>Colors</h2>
     <div class="card">
       <form method="POST" action="<%= basePath %>/admin/colors" id="colors-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
 
         <div class="color-block">
           <div class="color-block-header">
@@ -670,6 +677,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
     <h2>Password</h2>
     <div class="card">
       <form method="POST" action="<%= basePath %>/admin/password">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th><label for="pw-current">Current password</label></th>
@@ -700,6 +708,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
         </label>
       </div>
       <form method="POST" action="<%= basePath %>/admin/config" id="cfg-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th><label for="cfg-name">Name</label></th>

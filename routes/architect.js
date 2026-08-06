@@ -2,12 +2,16 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
-import { requireArchitectAdmin } from "../middleware.js";
+import { JSDOM } from "jsdom";
+import DOMPurify from "dompurify";
+import { requireArchitectAdmin, loginRateLimitOk } from "../middleware.js";
 import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
 import { tenantCaches, lastRefreshTimes, resolveTableIDs, runFullRefresh, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
+import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
+import { generateCsrfToken } from "../lib/csrf.js";
 
 const router = Router();
 
@@ -45,29 +49,46 @@ const metaImageUpload = multer({ storage: brandingStorage("meta"), limits: { fil
 
 // Strips the parts of an uploaded SVG that could execute script if the file were ever
 // opened directly as a top-level document (uploads embedded via <img src> never execute
-// scripts regardless, but this is served from the same origin as the tenant site, so a
-// direct visit to the file's URL should still be safe even for a maliciously crafted SVG).
+// scripts regardless, but this is served from the same origin as the tenant site — with
+// an X-Content-Type-Options: nosniff header set in lib/app.js — so a direct visit to the
+// file's URL should still be safe even for a maliciously crafted SVG). DOMPurify actually
+// parses the markup instead of pattern-matching text, so it also catches vectors a regex
+// blocklist misses: <foreignObject>/<iframe>/<embed> src, SMIL <animate> attribute
+// hijacking, <style>/CSS url(), and entity-encoded scheme strings.
+const svgPurify = DOMPurify(new JSDOM("").window);
 function sanitizeSvg(svg) {
-  return svg
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/(xlink:href|href)\s*=\s*("|')\s*javascript:[^"']*\2/gi, '$1=""');
+  return svgPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
 }
 
 router.get("/architect/login", (req, res) => {
   if (req.session?.architectLoggedIn) return res.redirect("/architect");
-  res.render("architect/login", { error: null });
+  // See the matching comment in routes/admin.js's GET /admin/login — this write forces
+  // express-session to actually persist a session cookie now, so the CSRF token
+  // generated below stays valid for the POST that follows.
+  req.session.csrfSeed = true;
+  res.render("architect/login", { error: null, csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/architect/login", (req, res) => {
+  if (!loginRateLimitOk(req.ip)) {
+    return res.status(429).render("architect/login", { error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
+  }
   if (!ARCHITECT_ADMIN_PASSWORD_HASH) {
-    return res.render("architect/login", { error: "Architect admin password is not configured. Run npm run hash-password and set ARCHITECT_ADMIN_PASSWORD_HASH in .env." });
+    return res.render("architect/login", { error: "Architect admin password is not configured. Run npm run hash-password and set ARCHITECT_ADMIN_PASSWORD_HASH in .env.", csrfToken: generateCsrfToken(req, res) });
   }
   if (verifyPassword(req.body.password || "", ARCHITECT_ADMIN_PASSWORD_HASH)) {
-    req.session.architectLoggedIn = true;
-    return res.redirect("/architect");
+    // Regenerate on every successful login so a pre-authentication session ID (which
+    // could have been fixated by an attacker) never becomes privileged.
+    return req.session.regenerate((err) => {
+      if (err) {
+        console.error("Session regenerate error:", err);
+        return res.render("architect/login", { error: "Login failed — please try again.", csrfToken: generateCsrfToken(req, res) });
+      }
+      req.session.architectLoggedIn = true;
+      res.redirect("/architect");
+    });
   }
-  res.render("architect/login", { error: "Incorrect password." });
+  res.render("architect/login", { error: "Incorrect password.", csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/architect/logout", (req, res) => {
@@ -96,7 +117,7 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
     plausibleDomain: process.env.PLAUSIBLE_DOMAIN || "",
     plausibleScriptSrc: process.env.PLAUSIBLE_SCRIPT_SRC || "https://analytics.relascale.com/js/script.file-downloads.js",
   };
-  res.render("architect/index", { tenants, flash, emailSettings, analyticsSettings });
+  res.render("architect/index", { tenants, flash, emailSettings, analyticsSettings, csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
@@ -154,7 +175,7 @@ router.post("/architect/settings/password", requireArchitectAdmin, (req, res) =>
 });
 
 router.get("/architect/tenants/new", requireArchitectAdmin, (req, res) => {
-  res.render("architect/tenant-form", { errors: null, values: {} });
+  res.render("architect/tenant-form", { errors: null, values: {}, csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
@@ -184,7 +205,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   }
 
   if (errors.length) {
-    return res.render("architect/tenant-form", { errors, values });
+    return res.render("architect/tenant-form", { errors, values, csrfToken: generateCsrfToken(req, res) });
   }
 
   const patEnvVar = trimmedSlug.toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_PAT";
@@ -200,18 +221,18 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   };
 
   _tenantsList.push(tenant);
-  fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
 
   updateEnvVar(patEnvVar, pat.trim());
   process.env[patEnvVar] = pat.trim();
 
   const contentFile = path.join(PROJECT_ROOT, "data", `${tenant.slug}.json`);
-  fs.writeFileSync(contentFile, JSON.stringify({
+  writeJsonAtomic(contentFile, {
     meta: { tagline: "", description: "" },
     submitFormUrl: "",
     hero: { heading: tenant.name, subheading: "" },
     team: [],
-  }, null, 2), "utf8");
+  });
 
   let scaffoldResult = null;
   if (scaffoldTables) {
@@ -298,7 +319,7 @@ router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, (r
   // never-configured tenant admin password, which the self-service form on /admin
   // (routes/admin.js) can't handle since it requires knowing the current one.
   tenant.adminPasswordHash = hashPassword(newPassword);
-  fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
   req.session.architectFlash = { type: "ok", msg: `Password reset for "${tenant.name}".` };
   res.redirect("/architect");
 });
@@ -322,7 +343,7 @@ router.post("/architect/tenants/:slug/link", requireArchitectAdmin, (req, res) =
   // search.
   if (trimmed) tenant.externalUrl = trimmed;
   else delete tenant.externalUrl;
-  fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
   req.session.architectFlash = { type: "ok", msg: trimmed ? `External link set for "${tenant.name}".` : `External link cleared for "${tenant.name}".` };
   res.redirect("/architect");
 });
@@ -336,7 +357,7 @@ router.post("/architect/tenants/:slug/toggle-active", requireArchitectAdmin, (re
   }
   const wasActive = tenant.active !== false;
   tenant.active = !wasActive;
-  fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
   req.session.architectFlash = { type: "ok", msg: `Tenant "${tenant.name}" ${tenant.active ? "activated" : "deactivated"}.` };
   res.redirect("/architect");
 });
@@ -350,9 +371,11 @@ router.get("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, res
   }
   let content = {};
   try {
-    content = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, "data", `${slug}.json`), "utf8"));
+    content = getTenantContent(slug);
   } catch {
-    // No content file yet — defaults below cover it.
+    // Corrupt content file — defaults below cover it; this is a read path, so
+    // defaulting for display is fine (see lib/jsonStore.js's write path for the
+    // distinction that matters).
   }
   const flash = req.session.architectFlash || null;
   delete req.session.architectFlash;
@@ -362,6 +385,7 @@ router.get("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, res
     metaImageUrl: content.metaImageUrl || "",
     logoColor: content.logoColor || "",
     flash,
+    csrfToken: generateCsrfToken(req, res),
   });
 });
 
@@ -373,13 +397,11 @@ router.post("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, re
     return res.redirect("/architect");
   }
   const { logoUrl, metaImageUrl } = req.body;
-  const contentFile = path.join(PROJECT_ROOT, "data", `${slug}.json`);
   try {
-    let content = {};
-    try { content = JSON.parse(fs.readFileSync(contentFile, "utf8")); } catch {}
-    content.logoUrl = (logoUrl || "").trim();
-    content.metaImageUrl = (metaImageUrl || "").trim();
-    fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
+    updateTenantContent(slug, (content) => {
+      content.logoUrl = (logoUrl || "").trim();
+      content.metaImageUrl = (metaImageUrl || "").trim();
+    });
     req.session.architectFlash = { type: "ok", msg: "Branding saved." };
   } catch (err) {
     console.error(`[${slug}] Architect branding save error:`, err);
@@ -430,9 +452,10 @@ router.post("/architect/tenants/:slug/delete", requireArchitectAdmin, (req, res)
     return res.redirect("/architect");
   }
   const [removed] = _tenantsList.splice(idx, 1);
-  fs.writeFileSync(TENANTS_FILE, JSON.stringify(_tenantsList, null, 2), "utf8");
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
   tenantCaches.delete(slug);
   lastRefreshTimes.delete(slug);
+  invalidateTenantContent(slug);
   req.session.architectFlash = { type: "ok", msg: `Tenant "${removed.name}" deleted. Its on-disk cache and data files were preserved.` };
   res.redirect("/architect");
 });

@@ -56,6 +56,7 @@
       <div style="display:flex;align-items:center;gap:.5rem">
         <a href="/architect/tenants/new" class="btn">+ New Tenant</a>
         <form method="POST" action="/architect/logout">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button type="submit" class="btn btn-ghost">Log out</button>
         </form>
       </div>
@@ -110,19 +111,23 @@
                     <details class="detail-toggle">
                       <summary class="btn btn-ghost btn-sm" title="External link (landing page card)" aria-label="External link"><%= t.externalUrl ? "External ✓" : "Link" %></summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/link">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <input type="text" name="externalUrl" value="<%= t.externalUrl || '' %>" placeholder="https://example.com" style="width:12rem" aria-label="External URL">
                         <button type="submit" class="btn btn-ghost btn-sm">Save</button>
                       </form>
                     </details>
                     <form method="POST" action="/architect/tenants/<%= t.slug %>/refresh-cache">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button type="submit" class="btn btn-ghost btn-sm">Refresh Cache</button>
                     </form>
                     <form method="POST" action="/architect/tenants/<%= t.slug %>/toggle-active">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button type="submit" class="btn <%= t.active ? 'btn-danger' : 'btn-ghost' %> btn-sm"><%= t.active ? "Deactivate" : "Activate" %></button>
                     </form>
                     <details class="detail-toggle">
                       <summary class="btn btn-ghost btn-sm" title="Reset admin password" aria-label="Reset admin password">Reset PW</summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/reset-password" onsubmit="return confirm('Reset the admin password for &quot;<%= t.slug %>&quot;? The old password will stop working immediately.');">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <input type="password" name="newPassword" placeholder="new password" minlength="8" required aria-label="New admin password">
                         <button type="submit" class="btn btn-ghost btn-sm">Set</button>
                       </form>
@@ -130,6 +135,7 @@
                     <details class="detail-toggle delete-toggle">
                       <summary class="btn btn-ghost btn-sm" title="Delete tenant" aria-label="Delete tenant">&times;</summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                         <input type="text" name="confirmSlug" placeholder="type slug" aria-label="Type slug to confirm deletion">
                         <button type="submit" class="btn btn-danger btn-sm">Delete</button>
                       </form>
@@ -146,6 +152,7 @@
     <h2>Platform Settings</h2>
     <div class="card">
       <form method="POST" action="/architect/settings/email">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th style="width:38%"><label for="smtp-host">SMTP Host</label></th>
@@ -177,6 +184,7 @@
     <h2>Analytics</h2>
     <div class="card">
       <form method="POST" action="/architect/settings/analytics">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th style="width:38%"><label for="plausible-domain">Plausible domain</label></th>
@@ -200,6 +208,7 @@
     <h2>Architect Password</h2>
     <div class="card">
       <form method="POST" action="/architect/settings/password">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <table>
           <tr>
             <th style="width:38%"><label for="arch-pw-current">Current password</label></th>

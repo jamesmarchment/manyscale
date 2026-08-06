@@ -118,6 +118,7 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `SESSION_SECRET` | Yes | Random string used to sign session cookies |
 | `PORT` | No | Port to listen on (default: `3007`) |
 | `MULTI_TENANT` | No | Set to `true` to enable slug-prefixed URLs (e.g. `/relationships/constructs`). Default is `false` (single-tenant, no slug in URL). |
+| `TRUST_PROXY` | No | Set to `true` only if the app is running behind a reverse proxy (nginx, Caddy, Cloudflare, etc) that you control. Makes Express trust that proxy's `X-Forwarded-For`/`X-Forwarded-Proto` headers for rate limiting and cookie security. Leave unset (default `false`) for a direct-exposed deployment — trusting these headers without an actual proxy in front lets any client spoof its own IP and bypass IP-based rate limits. |
 
 *Required if you want the contact or measure suggestion forms to send email.
 

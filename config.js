@@ -13,7 +13,14 @@ dotenv.config();
 
 export const PORT = process.env.PORT || 3007;
 export const MULTI_TENANT = process.env.MULTI_TENANT === "true";
-export const SESSION_SECRET = process.env.SESSION_SECRET || "manyscale-dev-secret";
+// No insecure fallback here on purpose: a hardcoded default would let anyone who's
+// read this source forge a session cookie for any tenant. Fail loudly instead, same as
+// the tenants.json read failure below.
+if (!process.env.SESSION_SECRET) {
+  console.error("[config] SESSION_SECRET is not set in .env — refusing to start. Generate one (e.g. `openssl rand -hex 32`) and set it in .env.");
+  process.exit(1);
+}
+export const SESSION_SECRET = process.env.SESSION_SECRET;
 export const ARCHITECT_ADMIN_PASSWORD_HASH = process.env.ARCHITECT_ADMIN_PASSWORD_HASH || "";
 
 export const TENANTS_FILE = path.join(__dirname, "tenants.json");
