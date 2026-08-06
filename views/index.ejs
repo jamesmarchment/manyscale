@@ -99,38 +99,19 @@
       </div>
     </section><!-- /Portfolio Section -->
 
+    <% if (locals.whyHtml) { %>
     <!-- Why section -->
-<section class="bg-light" id="why">
+    <section class="bg-light" id="why">
             <div class="container px-5">
-                <div class="row gx-5 align-items-center justify-content-center justify-content-lg-between">
-                    <div class="col-12 col-lg-5">
-                        <h5 class="display-6 lh-1 mb-4">Why Collect Measures?</h5>
-                        <p class="lead  mb-3">Measurement standardization is an important part of a mature science.</p><p>RelaScale answers recent calls for the discipline of psychology to document and standardize its measures.<sup><a href="#fn-1">[1]</a></sup><sup><a href="#fn-2">[2]</a></sup> By curating a publicly available collection of measures for the field of relationship science, we hope that RelaScale can help to:</p>
-              <ol class="bracket-list">
-                <li>improve measurement consistency across studies</li>
-                <li>combat the proliferation of constructs and measures</li>
-                <li>facilitate meta-scientific projects</li>
-                <li>encourage the iterative improvement of the field’s measures</li>
-              </ol>
-              <p>Ultimately, the goal of RelaScale is to help make close relationships research more cumulative.</p>
-            </div>
-                    <div class="col-sm-8 col-md-6" data-aos="fade-left" data-aos-delay="300">
-                        <div class="px-5 px-sm-0"><img class="img-fluid" src="assets/img/about/about-8.webp" alt="..."></div>
+                <div class="row justify-content-center">
+                    <div class="col-12 col-lg-12 why-content">
+                        <%- locals.whyHtml %>
                     </div>
-
-          <div class="why-footnotes">
-          <ol>
-            <li id="fn-1">Anvari, F., Alsalti, T., Oehler, L.A., Marion, Z., Hussey, I., Elson, M., &amp; Arslan, R.C. (2025). A Fragmented Field: Construct and Measure Proliferation in Psychology. <em>Advances in Methods and Practices in Psychological Science</em>, 8(3). <a href="https://doi.org/10.1177/25152459251360642">https://doi.org/10.1177/25152459251360642</a></li>
-            <li id="fn-2">Elson, M., Hussey, I., Alsalti, T., &amp; Arslan, R. C. (2023). Psychological measures aren’t toothbrushes. <em>Communications Psychology</em>, 1(1), 25.</li>
-          </ol>
-        </div>
                 </div>
             </div>
         </section>
-
-
-
-  <!-- /Why Section -->
+    <!-- /Why Section -->
+    <% } %>
 
     <!-- Submit Section -->
     <section class="page-section" id="submit">

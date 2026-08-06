@@ -70,7 +70,7 @@ router.post("/admin/logout", (req, res) => {
 
 router.get("/admin", requireAdmin, (req, res) => {
   const tenant = req.tenant;
-  let hero = {}, submitFormUrl = "", team = [];
+  let hero = {}, submitFormUrl = "", team = [], whyMarkdown = "";
   let bubbleChartPreset = "default", cardGradientsPreset = "default", tagColorsPreset = "default";
   let bubbleChartColors = COLOR_PRESETS.bubbleChart.default;
   let cardGradients     = COLOR_PRESETS.cardGradients.default;
@@ -81,6 +81,7 @@ router.get("/admin", requireAdmin, (req, res) => {
     hero = content.hero || {};
     submitFormUrl = content.submitFormUrl || "";
     team = content.team || [];
+    whyMarkdown = content.whyMarkdown || "";
     bubbleChartPreset   = content.bubbleChartPreset   || "default";
     cardGradientsPreset = content.cardGradientsPreset || "default";
     tagColorsPreset     = content.tagColorsPreset     || "default";
@@ -101,6 +102,7 @@ router.get("/admin", requireAdmin, (req, res) => {
     hero,
     submitFormUrl,
     team,
+    whyMarkdown,
     colorPresets: COLOR_PRESETS,
     bubbleChartPreset, cardGradientsPreset, tagColorsPreset,
     bubbleChartColors, cardGradients, tagColors, tagRecipe,
@@ -163,7 +165,7 @@ router.post("/admin/password", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/content", requireAdmin, (req, res) => {
-  const { hero_heading, hero_subheading, meta_tagline, meta_description, landing_tagline, submit_form_url, logo_color } = req.body;
+  const { hero_heading, hero_subheading, meta_tagline, meta_description, landing_tagline, submit_form_url, logo_color, why_markdown } = req.body;
   const contentFile = path.join(PROJECT_ROOT, "data", `${req.tenant.slug}.json`);
   try {
     let content = {};
@@ -176,6 +178,7 @@ router.post("/admin/content", requireAdmin, (req, res) => {
     if (meta_description  !== undefined) content.meta.description = meta_description;
     if (landing_tagline   !== undefined) content.landingTagline   = landing_tagline;
     if (submit_form_url   !== undefined) content.submitFormUrl    = submit_form_url;
+    if (why_markdown      !== undefined) content.whyMarkdown      = why_markdown;
     if (logo_color        !== undefined && /^#[0-9a-f]{6}$/i.test(logo_color)) content.logoColor = logo_color;
     fs.writeFileSync(contentFile, JSON.stringify(content, null, 2), "utf8");
     req.session.flash = { type: "ok", msg: "Site content saved." };

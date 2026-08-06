@@ -127,6 +127,23 @@
             </td>
           </tr>
           <tr>
+            <th><label for="why-markdown">Custom section</label></th>
+            <td>
+              <textarea id="why-markdown" name="why_markdown" rows="12" cols="55" placeholder="Optional section (currently blank)
+--------------------
+
+---
+
+Text here will render on the repo homepage. This features:
+- bullet lists
+- text in *bold* and _italic_
+- [Hyperlinks](http://manyscale.org)
+
+Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
+              <p class="hint"><a href="https://commonmark.org/help/" target="_blank">Markdown</a> supported (headings, bold, links, lists). Leave blank to hide this section entirely.</p>
+            </td>
+          </tr>
+          <tr>
             <th><label for="submit-form-url">Submit form URL</label></th>
             <td>
               <input type="text" id="submit-form-url" name="submit_form_url" value="<%= locals.submitFormUrl || '' %>">

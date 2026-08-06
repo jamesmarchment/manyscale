@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import session from "express-session";
+import { marked } from "marked";
+import sanitizeHtml from "sanitize-html";
 import { primaryTenant, SESSION_SECRET, MULTI_TENANT, _tenantsList } from "./config.js";
 import { COLOR_PRESETS, DEFAULT_RECIPE_FOR_PRESET } from "./lib/colorPresets.js";
 
@@ -46,6 +48,10 @@ export function tenantLocalsMiddleware(req, res, next) {
       : (COLOR_PRESETS.tagColors[tagColorsPreset] || COLOR_PRESETS.tagColors.default);
     res.locals.tagColorsPreset = tagColorsPreset;
     res.locals.tagRecipe = content.tagRecipe || DEFAULT_RECIPE_FOR_PRESET[tagColorsPreset] || "pastel";
+    res.locals.whyMarkdown = content.whyMarkdown || "";
+    res.locals.whyHtml = content.whyMarkdown
+      ? sanitizeHtml(marked.parse(content.whyMarkdown))
+      : "";
   } catch {
     res.locals.metaImagePath = "/assets/img/manyscale_meta.jpg";
     res.locals.bubbleChartColors = COLOR_PRESETS.bubbleChart.default;
@@ -53,6 +59,8 @@ export function tenantLocalsMiddleware(req, res, next) {
     res.locals.tagColors         = COLOR_PRESETS.tagColors.default;
     res.locals.tagColorsPreset   = "default";
     res.locals.tagRecipe         = "pastel";
+    res.locals.whyMarkdown       = "";
+    res.locals.whyHtml           = "";
   }
   next();
 }

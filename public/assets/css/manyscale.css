@@ -764,6 +764,27 @@ color: #868686;
   margin-bottom: 0.75rem;
 }
 
+.why-content h1,
+.why-content h2,
+.why-content h3,
+.why-content h4,
+.why-content h5,
+.why-content h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.why-content ul,
+.why-content ol {
+  padding-left: 1.75rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.why-content li {
+  margin-bottom: 0.3rem;
+  line-height: 1.6;
+}
+
 .bracket-list {
   padding-left: 1.75rem;
   margin: 0.25rem 0 1rem;
