@@ -12,9 +12,14 @@
 
   <!-- Plausible Analytics — configured in Architect Admin under Platform Settings.
        All tenants share one path-based domain, so data-domain is deployment-wide,
-       not per-tenant. Omitted entirely when no domain is set. -->
+       not per-tenant. Omitted entirely when no domain is set. Script + event calls
+       are proxied through this app's own origin (lib/analyticsProxy.js) rather than
+       pointed straight at the analytics.* subdomain, since ad blockers and
+       tracking-protection lists block that hostname pattern outright — data-api
+       overrides the script's default same-origin "/api/event" endpoint so it lands
+       on our proxy route instead of reserving the generic "/api" path. -->
   <% if (process.env.PLAUSIBLE_DOMAIN) { %>
-  <script defer data-domain="<%= process.env.PLAUSIBLE_DOMAIN %>" src="<%= process.env.PLAUSIBLE_SCRIPT_SRC || 'https://analytics.relascale.com/js/script.file-downloads.js' %>"></script>
+  <script defer data-domain="<%= process.env.PLAUSIBLE_DOMAIN %>" data-api="/analytics/event" src="/analytics/js"></script>
   <% } %>
 
   <!-- Open Graph -->
