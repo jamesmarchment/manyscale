@@ -1,4 +1,8 @@
-﻿<%- include("partials/header", { title: record.fields["Measure Name"] + " · " + locals.siteName }) %>
+﻿<%- include("partials/header", {
+  title: record.fields["Measure Name"] + " · " + locals.siteName,
+  metaDescription: locals.metaDescription,
+  metaKeywords: locals.metaKeywords,
+}) %>
 
 <body class="portfolio-details-page pt-5">
 

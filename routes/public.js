@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { tenantCaches, refreshTenantCacheOnly, contributorsCache, getSubmitFormUrl } from "../lib/airtable.js";
 import { recordMatchesSearch, getSuggestions } from "../lib/search.js";
+import { measureMetaDescription, measureKeywords } from "../lib/seo.js";
 import { PROJECT_ROOT } from "../config.js";
 
 const router = Router();
@@ -48,7 +49,14 @@ router.get("/details/:id", async (req, res) => {
   const prev = cache[(index - 1 + cache.length) % cache.length];
   const next = cache[(index + 1) % cache.length];
 
-  res.render("details", { id: recordId, record, prev, next });
+  res.render("details", {
+    id: recordId,
+    record,
+    prev,
+    next,
+    metaDescription: measureMetaDescription(record),
+    metaKeywords: measureKeywords(record),
+  });
 });
 
 router.get("/search", (req, res) => {

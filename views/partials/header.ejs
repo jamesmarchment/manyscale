@@ -7,8 +7,13 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title><%= locals.title || (locals.siteName + (locals.siteTagline ? ' · ' + locals.siteTagline : '')) %></title>
-  <meta name="description" content="<%= locals.siteDescription %>">
-  <meta name="keywords" content="">
+  <!-- metaDescription/metaKeywords let a specific page (e.g. views/details.ejs, via
+       lib/seo.js) override the generic tenant-wide description/empty keywords below
+       with something unique to that page — search engines penalize identical
+       descriptions repeated across many pages. -->
+  <meta name="description" content="<%= locals.metaDescription || locals.siteDescription %>">
+  <meta name="keywords" content="<%= locals.metaKeywords || '' %>">
+  <link rel="canonical" href="<%= locals.canonicalUrl %>">
 
   <!-- Plausible Analytics — configured in Architect Admin under Platform Settings.
        All tenants share one path-based domain, so data-domain is deployment-wide,
@@ -26,7 +31,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="<%= locals.siteName %>">
   <meta property="og:title" content="<%= locals.title || (locals.siteName + (locals.siteTagline ? ' · ' + locals.siteTagline : '')) %>">
-  <meta property="og:description" content="<%= locals.siteDescription %>">
+  <meta property="og:description" content="<%= locals.metaDescription || locals.siteDescription %>">
   <meta property="og:url" content="<%= locals.canonicalUrl || 'https://manyscale.org' %>">
   <meta property="og:image" content="<%= (locals.siteOrigin || 'https://manyscale.org') + (locals.metaImagePath || '/assets/img/manyscale_meta.jpg') %>">
   <meta property="og:image:alt" content="<%= locals.siteName || 'ManyScale' %>">
@@ -34,7 +39,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="<%= locals.title || (locals.siteName + (locals.siteTagline ? ' · ' + locals.siteTagline : '')) %>">
-  <meta name="twitter:description" content="<%= locals.siteDescription %>">
+  <meta name="twitter:description" content="<%= locals.metaDescription || locals.siteDescription %>">
   <meta name="twitter:image" content="<%= (locals.siteOrigin || 'https://manyscale.org') + (locals.metaImagePath || '/assets/img/manyscale_meta.jpg') %>">
 
   <!-- Favicons -->
