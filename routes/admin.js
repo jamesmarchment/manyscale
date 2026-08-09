@@ -310,22 +310,31 @@ router.post("/admin/team", requireAdmin, (req, res) => {
 
 
 // TOKEN-PROTECTED ADMIN API (for scripted access)
-
-router.get("/admin/sync-pdfs", async (req, res) => {
-  if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
-    return res.status(401).send("Unauthorized");
-  }
-  await syncTenantPDFs(req.tenant.slug);
-  res.send("PDF sync completed");
-});
-
-router.get("/admin/refresh-cache", async (req, res) => {
-  if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
-    return res.status(401).send("Unauthorized");
-  }
-  await refreshTenantCacheOnly(req.tenant.slug);
-  res.send(`Cache refreshed. ${(tenantCaches.get(req.tenant.slug) || []).length} records loaded.`);
-});
+//
+// Disabled 2026-08-09: superseded by the session-based admin panel buttons above
+// ("Refresh Cache Now" / "Re-sync PDFs"), which cover the same actions plus more and
+// already have proper error handling. Also, GET /admin/refresh-cache only refreshes
+// records — it never runs syncLocalPDFs — so calling it directly wiped every PDF
+// download button on the site until the next full refresh (see lib/airtable.js's
+// attachExistingLocalPaths for the actual fix to that). Left here, commented out
+// rather than deleted, in case scripted/external access via ADMIN_TOKEN is wanted again
+// later — if revived, give it the same try/catch treatment as the panel buttons above.
+//
+// router.get("/admin/sync-pdfs", async (req, res) => {
+//   if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
+//     return res.status(401).send("Unauthorized");
+//   }
+//   await syncTenantPDFs(req.tenant.slug);
+//   res.send("PDF sync completed");
+// });
+//
+// router.get("/admin/refresh-cache", async (req, res) => {
+//   if (!safeTokenEqual(req.query.token, process.env.ADMIN_TOKEN)) {
+//     return res.status(401).send("Unauthorized");
+//   }
+//   await refreshTenantCacheOnly(req.tenant.slug);
+//   res.send(`Cache refreshed. ${(tenantCaches.get(req.tenant.slug) || []).length} records loaded.`);
+// });
 
 
 export default router;
