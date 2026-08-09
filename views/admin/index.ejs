@@ -101,6 +101,10 @@
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <button type="submit" class="btn">Refresh Cache Now</button>
         </form>
+        <form method="POST" action="<%= basePath %>/admin/sync-pdfs">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn">Re-sync PDFs</button>
+        </form>
       </div>
     </div>
 

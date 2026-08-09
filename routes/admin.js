@@ -258,6 +258,17 @@ router.post("/admin/cache", requireAdmin, async (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
+router.post("/admin/sync-pdfs", requireAdmin, async (req, res) => {
+  try {
+    await syncTenantPDFs(req.tenant.slug);
+    req.session.flash = { type: "ok", msg: "PDF sync complete." };
+  } catch (err) {
+    console.error("Admin PDF sync error:", err);
+    req.session.flash = { type: "err", msg: "PDF sync failed: " + err.message };
+  }
+  res.redirect(res.locals.basePath + "/admin");
+});
+
 router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
   photoUpload.single("photo")(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message || "Upload failed." });
