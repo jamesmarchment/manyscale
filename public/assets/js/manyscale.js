@@ -449,15 +449,17 @@ function renderConstructButtons(rec) {
 function renderLinkButtons(rec) {
   const container = document.getElementById("details_link_buttons");
   container.innerHTML = "";
-  if (rec.fields["Final PDF"]?.[0]?.["f_localPath"]) {
+  if (rec.fields["Missing PDF"]) {
+    // Authoritative regardless of whether a (possibly stale) f_localPath is present —
+    // an editor explicitly flagging the PDF as unavailable always wins.
+    container.innerHTML += `
+      <button type="button" class="btn-download no-pdf-download" disabled><i class="bi bi-ban"></i>${rec.fields["Missing PDF"]}</button>`;
+  } else if (rec.fields["Final PDF"]?.[0]?.["f_localPath"]) {
     const f_pdflink = rec.fields["Final PDF"][0]["f_localPath"];
     container.innerHTML += `
       <a href="${f_pdflink}" class="view-project" aria-label="View full measure" target="_blank">
         <button type="button" class="btn-download btn-download-pdf"><i class="bi bi-file-pdf"></i>Download Measure (PDF)</button>
       </a>`;
-  } else if (rec.fields["Missing PDF"]) {
-    container.innerHTML += `
-      <button type="button" class="btn-download no-pdf-download" disabled><i class="bi bi-ban"></i>${rec.fields["Missing PDF"]}</button>`;
   }
   if (rec.fields["json file"]?.[0]?.["j_localPath"]) {
     const jsonLink = rec.fields["json file"][0]["j_localPath"];

@@ -182,7 +182,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     pageRecords.forEach(rec => {
       const barGradient = CARD_GRADIENTS[allRecords.indexOf(rec) % CARD_GRADIENTS.length];
-      const thisPdfPath = rec.fields?.["Final PDF"]?.[0]?.f_localPath;
+      // "Missing PDF" always wins over a (possibly stale) f_localPath — see the
+      // matching precedence flip in manyscale.js's renderLinkButtons.
+      const thisPdfPath = rec.fields?.["Missing PDF"] ? null : rec.fields?.["Final PDF"]?.[0]?.f_localPath;
 
       let linkHTML = "";
       if (thisPdfPath) {
