@@ -131,6 +131,34 @@ router.get("/constructs/:name", async (req, res) => {
   res.render("construct-details", { name, items: list });
 });
 
+router.get("/topics/:name", async (req, res) => {
+  const name = req.params.name.trim();
+
+  let cache = tenantCaches.get(req.tenant.slug) || [];
+  if (cache.length === 0) {
+    await refreshTenantCacheOnly(req.tenant.slug);
+    cache = tenantCaches.get(req.tenant.slug) || [];
+  }
+
+  const topicMap = {};
+  for (const record of cache) {
+    const topics = record.fields["Topic(s)"];
+    if (!topics) continue;
+    topics.forEach(t => {
+      const key = t.trim();
+      if (!topicMap[key]) topicMap[key] = [];
+      topicMap[key].push(record);
+    });
+  }
+
+  const list = topicMap[name];
+  if (!list) {
+    return res.status(404).send("Topic not found");
+  }
+
+  res.render("topic-details", { name, items: list });
+});
+
 router.get("/languages", async (req, res) => {
   let cache = tenantCaches.get(req.tenant.slug) || [];
   if (cache.length === 0) {

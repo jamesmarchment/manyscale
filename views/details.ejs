@@ -86,6 +86,10 @@
                   <div class="info-label">Construct(s)</div>
                   <div class="info-value" id="sidebar-constructs"></div>
                 </div>
+                <div class="info-block" id="sidebar-topics-block">
+                  <div class="info-label">Topic(s)</div>
+                  <div class="info-value" id="sidebar-topics"></div>
+                </div>
                 <div class="info-block">
                   <div class="info-label">Number of Dimensions (Subscales)</div>
                   <div class="info-value" data-field="Number of Dimensions (Subscales)"></div>
@@ -149,6 +153,22 @@ console.log(single.fields);
     .join("");
   // document.getElementById("intro-constructs").innerHTML = constructLinks;
   document.getElementById("sidebar-constructs").innerHTML = constructLinks;
+
+  // Topic(s) is a separate, independent tag taxonomy from Construct(s) — absent
+  // entirely (not just empty) for tenants whose Airtable base has no Topic(s) column
+  // (e.g. AggreScale), which behaves identically to a record that has the column but no
+  // value set: single.fields["Topic(s)"] is simply undefined either way.
+  const topics = single.fields["Topic(s)"] || [];
+  const topicsBlock = document.getElementById("sidebar-topics-block");
+  if (topics.length > 0) {
+    topicsBlock.style.display = "";
+    document.getElementById("sidebar-topics").innerHTML = topics
+      .map(t => `<span class="construct-tag"><a href="<%= basePath %>/topics/${encodeURIComponent(t)}">${t}</a></span>`)
+      .join("");
+  } else {
+    topicsBlock.style.display = "none";
+  }
+
   applyConstructTagColors();
 
 
