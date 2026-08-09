@@ -40,6 +40,17 @@
         });
       });
       const sortedLanguages = [...allLanguages].sort();
+
+      // Absent entirely (not just an empty dropdown) for tenants whose Airtable base
+      // has no Topic(s) column — record.fields["Topic(s)"] is simply undefined either
+      // way, same as any tenant's records that just haven't set it.
+      const allTopics = new Set();
+      constructs.forEach(g => {
+        g.items.forEach(item => {
+          (item.fields["Topic(s)"] || []).forEach(t => allTopics.add(t));
+        });
+      });
+      const sortedTopics = [...allTopics].sort();
     %>
     <div class="container" data-aos="fade-up">
       <div class="construct-filter-and-results" style="display:flex; gap:1rem; flex-wrap:wrap;">
@@ -77,6 +88,25 @@
             </ul>
           </div>
         </div>
+
+        <% if (sortedTopics.length > 0) { %>
+        <div class="construct-filter-wrapper">
+          <button class="filter-toggle-btn" id="topic-filter-toggle-btn" type="button">
+            <span id="topic-filter-label">All Topics</span>
+            <i class="bi bi-chevron-down"></i>
+          </button>
+          <div class="filter-tags-bar" id="topic-filter-tags-bar"></div>
+          <div class="filter-panel" id="topic-filter-panel">
+            <input type="text" class="filter-search" id="topic-filter-search" placeholder="Search topics…" autocomplete="off">
+            <ul class="portfolio-filters" id="topic-filter-list">
+              <li data-topic-filter="*" class="filter-active">All Topics</li>
+              <% sortedTopics.forEach(topic => { %>
+                <li data-topic-filter=".<%= topic.toLowerCase().replace(/\s+/g, '-') %>"><%= topic %></li>
+              <% }) %>
+            </ul>
+          </div>
+        </div>
+        <% } %>
 
       </div>
     </div>
@@ -129,8 +159,9 @@
                   ...(item.fields["Language(s)"] || []),
                   ...(item.fields.translations || []).map(tr => tr["Language"]).filter(Boolean)
                 ].map(l => l.toLowerCase().replace(/\s+/g, '-')).join(' ');
+                const itemTopicSlugs = (item.fields["Topic(s)"] || []).map(t => t.toLowerCase().replace(/\s+/g, '-')).join(' ');
               %>
-                <li class="list-group-item <%= item.fields['MeasureID'] %>" data-construct-slugs="<%= itemSlugs %>" data-language-slugs="<%= itemLangSlugs %>">
+                <li class="list-group-item <%= item.fields['MeasureID'] %>" data-construct-slugs="<%= itemSlugs %>" data-language-slugs="<%= itemLangSlugs %>" data-topic-slugs="<%= itemTopicSlugs %>">
                   <a href="<%= basePath %>/details/<%= item.fields['MeasureID'] %>">
                     <p class="measurename"><%= item.fields["Measure Name"] %></p>
                     <p class="primaryreference"><%= item.fields["Primary Reference"] %></p>
@@ -146,7 +177,7 @@
     </div>
 
     <div id="filter-no-results" style="display:none" class="container text-center py-5">
-      <p class="text-muted">No measures found for the selected combination of constructs.</p>
+      <p class="text-muted">No measures found for the selected filters.</p>
     </div>
 
     </section><!-- /Constructs Index Section -->
@@ -159,6 +190,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // -- State --
   const selectedFilters  = new Set();  // construct slugs
   const selectedLanguages = new Set(); // language slugs
+  const selectedTopics   = new Set();  // topic slugs
 
   // -- Construct filter elements --
   const toggleBtn    = document.getElementById("filter-toggle-btn");
@@ -176,15 +208,32 @@ document.addEventListener("DOMContentLoaded", () => {
   const langTagsBar   = document.getElementById("lang-filter-tags-bar");
   const langLabel     = document.getElementById("lang-filter-label");
 
+  // -- Topic filter elements — all null when a tenant has no Topic(s) data at all,
+  //    since the whole filter block is omitted server-side in that case; every
+  //    reference to these below is guarded accordingly. --
+  const topicToggleBtn = document.getElementById("topic-filter-toggle-btn");
+  const topicPanel     = document.getElementById("topic-filter-panel");
+  const topicSearch    = document.getElementById("topic-filter-search");
+  const topicList      = document.getElementById("topic-filter-list");
+  const topicTagsBar   = document.getElementById("topic-filter-tags-bar");
+  const topicLabel     = document.getElementById("topic-filter-label");
+
   const alphabetNav = document.getElementById("alphabet-nav");
   const noResults   = document.getElementById("filter-no-results");
+
+  // Closes the other two filter panels — shared by all three toggle handlers below.
+  function closeOtherPanels(exceptPanel) {
+    if (filterPanel !== exceptPanel) { filterPanel.classList.remove("open"); toggleBtn.classList.remove("open"); }
+    if (langPanel !== exceptPanel) { langPanel.classList.remove("open"); langToggleBtn.classList.remove("open"); }
+    if (topicPanel && topicPanel !== exceptPanel) { topicPanel.classList.remove("open"); topicToggleBtn.classList.remove("open"); }
+  }
 
   // -- Construct panel open/close --
   toggleBtn.addEventListener("click", e => {
     e.stopPropagation();
     const isOpen = filterPanel.classList.toggle("open");
     toggleBtn.classList.toggle("open", isOpen);
-    if (isOpen) { langPanel.classList.remove("open"); langToggleBtn.classList.remove("open"); filterSearch.focus(); }
+    if (isOpen) { closeOtherPanels(filterPanel); filterSearch.focus(); }
   });
 
   // -- Language panel open/close --
@@ -192,16 +241,23 @@ document.addEventListener("DOMContentLoaded", () => {
     e.stopPropagation();
     const isOpen = langPanel.classList.toggle("open");
     langToggleBtn.classList.toggle("open", isOpen);
-    if (isOpen) { filterPanel.classList.remove("open"); toggleBtn.classList.remove("open"); langSearch.focus(); }
+    if (isOpen) { closeOtherPanels(langPanel); langSearch.focus(); }
   });
 
-  // Close both panels when clicking outside
+  // -- Topic panel open/close --
+  if (topicToggleBtn) {
+    topicToggleBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      const isOpen = topicPanel.classList.toggle("open");
+      topicToggleBtn.classList.toggle("open", isOpen);
+      if (isOpen) { closeOtherPanels(topicPanel); topicSearch.focus(); }
+    });
+  }
+
+  // Close all panels when clicking outside
   document.addEventListener("click", e => {
     if (!e.target.closest(".construct-filter-wrapper")) {
-      filterPanel.classList.remove("open");
-      toggleBtn.classList.remove("open");
-      langPanel.classList.remove("open");
-      langToggleBtn.classList.remove("open");
+      closeOtherPanels(null);
     }
   });
 
@@ -223,6 +279,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // -- Search within topic dropdown --
+  if (topicSearch) {
+    topicSearch.addEventListener("input", () => {
+      const q = topicSearch.value.toLowerCase();
+      topicList.querySelectorAll("li").forEach(li => {
+        if (li.dataset.topicFilter === "*") return;
+        li.style.display = (!q || li.textContent.toLowerCase().includes(q)) ? "" : "none";
+      });
+    });
+  }
+
   // -- Collapse/expand helpers --
   function collapseGroup(g) {
     g.querySelector('.list-group-collapsible')?.classList.add('list-collapsed');
@@ -235,13 +302,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (t) { t.querySelector('.construct-toggle-icon')?.classList.remove('rotated'); t.setAttribute('aria-expanded', 'true'); }
   }
 
-  // -- Apply both filters to DOM --
+  // -- Apply all active filters to DOM --
   function applyFilters() {
     const groups = document.querySelectorAll(".construct-group");
     const alphabetBlocks = document.querySelectorAll(".alphabet-block");
     const hasConstruct = selectedFilters.size > 0;
     const hasLanguage  = selectedLanguages.size > 0;
-    const hasAnyFilter = hasConstruct || hasLanguage;
+    const hasTopic     = selectedTopics.size > 0;
+    const hasAnyFilter = hasConstruct || hasLanguage || hasTopic;
 
     if (!hasAnyFilter) {
       document.querySelectorAll('.construct-group-toggle').forEach(t => t.style.display = "");
@@ -260,7 +328,7 @@ document.addEventListener("DOMContentLoaded", () => {
     alphabetNav.style.display = "none";
     document.querySelectorAll('.construct-group-toggle').forEach(t => t.style.display = "none");
 
-    // Step 1: apply construct + language filters to each item
+    // Step 1: apply construct + language + topic filters to each item
     groups.forEach(g => {
       if (hasConstruct && !selectedFilters.has(g.dataset.constructSlug)) {
         g.style.display = "none";
@@ -271,9 +339,11 @@ document.addEventListener("DOMContentLoaded", () => {
       g.querySelectorAll(".list-group-item").forEach(li => {
         const constructSlugs = (li.dataset.constructSlugs || "").split(" ").filter(Boolean);
         const langSlugs      = (li.dataset.languageSlugs  || "").split(" ").filter(Boolean);
+        const topicSlugs     = (li.dataset.topicSlugs     || "").split(" ").filter(Boolean);
         const matchesConstruct = !hasConstruct || [...selectedFilters].every(f => constructSlugs.includes(f));
         const matchesLanguage  = !hasLanguage  || [...selectedLanguages].some(l => langSlugs.includes(l));
-        li.style.display = (matchesConstruct && matchesLanguage) ? "" : "none";
+        const matchesTopic     = !hasTopic     || [...selectedTopics].some(t => topicSlugs.includes(t));
+        li.style.display = (matchesConstruct && matchesLanguage && matchesTopic) ? "" : "none";
       });
 
       g.style.display = "";
@@ -402,6 +472,59 @@ document.addEventListener("DOMContentLoaded", () => {
     langList.querySelectorAll("li").forEach(el => el.style.display = "");
     if (filter === "*") { langPanel.classList.remove("open"); langToggleBtn.classList.remove("open"); }
   });
+
+  // -- Topic filter: label, active state, tags (all guarded — absent for tenants
+  //    with no Topic(s) data, see the elements block above) --
+  function updateTopicLabel() {
+    if (!topicLabel) return;
+    if (selectedTopics.size === 0) {
+      topicLabel.textContent = "All Topics";
+    } else if (selectedTopics.size === 1) {
+      const li = topicList.querySelector(`li[data-topic-filter=".${[...selectedTopics][0]}"]`);
+      topicLabel.textContent = li ? li.textContent : [...selectedTopics][0];
+    } else {
+      topicLabel.textContent = `${selectedTopics.size} topics`;
+    }
+  }
+
+  function updateTopicListActiveState() {
+    if (!topicList) return;
+    topicList.querySelectorAll("li").forEach(li => {
+      if (li.dataset.topicFilter === "*") li.classList.toggle("filter-active", selectedTopics.size === 0);
+      else li.classList.toggle("filter-active", selectedTopics.has(li.dataset.topicFilter.slice(1)));
+    });
+  }
+
+  function renderTopicTags() {
+    if (!topicTagsBar) return;
+    if (selectedTopics.size === 0) { topicTagsBar.innerHTML = ""; return; }
+    topicTagsBar.innerHTML = [...selectedTopics].map(cls => {
+      const li = topicList.querySelector(`li[data-topic-filter=".${cls}"]`);
+      const name = li ? li.textContent.replace(/^✓\s*/, "") : cls;
+      return `<span class="filter-tag"><span class="filter-tag-label">${name}</span><button class="filter-tag-remove" data-remove="${cls}" aria-label="Remove ${name}">&times;</button></span>`;
+    }).join("");
+    topicTagsBar.querySelectorAll(".filter-tag-remove").forEach(btn => {
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        selectedTopics.delete(btn.dataset.remove);
+        applyFilters(); renderTopicTags(); updateTopicLabel(); updateTopicListActiveState();
+      });
+    });
+  }
+
+  if (topicList) {
+    topicList.addEventListener("click", e => {
+      const li = e.target.closest("li[data-topic-filter]");
+      if (!li) return;
+      const filter = li.dataset.topicFilter;
+      if (filter === "*") selectedTopics.clear();
+      else { const cls = filter.slice(1); if (selectedTopics.has(cls)) selectedTopics.delete(cls); else selectedTopics.add(cls); }
+      applyFilters(); renderTopicTags(); updateTopicLabel(); updateTopicListActiveState();
+      topicSearch.value = "";
+      topicList.querySelectorAll("li").forEach(el => el.style.display = "");
+      if (filter === "*") { topicPanel.classList.remove("open"); topicToggleBtn.classList.remove("open"); }
+    });
+  }
 
   // -- Construct tag colors --
   applyConstructTagColors();
