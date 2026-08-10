@@ -159,17 +159,6 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
             </td>
           </tr>
           <tr>
-            <th><label for="logo-color">Logo color</label></th>
-            <td>
-              <div style="display:flex;align-items:center;gap:.5rem">
-                <span id="logo-color-pickr"></span>
-                <input type="hidden" id="logo-color" name="logo_color" value="<%= locals.logoColor || '#000000' %>">
-                <input type="text" id="logo-color-hex" value="<%= locals.logoColor || '#000000' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
-              </div>
-              <p class="hint">Fill color of the SVG logo in the nav. Defaults to black.</p>
-            </td>
-          </tr>
-          <tr>
             <th><label for="hero-heading">Hero heading</label></th>
             <td><input type="text" id="hero-heading" name="hero_heading" value="<%= locals.hero?.heading || '' %>"></td>
           </tr>
@@ -343,6 +332,18 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
     <div class="card">
       <form method="POST" action="<%= basePath %>/admin/colors" id="colors-form">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div class="color-block">
+          <div class="color-block-header">
+            <label for="logo-color-hex">Logo color</label>
+          </div>
+          <p class="hint">Fill color of the SVG logo in the nav. Defaults to black.</p>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span id="logo-color-pickr"></span>
+            <input type="hidden" id="logo-color" name="logo_color" value="<%= locals.logoColor || '#000000' %>">
+            <input type="text" id="logo-color-hex" value="<%= locals.logoColor || '#000000' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
+          </div>
+        </div>
 
         <div class="color-block">
           <div class="color-block-header">

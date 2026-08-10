@@ -188,7 +188,7 @@ router.post("/admin/password", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/content", requireAdmin, (req, res) => {
-  const { hero_heading, hero_subheading, meta_tagline, meta_description, landing_tagline, submit_form_url, logo_color, why_markdown } = req.body;
+  const { hero_heading, hero_subheading, meta_tagline, meta_description, landing_tagline, submit_form_url, why_markdown } = req.body;
   try {
     updateTenantContent(req.tenant.slug, (content) => {
       if (!content.hero) content.hero = {};
@@ -200,7 +200,6 @@ router.post("/admin/content", requireAdmin, (req, res) => {
       if (landing_tagline   !== undefined) content.landingTagline   = landing_tagline;
       if (submit_form_url   !== undefined) content.submitFormUrl    = submit_form_url;
       if (why_markdown      !== undefined) content.whyMarkdown      = why_markdown;
-      if (logo_color        !== undefined && /^#[0-9a-f]{6}$/i.test(logo_color)) content.logoColor = logo_color;
     });
     req.session.flash = { type: "ok", msg: "Site content saved." };
   } catch (err) {
@@ -211,9 +210,10 @@ router.post("/admin/content", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/colors", requireAdmin, (req, res) => {
-  const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors, tagRecipe, landing_header_color, landing_accent_color } = req.body;
+  const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors, tagRecipe, logo_color, landing_header_color, landing_accent_color } = req.body;
   try {
     updateTenantContent(req.tenant.slug, (content) => {
+      if (isHex(logo_color)) content.logoColor = logo_color.toLowerCase();
       if (isHex(landing_header_color)) content.landingHeaderColor = landing_header_color.toLowerCase();
       if (isHex(landing_accent_color)) content.landingAccentColor = landing_accent_color.toLowerCase();
 
