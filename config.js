@@ -13,6 +13,13 @@ dotenv.config();
 
 export const PORT = process.env.PORT || 3007;
 export const MULTI_TENANT = process.env.MULTI_TENANT === "true";
+// Canonical origin for links/images in outbound email (onboarding, password reset/changed).
+// Deliberately NOT derived from the request's Host header there — an unvalidated Host
+// header is attacker-influenceable and would let a forged request put an attacker's
+// domain into a password-reset email. Empty until set in Architect Admin's Platform
+// Settings, in which case call sites fall back to req.protocol+req.get("host") same as
+// before (existing behavior, not a regression — just no longer the only option).
+export const SITE_URL = (process.env.SITE_URL || "").trim().replace(/\/+$/, "");
 // No insecure fallback here on purpose: a hardcoded default would let anyone who's
 // read this source forge a session cookie for any tenant. Fail loudly instead, same as
 // the tenants.json read failure below.

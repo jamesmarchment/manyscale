@@ -177,6 +177,13 @@
               <p class="hint" style="font-size:.78rem;color:#71717a;margin-top:.25rem;">Where the landing page's "Request a Repo" form is delivered. Falls back to SMTP Host's user if left blank.</p>
             </td>
           </tr>
+          <tr>
+            <th><label for="site-url">Site domain</label></th>
+            <td>
+              <input type="text" id="site-url" name="siteUrl" value="<%= emailSettings.siteUrl %>" placeholder="https://manyscale.org">
+              <p class="hint" style="font-size:.78rem;color:#71717a;margin-top:.25rem;">Canonical domain used to build absolute links and the logo image in outbound email (onboarding, password reset/changed). Leave blank to fall back to whatever host the request came in on — safe on a fixed, correctly configured domain, but setting this explicitly is recommended since it can't be spoofed by a forged request.</p>
+            </td>
+          </tr>
         </table>
         <div class="actions">
           <button type="submit" class="btn">Save Email Settings</button>

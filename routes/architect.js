@@ -5,13 +5,15 @@ import multer from "multer";
 import { JSDOM } from "jsdom";
 import DOMPurify from "dompurify";
 import { requireArchitectAdmin, loginRateLimitOk } from "../middleware.js";
-import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar } from "../config.js";
+import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar, SITE_URL } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
 import { tenantCaches, lastRefreshTimes, resolveTableIDs, refreshTenant, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
 import { generateCsrfToken } from "../lib/csrf.js";
+import { tenantOnboardingEmail } from "../lib/emails/onboarding.js";
+import { passwordChangedEmail } from "../lib/emails/passwordChanged.js";
 
 const router = Router();
 
@@ -121,6 +123,7 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
     port: process.env.SMTP_PORT || "465",
     secure: process.env.SMTP_SECURE !== "false",
     networkContactEmail: process.env.NETWORK_CONTACT_EMAIL || "",
+    siteUrl: SITE_URL,
   };
   const analyticsSettings = {
     plausibleDomain: process.env.PLAUSIBLE_DOMAIN || "",
@@ -130,12 +133,18 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
 });
 
 router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
-  const { smtpHost, smtpPort, smtpSecure, networkContactEmail } = req.body;
+  const { smtpHost, smtpPort, smtpSecure, networkContactEmail, siteUrl } = req.body;
+  const trimmedSiteUrl = (siteUrl || "").trim().replace(/\/+$/, "");
+  if (trimmedSiteUrl && !/^https?:\/\//i.test(trimmedSiteUrl)) {
+    req.session.architectFlash = { type: "err", msg: "Site domain must start with http:// or https://." };
+    return res.redirect("/architect");
+  }
   try {
     if (smtpHost?.trim()) updateEnvVar("SMTP_HOST", smtpHost.trim());
     if (smtpPort?.trim()) updateEnvVar("SMTP_PORT", smtpPort.trim());
     updateEnvVar("SMTP_SECURE", smtpSecure === "on" ? "true" : "false");
     if (networkContactEmail?.trim()) updateEnvVar("NETWORK_CONTACT_EMAIL", networkContactEmail.trim());
+    updateEnvVar("SITE_URL", trimmedSiteUrl);
     req.session.architectFlash = { type: "ok", msg: "Email settings saved. Restart the server to apply." };
   } catch (err) {
     console.error("Architect email settings error:", err);
@@ -267,20 +276,15 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   const multiTenantNote = "This tenant won't be reachable until MULTI_TENANT=true is set in .env and the server is restarted.";
 
   try {
-    await transporter.sendMail({
-      from: process.env.SMTP_USER,
-      to: tenant.contact_recipient,
-      subject: "Your ManyScale tenant is ready",
-      text: [
-        `Hi,`,
-        ``,
-        `Your ManyScale tenant "${tenant.name}" (slug: ${tenant.slug}) has been created.`,
-        ``,
-        adminUrl
-          ? `You can log in to your admin panel at: ${adminUrl}`
-          : multiTenantNote,
-      ].join("\n"),
+    const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
+    const { subject, text, html } = tenantOnboardingEmail({
+      siteOrigin,
+      tenant,
+      adminUrl: adminUrl ? siteOrigin + adminUrl : null,
+      adminPassword: adminPassword.trim(),
+      multiTenantNote,
     });
+    await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
     console.error(`[${tenant.slug}] Onboarding email failed to send:`, err);
   }
@@ -312,7 +316,7 @@ router.post("/architect/tenants/:slug/refresh-cache", requireArchitectAdmin, asy
   res.redirect("/architect");
 });
 
-router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, (req, res) => {
+router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, async (req, res) => {
   const { slug } = req.params;
   const { newPassword } = req.body;
   const tenant = _tenantsList.find(t => t.slug === slug);
@@ -329,6 +333,13 @@ router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, (r
   // (routes/admin.js) can't handle since it requires knowing the current one.
   tenant.adminPasswordHash = hashPassword(newPassword);
   writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  try {
+    const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
+    const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "by an administrator" });
+    await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
+  } catch (err) {
+    console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+  }
   req.session.architectFlash = { type: "ok", msg: `Password reset for "${tenant.name}".` };
   res.redirect("/architect");
 });

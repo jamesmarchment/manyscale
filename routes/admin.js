@@ -2,13 +2,16 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
-import { requireAdmin, loginRateLimitOk } from "../middleware.js";
+import { requireAdmin, loginRateLimitOk, forgotPasswordRateLimitOk } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly } from "../lib/airtable.js";
-import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar } from "../config.js";
-import { verifyPassword, hashPassword, safeTokenEqual } from "../lib/auth.js";
+import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar, SITE_URL } from "../config.js";
+import { verifyPassword, hashPassword, safeTokenEqual, createPasswordResetToken, verifyPasswordResetToken } from "../lib/auth.js";
 import { COLOR_PRESETS, TAG_COLOR_RECIPES, DEFAULT_RECIPE_FOR_PRESET } from "../lib/colorPresets.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent } from "../lib/jsonStore.js";
 import { generateCsrfToken } from "../lib/csrf.js";
+import { transporter } from "../lib/email.js";
+import { passwordChangedEmail } from "../lib/emails/passwordChanged.js";
+import { passwordResetRequestEmail } from "../lib/emails/passwordReset.js";
 
 // Normalizes a bracket-indexed form field (parsed by express.urlencoded as either an
 // array or, if indices have gaps, a plain object keyed by index) into an ordered array.
@@ -20,6 +23,14 @@ function toOrderedArray(raw) {
 }
 
 const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
+
+// "jo***@example.com" — enough for a tenant admin to recognize their own address on the
+// forgot-password page without printing it in full on an unauthenticated page.
+function maskEmail(email) {
+  const [local, domain] = String(email || "").split("@");
+  if (!local || !domain) return "the address on file";
+  return `${local.slice(0, 2)}***@${domain}`;
+}
 
 const router = Router();
 
@@ -56,7 +67,9 @@ router.get("/admin/login", (req, res) => {
   // browser gets a real session cookie with this page's response, so the CSRF token
   // generated below stays valid for the POST that follows.
   req.session.csrfSeed = true;
-  res.render("admin/login", { error: null, csrfToken: generateCsrfToken(req, res) });
+  const notice = req.session.notice || null;
+  delete req.session.notice;
+  res.render("admin/login", { error: null, notice, csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/admin/login", (req, res) => {
@@ -87,6 +100,74 @@ router.post("/admin/login", (req, res) => {
 router.post("/admin/logout", (req, res) => {
   const loginPath = res.locals.basePath + "/admin/login";
   req.session.destroy(() => res.redirect(loginPath));
+});
+
+router.get("/admin/forgot-password", (req, res) => {
+  req.session.csrfSeed = true;
+  res.render("admin/forgot-password", {
+    maskedEmail: maskEmail(req.tenant.contact_recipient),
+    sent: false,
+    csrfToken: generateCsrfToken(req, res),
+  });
+});
+
+router.post("/admin/forgot-password", async (req, res) => {
+  const tenant = req.tenant;
+  if (!forgotPasswordRateLimitOk(`${req.ip}:${tenant.slug}`)) {
+    return res.status(429).render("admin/forgot-password", {
+      maskedEmail: maskEmail(tenant.contact_recipient),
+      sent: false,
+      error: "Too many requests. Please try again in a few minutes.",
+      csrfToken: generateCsrfToken(req, res),
+    });
+  }
+  try {
+    const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
+    const token = createPasswordResetToken(tenant);
+    const resetUrl = `${siteOrigin}${res.locals.basePath}/admin/reset-password?token=${token}`;
+    const { subject, text, html } = passwordResetRequestEmail({ siteOrigin, tenant, resetUrl, expiresInMinutes: 60 });
+    await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
+  } catch (err) {
+    console.error(`[${tenant.slug}] Password-reset email failed to send:`, err);
+  }
+  res.render("admin/forgot-password", { maskedEmail: maskEmail(tenant.contact_recipient), sent: true, csrfToken: generateCsrfToken(req, res) });
+});
+
+router.get("/admin/reset-password", (req, res) => {
+  const { token } = req.query;
+  // Verified against req.tenant — the tenant resolveTenant already resolved from the
+  // URL — not a tenant re-derived from the token itself. verifyPasswordResetToken checks
+  // the token's embedded slug against tenant.slug internally, so this also guarantees a
+  // token can only ever be used under the URL of the exact tenant it was issued for; it
+  // can't succeed while acting on a different tenant than resolveTenant put us on.
+  const valid = verifyPasswordResetToken(token, req.tenant);
+  req.session.csrfSeed = true;
+  res.render("admin/reset-password", { token, valid, error: null, csrfToken: generateCsrfToken(req, res) });
+});
+
+router.post("/admin/reset-password", async (req, res) => {
+  const { token, new_password, confirm_password } = req.body;
+  const tenant = req.tenant;
+  if (!verifyPasswordResetToken(token, tenant)) {
+    return res.render("admin/reset-password", { token, valid: false, error: null, csrfToken: generateCsrfToken(req, res) });
+  }
+  if (!new_password || new_password.length < 8) {
+    return res.render("admin/reset-password", { token, valid: true, error: "New password must be at least 8 characters.", csrfToken: generateCsrfToken(req, res) });
+  }
+  if (new_password !== confirm_password) {
+    return res.render("admin/reset-password", { token, valid: true, error: "New password and confirmation don't match.", csrfToken: generateCsrfToken(req, res) });
+  }
+  tenant.adminPasswordHash = hashPassword(new_password);
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  try {
+    const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
+    const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "via a password reset link" });
+    await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
+  } catch (err) {
+    console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+  }
+  req.session.notice = "Password reset. You can log in with your new password.";
+  res.redirect(res.locals.basePath + "/admin/login");
 });
 
 router.get("/admin", requireAdmin, (req, res) => {
@@ -158,7 +239,7 @@ router.post("/admin/config", requireAdmin, (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
-router.post("/admin/password", requireAdmin, (req, res) => {
+router.post("/admin/password", requireAdmin, async (req, res) => {
   const { current_password, new_password, confirm_password } = req.body;
   const tenant = req.tenant;
   if (!verifyPassword(current_password || "", tenant.adminPasswordHash || "")) {
@@ -180,6 +261,13 @@ router.post("/admin/password", requireAdmin, (req, res) => {
     tenant.adminPasswordHash = hashPassword(new_password);
     writeJsonAtomic(TENANTS_FILE, _tenantsList);
     req.session.flash = { type: "ok", msg: "Password changed." };
+    try {
+      const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
+      const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "from your account settings" });
+      await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
+    } catch (err) {
+      console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+    }
   } catch (err) {
     console.error("Admin password change error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };

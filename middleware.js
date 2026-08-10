@@ -95,6 +95,8 @@ export function createRateLimiter(max, windowMs) {
 
 // Max 5 submissions per key per hour — same values as before this was factored out.
 export const contactRateLimitOk = createRateLimiter(5, 60 * 60 * 1000);
+// Max 3 password-reset requests per key per hour — keeps a tenant's inbox from being spammed.
+export const forgotPasswordRateLimitOk = createRateLimiter(3, 60 * 60 * 1000);
 // Max 8 login attempts per key per 15 minutes.
 export const loginRateLimitOk = createRateLimiter(8, 15 * 60 * 1000);
 
