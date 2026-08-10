@@ -27,6 +27,8 @@ export function tenantLocalsMiddleware(req, res, next) {
     res.locals.landingTagline  = content.landingTagline || "";
     res.locals.logoColor       = content.logoColor || "";
     res.locals.logoUrl         = content.logoUrl || "";
+    res.locals.landingHeaderColor = content.landingHeaderColor || "";
+    res.locals.landingAccentColor = content.landingAccentColor || "";
     res.locals.metaImagePath   = content.metaImageUrl || "/assets/img/manyscale_meta.jpg";
     res.locals.bubbleChartColors = content.bubbleChartColors || COLOR_PRESETS.bubbleChart.default;
     res.locals.cardGradients     = content.cardGradients     || COLOR_PRESETS.cardGradients.default;

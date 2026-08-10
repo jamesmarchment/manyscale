@@ -124,6 +124,10 @@
                       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button type="submit" class="btn <%= t.active ? 'btn-danger' : 'btn-ghost' %> btn-sm"><%= t.active ? "Deactivate" : "Activate" %></button>
                     </form>
+                    <form method="POST" action="/architect/tenants/<%= t.slug %>/toggle-new" title="Show a NEW flag on this tenant's landing page card">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                      <button type="submit" class="btn btn-ghost btn-sm"><%= t.markedNew ? "New ✓" : "Mark New" %></button>
+                    </form>
                     <details class="detail-toggle">
                       <summary class="btn btn-ghost btn-sm" title="Reset admin password" aria-label="Reset admin password">Reset PW</summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/reset-password" onsubmit="return confirm('Reset the admin password for &quot;<%= t.slug %>&quot;? The old password will stop working immediately.');">

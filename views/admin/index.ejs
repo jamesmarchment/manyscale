@@ -373,6 +373,37 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
           <div class="swatch-row" id="tag-swatches"></div>
         </div>
 
+        <div class="color-block">
+          <div class="color-block-header">
+            <label>Landing page card</label>
+          </div>
+          <p class="hint">Colors for <%= tenant.name %>'s repository card on the main ManyScale network page.</p>
+          <table>
+            <tr>
+              <th><label for="landing-header-color">Header color</label></th>
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <span id="landing-header-color-pickr"></span>
+                  <input type="hidden" id="landing-header-color" name="landing_header_color" value="<%= locals.landingHeaderColor || locals.logoColor || '#f5e642' %>">
+                  <input type="text" id="landing-header-color-hex" value="<%= locals.landingHeaderColor || locals.logoColor || '#f5e642' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
+                </div>
+                <p class="hint">Background of the card's top photo/header bar.</p>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="landing-accent-color">Accent border color</label></th>
+              <td>
+                <div style="display:flex;align-items:center;gap:.5rem">
+                  <span id="landing-accent-color-pickr"></span>
+                  <input type="hidden" id="landing-accent-color" name="landing_accent_color" value="<%= locals.landingAccentColor || locals.logoColor || '#e8180a' %>">
+                  <input type="text" id="landing-accent-color-hex" value="<%= locals.landingAccentColor || locals.logoColor || '#e8180a' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
+                </div>
+                <p class="hint">Left border on the card's construct list.</p>
+              </td>
+            </tr>
+          </table>
+        </div>
+
         <div class="actions">
           <button type="submit" class="btn">Save Colors</button>
         </div>
@@ -750,36 +781,42 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
     </script>
     <script>
       (function () {
-        const hidden   = document.getElementById('logo-color');
-        const hexInput = document.getElementById('logo-color-hex');
+        function initHexPicker(hiddenId, hexInputId, pickrSelector, fallback) {
+          const hidden   = document.getElementById(hiddenId);
+          const hexInput = document.getElementById(hexInputId);
 
-        const pickr = Pickr.create({
-          el: '#logo-color-pickr',
-          theme: 'nano',
-          default: hidden.value || '#000000',
-          comparison: false,
-          components: {
-            preview: true,
-            opacity: false,
-            hue: true, 
-            interaction: { hex: true, input: true }
-          }
-        });
+          const pickr = Pickr.create({
+            el: pickrSelector,
+            theme: 'nano',
+            default: hidden.value || fallback,
+            comparison: false,
+            components: {
+              preview: true,
+              opacity: false,
+              hue: true, 
+              interaction: { hex: true, input: true }
+            }
+          });
 
-        pickr.on('change', (color) => {
-          const hex = color.toHEXA().toString().substring(0, 7).toLowerCase();
-          hidden.value   = hex;
-          hexInput.value = hex;
-        });
+          pickr.on('change', (color) => {
+            const hex = color.toHEXA().toString().substring(0, 7).toLowerCase();
+            hidden.value   = hex;
+            hexInput.value = hex;
+          });
 
-        hexInput.addEventListener('input', () => {
-          const v = hexInput.value.trim();
-          if (/^#[0-9a-f]{6}$/i.test(v)) {
-            hidden.value = v;
-            pickr.setColor(v);
-          }
-        });
-        hexInput.addEventListener('blur', () => { hexInput.value = hidden.value; });
+          hexInput.addEventListener('input', () => {
+            const v = hexInput.value.trim();
+            if (/^#[0-9a-f]{6}$/i.test(v)) {
+              hidden.value = v;
+              pickr.setColor(v);
+            }
+          });
+          hexInput.addEventListener('blur', () => { hexInput.value = hidden.value; });
+        }
+
+        initHexPicker('logo-color', 'logo-color-hex', '#logo-color-pickr', '#000000');
+        initHexPicker('landing-header-color', 'landing-header-color-hex', '#landing-header-color-pickr', '#f5e642');
+        initHexPicker('landing-accent-color', 'landing-accent-color-hex', '#landing-accent-color-pickr', '#e8180a');
       })();
     </script>
 

@@ -371,6 +371,19 @@ router.post("/architect/tenants/:slug/toggle-active", requireArchitectAdmin, (re
   res.redirect("/architect");
 });
 
+router.post("/architect/tenants/:slug/toggle-new", requireArchitectAdmin, (req, res) => {
+  const { slug } = req.params;
+  const tenant = _tenantsList.find(t => t.slug === slug);
+  if (!tenant) {
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
+  }
+  tenant.markedNew = !tenant.markedNew;
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  req.session.architectFlash = { type: "ok", msg: `Tenant "${tenant.name}" ${tenant.markedNew ? "marked as new" : "unmarked as new"}.` };
+  res.redirect("/architect");
+});
+
 router.get("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, res) => {
   const { slug } = req.params;
   const tenant = _tenantsList.find(t => t.slug === slug);

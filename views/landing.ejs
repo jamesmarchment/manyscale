@@ -56,16 +56,38 @@
         <% } else { %>
           <div class="repo-grid">
             <% tenants.forEach(t => { %>
-              <a class="repo-card" href="<%= t.externalUrl || ('/' + t.slug) %>"<% if (t.externalUrl) { %> target="_blank" rel="noopener"<% } %>>
-                <div class="repo-accent-bar" style="background: <%= t.logoColor || '#6c757d' %>"></div>
-                <div class="repo-card-body">
-                  <div class="repo-card-header">
-                    <h3><%= t.name %></h3>
-                    <span class="repo-measure-count"><%= t.measureCount %> measure<%= t.measureCount !== 1 ? 's' : '' %></span>
-                  </div>
-                  <% if (t.tagline) { %><p><%= t.tagline %></p><% } %>
+              <div class="repo-card" style="--header-color: <%= t.landingHeaderColor %>">
+                <div class="repo-photo">
+                  <% if (t.markedNew) { %><div class="repo-flag">NEW</div><% } %>
                 </div>
-              </a>
+
+                <div class="repo-body">
+                  <% if (t.tagline) { %><div class="repo-handle"><%= t.tagline %></div><% } %>
+                  <div class="repo-name">
+                    <a class="primary-link" href="<%= t.externalUrl || ('/' + t.slug) %>"<% if (t.externalUrl) { %> target="_blank" rel="noopener"<% } %>><%= t.name %></a>
+                  </div>
+                  <% if (t.topConstructs.length) { %>
+                    <div class="repo-bio" style="border-left-color: <%= t.landingAccentColor %>">
+                      <%= t.topConstructs.join(", ") %>
+                    </div>
+                  <% } %>
+                </div>
+
+                <div class="repo-stats">
+                  <div class="card-stat">
+                    <span class="repo-value"><%= t.measureCount %></span>
+                    <span class="repo-label">Measures</span>
+                  </div>
+                  <div class="card-stat">
+                    <span class="repo-value"><%= t.constructCount %></span>
+                    <span class="repo-label">Constructs</span>
+                  </div>
+                  <div class="card-stat">
+                    <span class="repo-value"><%= t.translationCount %></span>
+                    <span class="repo-label">Translations</span>
+                  </div>
+                </div>
+              </div>
             <% }) %>
           </div>
         <% } %>

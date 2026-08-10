@@ -211,9 +211,12 @@ router.post("/admin/content", requireAdmin, (req, res) => {
 });
 
 router.post("/admin/colors", requireAdmin, (req, res) => {
-  const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors, tagRecipe } = req.body;
+  const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors, tagRecipe, landing_header_color, landing_accent_color } = req.body;
   try {
     updateTenantContent(req.tenant.slug, (content) => {
+      if (isHex(landing_header_color)) content.landingHeaderColor = landing_header_color.toLowerCase();
+      if (isHex(landing_accent_color)) content.landingAccentColor = landing_accent_color.toLowerCase();
+
       const bubbleArr = toOrderedArray(bubbleColors);
       if (bubbleArr.length === 12 && bubbleArr.every(isHex)) {
         content.bubbleChartColors = bubbleArr.map(c => c.toLowerCase());
