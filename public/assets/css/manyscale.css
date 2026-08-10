@@ -401,8 +401,13 @@ p.no-break-links a {
    render too wide) until AOS resets the transform on reveal. Clipping
    horizontal overflow at the root prevents off-screen transforms from ever
    affecting layout width. */
+/* overflow-x: clip (not hidden) — hidden on one axis forces the other axis's
+   computed overflow to auto per spec, which would clip header.masthead's
+   absolutely-positioned search-suggestions dropdown (#network-suggestions-list /
+   #index-suggestions-list) even though it only overflows vertically. clip is
+   exempt from that auto-promotion, so overflow-y stays genuinely visible. */
 html, section#submit, section#why, header.masthead {
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -494,6 +499,20 @@ button.btn-primary:hover {
     left: 15px;
     transform: translateY(-50%);
     color: #888;
+}
+
+.manyscale .search-input {
+  border-radius: 0;
+    border: 2px solid #222;
+    box-shadow: 3px 3px 0 #444;
+    transition: all 0.4s;
+}
+
+
+.manyscale .search-input:focus {
+  border-radius: 0;
+    border: 2px solid #222;
+    box-shadow: 1px 4px 0 #777;
 }
 
 #details_link_buttons a button i.bi, #translation_link_buttons a button i.bi {
