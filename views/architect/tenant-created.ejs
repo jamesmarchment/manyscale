@@ -74,6 +74,12 @@
             <th>Created</th>
             <td><%= scaffoldResult.created.length ? scaffoldResult.created.join(", ") : "—" %></td>
           </tr>
+          <% if (scaffoldResult.repurposed && scaffoldResult.repurposed.length) { %>
+            <tr>
+              <th>Repurposed</th>
+              <td><%= scaffoldResult.repurposed.join(", ") %></td>
+            </tr>
+          <% } %>
           <tr>
             <th>Already present</th>
             <td><%= scaffoldResult.skipped.length ? scaffoldResult.skipped.join(", ") : "—" %></td>

@@ -28,7 +28,11 @@ router.get("/", (req, res) => {
   const funding = tenantContributors
     .filter(r => r.fields["Role"] === "Funding");
 
-  res.render("index", { team, hero, submitFormUrl, contributors, funding,cacheStatsUrl: `/${req.tenant.slug}/cache-stats.json` });
+  const scaleCreators = tenantContributors
+    .filter(r => r.fields["Role"] === "Scale Creator")
+    .sort((a, b) => (b.fields["Measures"] || []).length - (a.fields["Measures"] || []).length);
+
+  res.render("index", { team, hero, submitFormUrl, contributors, funding, scaleCreators, cacheStatsUrl: `/${req.tenant.slug}/cache-stats.json` });
 });
 
 router.get("/details/", (req, res) => {
@@ -227,7 +231,11 @@ router.get("/contributors", (req, res) => {
   const funding = tenantContributors
     .filter(r => r.fields["Role"] === "Funding");
 
-  res.render("contributors", { coreTeam, contributors, funding });
+  const scaleCreators = tenantContributors
+    .filter(r => r.fields["Role"] === "Scale Creator")
+    .sort(byMeasureCount);
+
+  res.render("contributors", { coreTeam, contributors, funding, scaleCreators });
 });
 
 router.get("/terms", (req, res) => {
