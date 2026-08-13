@@ -388,6 +388,8 @@ router.post("/admin/team", requireAdmin, (req, res) => {
         if (m.github?.trim())    entry.github    = m.github.trim();
         if (m.instagram?.trim()) entry.instagram = m.instagram.trim();
         if (m.website?.trim())   entry.website   = m.website.trim();
+        if (m.scholar?.trim())   entry.scholar   = m.scholar.trim();
+        if (m.bluesky?.trim())   entry.bluesky   = m.bluesky.trim();
         return entry;
       });
     });

@@ -6,6 +6,7 @@
   <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Admin · <%= tenant.name || "ManyScale" %></title>
   <link rel="stylesheet" href="/assets/css/nano.min.css">
+  <link rel="shortcut icon" href="/assets/img/admin/favicon.ico" type="image/x-icon" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
@@ -233,6 +234,8 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
             <tr><th>GitHub</th><td><input type="text" name="team[${i}][github]" value="${esc(m.github)}" placeholder="https://github.com/…"></td></tr>
             <tr><th>Instagram</th><td><input type="text" name="team[${i}][instagram]" value="${esc(m.instagram)}" placeholder="https://www.instagram.com/…"></td></tr>
             <tr><th>Website</th><td><input type="text" name="team[${i}][website]" value="${esc(m.website)}" placeholder="https://…"></td></tr>
+            <tr><th>Google Scholar</th><td><input type="text" name="team[${i}][scholar]" value="${esc(m.scholar)}" placeholder="https://scholar.google.com/citations?user=…"></td></tr>
+            <tr><th>Bluesky</th><td><input type="text" name="team[${i}][bluesky]" value="${esc(m.bluesky)}" placeholder="https://bsky.app/profile/…"></td></tr>
           </table>
         </div>`;
       }
@@ -251,6 +254,8 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
           teamData[idx].github    = get('input[name$="[github]"]');
           teamData[idx].instagram = get('input[name$="[instagram]"]');
           teamData[idx].website   = get('input[name$="[website]"]');
+          teamData[idx].scholar   = get('input[name$="[scholar]"]');
+          teamData[idx].bluesky   = get('input[name$="[bluesky]"]');
         });
       }
 
@@ -317,7 +322,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
 
       document.getElementById('add-member-btn').addEventListener('click', () => {
         syncTeamDataFromDOM();
-        teamData.push({ name: '', title: '', photo: '', bio: '', linkedin: '', twitter: '', github: '', instagram: '', website: '' });
+        teamData.push({ name: '', title: '', photo: '', bio: '', linkedin: '', twitter: '', github: '', instagram: '', website: '', scholar: '', bluesky: '' });
         render();
         // Scroll new card into view
         const blocks = document.querySelectorAll('.member-block');
