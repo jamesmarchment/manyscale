@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
-import { requireAdmin, loginRateLimitOk, forgotPasswordRateLimitOk } from "../middleware.js";
+import { requireAdmin, requireTosAccepted, loginRateLimitOk, forgotPasswordRateLimitOk } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly } from "../lib/airtable.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar, SITE_URL } from "../config.js";
 import { verifyPassword, hashPassword, safeTokenEqual, createPasswordResetToken, verifyPasswordResetToken } from "../lib/auth.js";
@@ -170,7 +170,56 @@ router.post("/admin/reset-password", async (req, res) => {
   res.redirect(res.locals.basePath + "/admin/login");
 });
 
-router.get("/admin", requireAdmin, (req, res) => {
+// First-login flow, step 1: accept the Terms of Service. Guarded by requireAdmin alone (not
+// requireTosAccepted — that would redirect back here forever). Once accepted, step 2
+// (/admin/set-password below) still stands between here and the rest of /admin.
+router.get("/admin/accept-terms", requireAdmin, (req, res) => {
+  if (req.tenant.tosAcceptedAt) return res.redirect(res.locals.basePath + "/admin");
+  req.session.csrfSeed = true;
+  res.render("admin/accept-terms", { error: null, csrfToken: generateCsrfToken(req, res) });
+});
+
+router.post("/admin/accept-terms", requireAdmin, (req, res) => {
+  if (!req.body.agree) {
+    return res.render("admin/accept-terms", { error: "You must check the box to confirm you agree before continuing.", csrfToken: generateCsrfToken(req, res) });
+  }
+  req.tenant.tosAcceptedAt = new Date().toISOString();
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  res.redirect(res.locals.basePath + "/admin/set-password");
+});
+
+// First-login flow, step 2: replace the emailed temp password. No current-password check —
+// same shape as /admin/reset-password above — since arriving here already required a valid
+// session (having just logged in with the temp password) plus having just accepted the ToS.
+router.get("/admin/set-password", requireAdmin, (req, res) => {
+  if (!req.tenant.tosAcceptedAt) return res.redirect(res.locals.basePath + "/admin/accept-terms");
+  req.session.csrfSeed = true;
+  res.render("admin/set-password", { error: null, csrfToken: generateCsrfToken(req, res) });
+});
+
+router.post("/admin/set-password", requireAdmin, async (req, res) => {
+  if (!req.tenant.tosAcceptedAt) return res.redirect(res.locals.basePath + "/admin/accept-terms");
+  const { new_password, confirm_password } = req.body;
+  const tenant = req.tenant;
+  if (!new_password || new_password.length < 8) {
+    return res.render("admin/set-password", { error: "New password must be at least 8 characters.", csrfToken: generateCsrfToken(req, res) });
+  }
+  if (new_password !== confirm_password) {
+    return res.render("admin/set-password", { error: "New password and confirmation don't match.", csrfToken: generateCsrfToken(req, res) });
+  }
+  tenant.adminPasswordHash = hashPassword(new_password);
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  try {
+    const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
+    const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "during first login" });
+    await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
+  } catch (err) {
+    console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+  }
+  res.redirect(res.locals.basePath + "/admin");
+});
+
+router.get("/admin", requireAdmin, requireTosAccepted, (req, res) => {
   const tenant = req.tenant;
   let hero = {}, submitFormUrl = "", team = [], whyMarkdown = "";
   let bubbleChartPreset = "default", cardGradientsPreset = "default", tagColorsPreset = "default";
@@ -215,7 +264,7 @@ router.get("/admin", requireAdmin, (req, res) => {
   });
 });
 
-router.post("/admin/config", requireAdmin, (req, res) => {
+router.post("/admin/config", requireAdmin, requireTosAccepted, (req, res) => {
   const { name, baseId, pat, contact_recipient } = req.body;
   const tenant = req.tenant; // same object reference held in _tenantsList (see resolveTenant
   // in middleware.js) — mutate it directly, same pattern as /admin/password below.
@@ -239,7 +288,7 @@ router.post("/admin/config", requireAdmin, (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
-router.post("/admin/password", requireAdmin, async (req, res) => {
+router.post("/admin/password", requireAdmin, requireTosAccepted, async (req, res) => {
   const { current_password, new_password, confirm_password } = req.body;
   const tenant = req.tenant;
   if (!verifyPassword(current_password || "", tenant.adminPasswordHash || "")) {
@@ -275,7 +324,7 @@ router.post("/admin/password", requireAdmin, async (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
-router.post("/admin/content", requireAdmin, (req, res) => {
+router.post("/admin/content", requireAdmin, requireTosAccepted, (req, res) => {
   const { hero_heading, hero_subheading, meta_tagline, meta_description, landing_tagline, submit_form_url, why_markdown } = req.body;
   try {
     updateTenantContent(req.tenant.slug, (content) => {
@@ -297,7 +346,7 @@ router.post("/admin/content", requireAdmin, (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
-router.post("/admin/colors", requireAdmin, (req, res) => {
+router.post("/admin/colors", requireAdmin, requireTosAccepted, (req, res) => {
   const { bubbleChartPreset, bubbleColors, cardGradientsPreset, cardGradients, tagColorsPreset, tagColors, tagRecipe, logo_color, landing_header_color, landing_accent_color } = req.body;
   try {
     updateTenantContent(req.tenant.slug, (content) => {
@@ -337,7 +386,7 @@ router.post("/admin/colors", requireAdmin, (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
-router.post("/admin/cache", requireAdmin, async (req, res) => {
+router.post("/admin/cache", requireAdmin, requireTosAccepted, async (req, res) => {
   try {
     await refreshTenant(req.tenant.slug);
     const count = (tenantCaches.get(req.tenant.slug) || []).length;
@@ -349,7 +398,7 @@ router.post("/admin/cache", requireAdmin, async (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
-router.post("/admin/sync-pdfs", requireAdmin, async (req, res) => {
+router.post("/admin/sync-pdfs", requireAdmin, requireTosAccepted, async (req, res) => {
   try {
     await syncTenantPDFs(req.tenant.slug);
     req.session.flash = { type: "ok", msg: "PDF sync complete." };
@@ -360,7 +409,7 @@ router.post("/admin/sync-pdfs", requireAdmin, async (req, res) => {
   res.redirect(res.locals.basePath + "/admin");
 });
 
-router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
+router.post("/admin/team/upload-photo", requireAdmin, requireTosAccepted, (req, res) => {
   photoUpload.single("photo")(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message || "Upload failed." });
     if (!req.file) return res.status(400).json({ error: "No file uploaded or unsupported type." });
@@ -368,7 +417,7 @@ router.post("/admin/team/upload-photo", requireAdmin, (req, res) => {
   });
 });
 
-router.post("/admin/team", requireAdmin, (req, res) => {
+router.post("/admin/team", requireAdmin, requireTosAccepted, (req, res) => {
   try {
     updateTenantContent(req.tenant.slug, (content) => {
       const raw = req.body.team || {};

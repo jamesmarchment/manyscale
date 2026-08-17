@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accept Terms of Service</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #f4f4f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 2rem 1rem; }
+    .card { background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; padding: 2rem; width: 100%; max-width: 480px; }
+    h1 { font-size: 1.2rem; margin: 0 0 .5rem; }
+    p.hint { font-size: .85rem; color: #52525b; margin: 0 0 1.5rem; line-height: 1.5; }
+    .terms-box { border: 1px solid #d4d4d8; border-radius: 4px; padding: .85rem 1rem; max-height: 260px; overflow-y: auto; font-size: .85rem; color: #3f3f46; line-height: 1.6; margin-bottom: 1.25rem; background: #fafafa; }
+    .terms-box p { margin: 0 0 .85rem; }
+    .terms-box p:last-child { margin-bottom: 0; }
+    .terms-box .placeholder-note { color: #b45309; font-weight: 600; }
+    label.agree { display: flex; align-items: flex-start; gap: .5rem; font-size: .85rem; margin-bottom: 1.25rem; cursor: pointer; }
+    label.agree input { margin-top: .2rem; }
+    button { width: 100%; padding: .55rem; background: #18181b; color: #fff; border: none; border-radius: 4px; font-size: .95rem; cursor: pointer; }
+    button:hover { background: #3f3f46; }
+    .error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px; padding: .5rem .75rem; font-size: .85rem; margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Terms of Service</h1>
+    <p class="hint">Before you can access your admin panel, please review and agree to the terms below.</p>
+    <% if (locals.error) { %>
+      <div class="error"><%= error %></div>
+    <% } %>
+    <div class="terms-box">
+      
+      <h2>Repository Admin Agreement </h2>
+<p><em>Required acknowledgment for all volunteer Repository Admins before access is granted.</em></p>
+<p>Thank you for volunteering to manage a repository on ManyScale.</p>
+<p><strong>By checking "I agree" below, you confirm the following:</strong></p>
+
+<h3>My Role</h3>
+<p>I am volunteering as a Repository Admin on a non-commercial basis. I understand this is not an employment or agency relationship with ManyScale, and that I am acting independently in managing content within my repository, subject to this Agreement and the Site's Terms of Service.</p>
+<h3>Copyright Commitments</h3>
+<p>I understand and agree that:</p>
+<p><strong>I will never upload full-text PDFs, scanned copies, or verbatim reproductions of published journal articles, book chapters, or other copyrighted publications to the Site.</strong></p>
+<p>I will promptly remove any content from my repository if notified that it may infringe copyright or violate a rights-holder's terms, and will cooperate with any related inquiry.</p>
+<h3>Content Standards</h3>
+<p>I agree to review contributions to my repository in good faith for compliance with this Agreement and the Site's Terms of Service before publishing them, and to remove content that does not comply.</p>
+<h3>Acknowledgment of Responsibility</h3>
+<p>I understand that:</p>
+<p>I am personally responsible for content I upload, approve, or fail to remove after notice, in violation of this Agreement.</p>
+<p>ManyScale and its founders/administrators are not responsible for copyright violations or other breaches of this Agreement committed by me or by contributors to my repository, where such actions violate this Agreement and were not directed or knowingly authorized by ManyScale.</p>
+<p>Violation of this Agreement may result in immediate removal of the affected content and revocation of my Repository Admin access.</p>
+<p>I agree to indemnify ManyScale and its founders/operators against claims, losses, or expenses (including reasonable legal fees) arising from my breach of this Agreement, to the extent permitted by law.</p>
+    </div>
+    <form method="POST" action="<%= basePath %>/admin/accept-terms">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <label class="agree">
+        <input type="checkbox" name="agree" value="1" required>
+        <span>I have read and agree to the Terms of Service.</span>
+      </label>
+      <button type="submit">Agree and continue</button>
+    </form>
+  </div>
+</body>
+</html>

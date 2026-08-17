@@ -71,6 +71,15 @@ export function requireAdmin(req, res, next) {
   res.redirect(res.locals.basePath + "/admin/login");
 }
 
+// New tenant admins must accept the ToS (and, right after, set their own password — see
+// /admin/set-password) before reaching the rest of /admin. architectLoggedIn bypasses this:
+// an architect impersonating a tenant's admin panel isn't the new admin being onboarded.
+export function requireTosAccepted(req, res, next) {
+  if (req.session?.architectLoggedIn) return next();
+  if (req.tenant.tosAcceptedAt) return next();
+  res.redirect(res.locals.basePath + "/admin/accept-terms");
+}
+
 export function requireArchitectAdmin(req, res, next) {
   if (req.session?.architectLoggedIn) return next();
   res.redirect("/architect/login");

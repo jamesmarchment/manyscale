@@ -129,7 +129,11 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
     plausibleDomain: process.env.PLAUSIBLE_DOMAIN || "",
     plausibleScriptSrc: process.env.PLAUSIBLE_SCRIPT_SRC || "https://analytics.relascale.com/js/script.file-downloads.js",
   };
-  res.render("architect/index", { tenants, flash, emailSettings, analyticsSettings, csrfToken: generateCsrfToken(req, res) });
+  const refreshSettings = {
+    refreshOnStartup: process.env.AIRTABLE_REFRESH_ON_STARTUP !== "false",
+    refreshIntervalHours: process.env.AIRTABLE_REFRESH_INTERVAL_HOURS || "6",
+  };
+  res.render("architect/index", { tenants, flash, emailSettings, analyticsSettings, refreshSettings, csrfToken: generateCsrfToken(req, res) });
 });
 
 router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
@@ -163,6 +167,24 @@ router.post("/architect/settings/analytics", requireArchitectAdmin, (req, res) =
     req.session.architectFlash = { type: "ok", msg: "Analytics settings saved. Restart the server to apply." };
   } catch (err) {
     console.error("Architect analytics settings error:", err);
+    req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
+  }
+  res.redirect("/architect");
+});
+
+router.post("/architect/settings/refresh", requireArchitectAdmin, (req, res) => {
+  const { refreshOnStartup, refreshIntervalHours } = req.body;
+  const hours = Number(refreshIntervalHours);
+  if (!Number.isFinite(hours) || hours <= 0) {
+    req.session.architectFlash = { type: "err", msg: "Refresh interval must be a positive number of hours." };
+    return res.redirect("/architect");
+  }
+  try {
+    updateEnvVar("AIRTABLE_REFRESH_ON_STARTUP", refreshOnStartup === "on" ? "true" : "false");
+    updateEnvVar("AIRTABLE_REFRESH_INTERVAL_HOURS", String(hours));
+    req.session.architectFlash = { type: "ok", msg: "Airtable refresh settings saved. Restart the server to apply." };
+  } catch (err) {
+    console.error("Architect refresh settings error:", err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
   }
   res.redirect("/architect");

@@ -217,6 +217,33 @@
       </form>
     </div>
 
+    <h2>Airtable Refresh</h2>
+    <div class="card">
+      <form method="POST" action="/architect/settings/refresh">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <table>
+          <tr>
+            <th style="width:38%"><label for="refresh-on-startup">Refresh on startup</label></th>
+            <td>
+              <input type="checkbox" id="refresh-on-startup" name="refreshOnStartup" <%= refreshSettings.refreshOnStartup ? "checked" : "" %>>
+              <p class="hint" style="font-size:.78rem;color:#71717a;margin-top:.25rem;">Whether every tenant's Airtable data is refreshed immediately when the server process starts, before the first interval below elapses.</p>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="refresh-interval-hours">Refresh interval (hours)</label></th>
+            <td>
+              <input type="number" id="refresh-interval-hours" name="refreshIntervalHours" value="<%= refreshSettings.refreshIntervalHours %>" min="1" step="1" style="width:6rem">
+              <p class="hint" style="font-size:.78rem;color:#71717a;margin-top:.25rem;">How often (in hours) every active tenant's Airtable data is re-synced. Applies deployment-wide, not per-tenant.</p>
+            </td>
+          </tr>
+        </table>
+        <div class="actions">
+          <button type="submit" class="btn">Save Refresh Settings</button>
+          <span class="muted">Restart the server to apply changes.</span>
+        </div>
+      </form>
+    </div>
+
     <h2>Architect Password</h2>
     <div class="card">
       <form method="POST" action="/architect/settings/password">
