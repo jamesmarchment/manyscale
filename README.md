@@ -65,7 +65,7 @@ cp tenants_example.json tenants.json
 - `baseId` — the Airtable base ID (starts with `app`)
 - `contact_recipient` — where contact form and measure suggestion emails are delivered
 - `adminPasswordHash` — password hash for this tenant's `/admin` panel, generated with `npm run hash-password`. Without it, `/admin/login` refuses to log anyone in. Resettable later from the Architect Admin Panel without needing the old password.
-- `primaryTenant` *(optional)* — set to `true` on the tenant that should be treated as primary (served in single-tenant mode, refreshed on the startup/6-hour cycle). If no tenant has this set, the first entry in the list is used.
+- `primaryTenant` *(optional)* — set to `true` on the tenant that should be treated as primary (served in single-tenant mode, refreshed on the startup/interval cycle — see [Caching and Data Sync](#caching-and-data-sync)). If no tenant has this set, the first entry in the list is used.
 - `externalUrl` *(optional)* — for a tenant that's actually hosted on its own server (e.g. RelaScale) but kept here as a live tenant so it's included in cross-tenant search. The network landing page's repository card links here instead of `/{slug}`; `/{slug}` itself keeps working. Set from Architect Admin rather than editing this file directly.
 
 ### 4. Set up Airtable
@@ -74,11 +74,12 @@ Your Airtable base must have the following tables (exact names):
 
 - **Measures** — each record is one measure; only records with `Status = "Approved"` are shown
 - **Translations** — linked to Measures via `MeasureID (from MeasureID)`
-- **Contributors** *(optional)* — records with a `Role` field set to `"Core Team"`, `"Contributor"`, or `"Funding"`
+- **Contributors** *(optional)* — records with a `Role` field set to `"Core Team"`, `"Contributor"`, `"Funding"`, or `"Scale Creator"`
 
 Your Airtable Personal Access Token needs the following scopes:
 - `data.records:read`
 - `schema.bases:read` (required for table ID resolution at startup)
+- `schema.bases:write` (only if you use the Architect Admin panel's automatic table scaffolding for a new tenant — not needed otherwise)
 
 A form view on the Measures table is detected automatically and used as the submission link.
 
@@ -92,7 +93,7 @@ npm start
 npm run dev
 ```
 
-The server starts on port `3007` by default, or whatever `PORT` is set to in `.env`. On startup it pulls all approved records from Airtable, downloads any PDFs not yet on disk, and writes the result to `cache/{slug}/cache.json`. This cycle repeats every 6 hours. If Airtable is unreachable, the server starts anyway and falls back to the local disk cache.
+The server starts on port `3007` by default, or whatever `PORT` is set to in `.env`. On startup (unless disabled — see `AIRTABLE_REFRESH_ON_STARTUP` below) it pulls all approved records from Airtable, downloads any PDFs not yet on disk, and writes the result to `cache/{slug}/cache.json`. This cycle repeats every `AIRTABLE_REFRESH_INTERVAL_HOURS` (default 6). If Airtable is unreachable, the server starts anyway and falls back to the local disk cache.
 
 `npm start` runs the server in the foreground and exits when its terminal/session closes. For a persistent deployment, wrap it in a process manager of your choice (systemd, PM2, Docker, a NAS's built-in task scheduler, etc.) so it survives crashes, restarts on boot, and can be stopped/restarted cleanly.
 
@@ -105,6 +106,9 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `<patEnvVar>` | Yes | Airtable PAT for the primary tenant. The variable name comes from `patEnvVar` in `tenants.json` (e.g. `RELASCALE_PAT`) |
 | `AIRTABLE_PAT_2` | No | PAT for an optional secondary Airtable base to merge into the primary cache |
 | `BASE_ID_2` | No | Base ID for the secondary Airtable source |
+| `AIRTABLE_REFRESH_ON_STARTUP` | No | Set to `"false"` to skip the immediate Airtable refresh when the server starts (default: refresh on startup). Editable from the Architect Admin Panel. |
+| `AIRTABLE_REFRESH_INTERVAL_HOURS` | No | How often, in hours, to re-sync every active tenant from Airtable (default: `6`). Editable from the Architect Admin Panel. |
+| `SITE_URL` | No | Canonical origin for the deployment (e.g. `https://manyscale.org`), used for absolute links in outbound email and for `<loc>`/`Sitemap:` entries in the generated sitemap and `robots.txt` — see [Sitemap & robots.txt](#sitemap--robotstxt). Blank until set. Editable from the Architect Admin Panel. |
 | `SMTP_USER` | Yes* | Email address used to send contact and suggestion form emails |
 | `SMTP_PASS` | Yes* | SMTP password for `SMTP_USER` |
 | `SMTP_HOST` | No | SMTP host (default: `mail.manyscale.org`). Editable from the [Architect Admin Panel](#architect-admin-panel) — restart the server to apply. |
@@ -113,7 +117,7 @@ The server starts on port `3007` by default, or whatever `PORT` is set to in `.e
 | `NETWORK_CONTACT_EMAIL` | No | Where the network landing page's "Request a Repo" form is delivered (falls back to `SMTP_USER`). Editable from the Architect Admin Panel. Multi-tenant mode only. |
 | `PLAUSIBLE_DOMAIN` | No | Plausible Analytics `data-domain` (e.g. `manyscale.org`). Deployment-wide, not per-tenant. Blank disables analytics entirely. Editable from the Architect Admin Panel. |
 | `PLAUSIBLE_SCRIPT_SRC` | No | Plausible script URL (default: `https://analytics.relascale.com/js/script.file-downloads.js`). Editable from the Architect Admin Panel. |
-| `ADMIN_TOKEN` | No | Token for scripted cache and PDF sync endpoints |
+| `ADMIN_TOKEN` | No | Currently unused — the token-protected `GET /admin/refresh-cache`/`sync-pdfs` endpoints have been superseded by session-authenticated buttons in the `/admin` panel (kept commented out in `routes/admin.js` in case scripted access is wanted again) |
 | `ARCHITECT_ADMIN_PASSWORD_HASH` | No | Password hash for the cross-tenant `/architect` panel — see [Architect Admin Panel](#architect-admin-panel) |
 | `SESSION_SECRET` | Yes | Random string used to sign session cookies |
 | `PORT` | No | Port to listen on (default: `3007`) |
@@ -136,18 +140,24 @@ In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served 
 | GET | `/constructs/:name` | All measures tagged with a specific construct |
 | GET | `/languages` | Browse all translation languages alphabetically |
 | GET | `/languages/:name` | All measures with a translation into a specific language |
+| GET | `/topics/:name` | All measures tagged with a specific topic (no index page) |
 | GET | `/details/:id` | Individual measure detail page |
 | GET | `/contributors` | Team and contributors listing |
 | GET | `/terms` | Terms of service |
 | GET | `/privacy` | Privacy policy |
+| GET | `/sitemap.xml` | Generated sitemap (`/{slug}/sitemap.xml` in multi-tenant mode) — see [Sitemap & robots.txt](#sitemap--robotstxt) |
+| GET | `/robots.txt` | Generated robots file, site-wide regardless of `MULTI_TENANT` |
 | POST | `/contact` | Contact form submission |
 | POST | `/suggest` | Measure suggestion form |
+| POST | `/report-correction` | "Report a Correction" form on a measure detail page |
 | GET | `/api/data` | Full JSON data dump; optional `?id=` filter |
 | GET | `/api/search?q=` | JSON search endpoint (filters by construct) |
 | GET | `/api/construct-stats` | JSON map of construct → measure count |
 | GET | `/admin` | Admin panel (session-protected) |
-| GET | `/admin/refresh-cache?token=` | Trigger a cache refresh (token-protected) |
-| GET | `/admin/sync-pdfs?token=` | Trigger a PDF sync (token-protected) |
+| POST | `/admin/cache` | Trigger a cache refresh (session-protected, button in the admin panel) |
+| POST | `/admin/sync-pdfs` | Trigger a PDF sync (session-protected, button in the admin panel) |
+| GET/POST | `/admin/accept-terms` | Mandatory first-login Terms of Service acceptance for new tenant admins |
+| GET/POST | `/admin/set-password` | Mandatory first-login password change for new tenant admins |
 | GET | `/architect` | Architect admin dashboard listing all tenants (session-protected) |
 | GET | `/architect/tenants/new` | New tenant onboarding form |
 | POST | `/architect/tenants` | Provision a new tenant |
@@ -164,7 +174,9 @@ In **single-tenant** mode (`MULTI_TENANT=false`, the default) routes are served 
 
 ## Admin Panel
 
-Navigate to `/admin` and log in with the tenant's admin password (set via `adminPasswordHash` in `tenants.json`, or reset from the [Architect Admin Panel](#architect-admin-panel)). From there you can:
+Navigate to `/admin` and log in with the tenant's admin password (set via `adminPasswordHash` in `tenants.json`, or reset from the [Architect Admin Panel](#architect-admin-panel)). A newly-provisioned tenant admin's first login is gated: they must accept a placeholder Terms of Service (`/admin/accept-terms`, timestamped as `tosAcceptedAt` in `tenants.json`) and set their own password (`/admin/set-password`, replacing the temporary one from the onboarding email) before reaching the dashboard. Tenants that existed before this flow shipped are grandfathered in and never see it.
+
+From the dashboard you can:
 
 - Edit site content (hero heading, tagline, description, logo color)
 - Write a custom markdown section shown on the homepage (headings, bold/italic, links, and lists — see [Custom Homepage Section](#custom-homepage-section)); leave it blank to hide the section entirely
@@ -194,8 +206,9 @@ From the dashboard you can:
 - Reset a tenant's `/admin` password without needing the old one
 - Edit a tenant's branding — logo (including SVG, sanitized on upload) and social-share meta image
 - Set or clear a tenant's external link — for a tenant actually hosted on its own server, points the landing page's repository card at that URL instead of `/{slug}`, while `/{slug}` keeps working so the tenant still participates in cross-tenant search
-- Edit platform-wide email settings (SMTP host/port/TLS, and the network contact email the "Request a Repo" form delivers to) used for contact-form, suggestion, and tenant-onboarding mail across every tenant
+- Edit platform-wide email settings (SMTP host/port/TLS, the network contact email the "Request a Repo" form delivers to, and the deployment's `SITE_URL`) used for contact-form, suggestion, tenant-onboarding mail, and sitemap/`robots.txt` generation across every tenant
 - Edit platform-wide analytics settings (Plausible domain and script URL) used across every tenant
+- Edit the Airtable refresh schedule (`AIRTABLE_REFRESH_ON_STARTUP`, `AIRTABLE_REFRESH_INTERVAL_HOURS`) — deployment-wide, applies on the next server restart
 
 Provisioning a tenant primes its cache and, if requested, scaffolds its Airtable tables immediately — no restart needed. The one exception: a newly-created tenant isn't reachable on the public site until `MULTI_TENANT=true` is set in `.env` and the server is restarted, since single-tenant mode always serves the one configured primary tenant.
 
@@ -229,6 +242,29 @@ is rendered.
 
 ---
 
+## Sitemap & robots.txt
+
+`lib/sitemap.js` generates an XML sitemap for each tenant and a single site-wide
+`robots.txt`, built entirely from data already in memory — no extra Airtable calls of
+their own. Both require `SITE_URL` to be set (see [Environment Variables](#environment-variables));
+without it, generation is skipped and a warning is logged.
+
+- **`sitemap.xml`** — written to `public/{slug}/sitemap.xml` (served at `/{slug}/sitemap.xml`)
+  every time that tenant's cache refresh cycle runs (startup, the refresh interval, or a
+  manual refresh from either admin panel) — see [Caching and Data Sync](#caching-and-data-sync).
+  In single-tenant mode it's also mirrored to `public/sitemap.xml` at the root, where
+  crawlers expect it. Includes the homepage, every measure detail page (`<lastmod>` from
+  the record's Airtable `createdTime`), and the constructs/topics/languages/contributors/
+  terms/privacy pages.
+- **`robots.txt`** — written to `public/robots.txt` (served at `/robots.txt`) at server
+  startup and whenever a tenant's active/external-link status changes in the Architect
+  Admin panel, so it never depends on a refresh cycle. Lists a `Sitemap:` line per
+  locally-served, active tenant (a tenant with `externalUrl` set is excluded — its
+  content isn't hosted here), and disallows `/admin/` and `/architect/` so those
+  session-gated panels stay out of search results.
+
+---
+
 ## Project Structure
 
 ```
@@ -244,16 +280,21 @@ is rendered.
 ├── lib/
 │   ├── airtable.js            # Cache, Airtable sync, PDF sync, startup refresh cycle
 │   ├── email.js               # Nodemailer transporter
+│   ├── emails/                # Templated emails: onboarding, password reset/changed
 │   ├── search.js              # recordMatchesSearch(), stop-word set
 │   ├── network.js             # Cross-tenant search/suggestions for the network landing page
 │   ├── auth.js                # Password hashing/verification (scrypt) for admin/architect logins
 │   ├── antispam.js            # Honeypot + timing-token + rate-limit guard for public forms
+│   ├── csrf.js                # CSRF protection + the public-form exemption list
+│   ├── jsonStore.js           # writeJsonAtomic() and other JSON-file helpers (tenants.json, data/{slug}.json)
+│   ├── seo.js                 # Per-measure meta description/keywords for detail pages
+│   ├── sitemap.js             # Sitemap.xml / robots.txt generation — see Sitemap & robots.txt
 │   ├── colorPresets.js        # Shared palette presets for tenant-customizable colors
 │   └── reservedSlugs.js       # RESERVED_SLUGS + startup assertion guarding tenant slugs from route collisions
 │
 ├── routes/
 │   ├── api.js                 # GET /api/data, /api/search, /api/construct-stats
-│   ├── forms.js               # POST /contact, POST /suggest
+│   ├── forms.js               # POST /contact, /suggest, /report-correction
 │   ├── public.js              # All public page routes (/, /search, /constructs, /languages, etc.)
 │   ├── admin.js               # All /admin/* routes and multer photo upload
 │   ├── architect.js           # All /architect/* routes: tenant onboarding, branding, settings
@@ -275,6 +316,7 @@ is rendered.
 │   ├── construct-details.ejs
 │   ├── languages.ejs
 │   ├── language-details.ejs
+│   ├── topic-details.ejs
 │   ├── contributors.ejs
 │   ├── terms.ejs
 │   ├── privacy.ejs
@@ -282,7 +324,11 @@ is rendered.
 │   ├── network-search.ejs     # Cross-tenant search results page (multi-tenant mode only)
 │   ├── admin/
 │   │   ├── index.ejs
-│   │   └── login.ejs
+│   │   ├── login.ejs
+│   │   ├── forgot-password.ejs
+│   │   ├── reset-password.ejs
+│   │   ├── accept-terms.ejs   # Mandatory first-login Terms of Service acceptance
+│   │   └── set-password.ejs   # Mandatory first-login password change
 │   ├── architect/
 │   │   ├── index.ejs          # Tenant dashboard
 │   │   ├── login.ejs
@@ -301,26 +347,24 @@ is rendered.
     │   ├── js/                # Site scripts
     │   ├── img/               # Images
     │   └── vendor/            # Bootstrap, AOS, GLightbox, Swiper, Isotope, D3
+    ├── robots.txt             # Generated — see Sitemap & robots.txt (gitignored)
+    ├── sitemap.xml            # Generated, single-tenant mode only (gitignored)
     └── {slug}/
         ├── pdfs/              # Locally cached measure PDFs (downloaded from Airtable)
         ├── team/              # Team photos (uploaded via admin panel)
-        └── cache-stats.json   # Public stats: measure count, construct count, item count
+        ├── cache-stats.json   # Public stats: measure count, construct count, item count
+        └── sitemap.xml        # Generated per tenant (gitignored) — see Sitemap & robots.txt
 ```
 
 ---
 
 ## Caching and Data Sync
 
-The server resolves Airtable table IDs at startup via the metadata API, then pulls all approved measures and translations, downloads any new PDFs, and writes `cache/{slug}/cache.json`. A timestamped backup is created alongside it only when the data has changed since the previous refresh. This cycle repeats every 6 hours.
+The server resolves Airtable table IDs (unless `AIRTABLE_REFRESH_ON_STARTUP=false`, see [Environment Variables](#environment-variables)) at startup via the metadata API, then pulls all approved measures and translations, downloads any new PDFs, and writes `cache/{slug}/cache.json`. A timestamped backup is created alongside it only when the data has changed since the previous refresh. This cycle repeats every `AIRTABLE_REFRESH_INTERVAL_HOURS` (default 6).
 
-If Airtable is unreachable, the server starts and serves from the existing disk cache. It keeps retrying on each scheduled cycle and recovers automatically.
+If Airtable is unreachable, the server starts and serves from the existing disk cache. It keeps retrying on each scheduled cycle and recovers automatically. A manual refresh (from either admin panel) resolves table IDs itself if they haven't been resolved yet — e.g. right after a restart with `AIRTABLE_REFRESH_ON_STARTUP=false` — so it works even before the first scheduled cycle has run.
 
-For scripted environments, manual refresh endpoints are available without a browser session:
-
-```
-GET /admin/refresh-cache?token=<ADMIN_TOKEN>
-GET /admin/sync-pdfs?token=<ADMIN_TOKEN>
-```
+Manual refresh is triggered from a browser session rather than a scripted token endpoint: the "Refresh cache" / "Sync PDFs" buttons in the `/admin` panel refresh that one tenant (`POST /admin/cache`, `POST /admin/sync-pdfs`), and the Architect Admin panel can refresh any tenant's cache the same way (`POST /architect/tenants/:slug/refresh-cache`).
 
 ---
 
