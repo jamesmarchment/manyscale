@@ -194,7 +194,8 @@
 
 /* stuff for the index page */
 
-#suggestModal {
+#suggestModal,
+#reportCorrectionModal {
   z-index: 9001;
 }
 
@@ -1237,36 +1238,42 @@ a.alpha-link:hover {
   }
 }
 
-/* ── Suggest a Measure modal ─────────────────────────────────────────────── */
+/* ── Suggest a Measure / Report a Correction modals ──────────────────────── */
 
-#suggestModal .modal-content {
+#suggestModal .modal-content,
+#reportCorrectionModal .modal-content {
   border: none;
   border-radius: 10px;
   background-color: var(--surface-color);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.14);
 }
 
-#suggestModal .modal-header {
+#suggestModal .modal-header,
+#reportCorrectionModal .modal-header {
   border-bottom: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
   padding: 1.25rem 1.75rem;
 }
 
-#suggestModal .modal-title {
+#suggestModal .modal-title,
+#reportCorrectionModal .modal-title {
   font-size: 24px;
   font-weight: 300;
   color: var(--heading-color);
   letter-spacing: -0.3px;
 }
 
-#suggestModal .modal-body {
+#suggestModal .modal-body,
+#reportCorrectionModal .modal-body {
   padding: 1.5rem 1.75rem 1.75rem;
 }
 
-#suggestModal .form-group {
+#suggestModal .form-group,
+#reportCorrectionModal .form-group {
   margin-bottom: 1.5rem;
 }
 
-#suggestModal .form-group label {
+#suggestModal .form-group label,
+#reportCorrectionModal .form-group label {
   display: block;
   font-size: 14px;
   font-weight: 500;
@@ -1276,7 +1283,11 @@ a.alpha-link:hover {
 }
 
 #suggestModal .form-group input,
-#suggestModal .form-group textarea {
+#suggestModal .form-group textarea,
+#suggestModal .form-group select,
+#reportCorrectionModal .form-group input,
+#reportCorrectionModal .form-group textarea,
+#reportCorrectionModal .form-group select {
   width: 100%;
   border: 1px solid color-mix(in srgb, var(--default-color), transparent 85%);
   border-radius: 8px;
@@ -1290,24 +1301,32 @@ a.alpha-link:hover {
 }
 
 #suggestModal .form-group input:focus,
-#suggestModal .form-group textarea:focus {
+#suggestModal .form-group textarea:focus,
+#suggestModal .form-group select:focus,
+#reportCorrectionModal .form-group input:focus,
+#reportCorrectionModal .form-group textarea:focus,
+#reportCorrectionModal .form-group select:focus {
   outline: none;
   border-color: var(--accent-color);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color), transparent 90%);
 }
 
 #suggestModal .form-group input::placeholder,
-#suggestModal .form-group textarea::placeholder {
+#suggestModal .form-group textarea::placeholder,
+#reportCorrectionModal .form-group input::placeholder,
+#reportCorrectionModal .form-group textarea::placeholder {
   color: color-mix(in srgb, var(--default-color), transparent 60%);
 }
 
-#suggestModal .form-group textarea {
+#suggestModal .form-group textarea,
+#reportCorrectionModal .form-group textarea {
   resize: vertical;
   min-height: 90px;
   line-height: 1.6;
 }
 
-#suggestModal .submit-btn {
+#suggestModal .submit-btn,
+#reportCorrectionModal .submit-btn {
   background: var(--accent-color);
   color: var(--contrast-color);
   border: none;
@@ -1323,16 +1342,19 @@ a.alpha-link:hover {
   letter-spacing: 0.3px;
 }
 
-#suggestModal .submit-btn:hover {
+#suggestModal .submit-btn:hover,
+#reportCorrectionModal .submit-btn:hover {
   background: color-mix(in srgb, var(--accent-color) 85%, #000);
 }
 
-#suggestModal .submit-btn i {
+#suggestModal .submit-btn i,
+#reportCorrectionModal .submit-btn i {
   font-size: 16px;
   transition: transform 0.3s ease;
 }
 
-#suggestModal .submit-btn:hover i {
+#suggestModal .submit-btn:hover i,
+#reportCorrectionModal .submit-btn:hover i {
   transform: translateX(4px);
 }
 

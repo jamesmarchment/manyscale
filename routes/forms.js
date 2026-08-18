@@ -55,4 +55,34 @@ router.post("/suggest", antiSpamGuard, async (req, res) => {
 });
 
 
+router.post("/report-correction", antiSpamGuard, async (req, res) => {
+  const { name, email, measure_name, problem_type, description } = req.body;
+
+  try {
+    const body = [
+      `Name:         ${name}`,
+      `Email:        ${email}`,
+      ``,
+      `Measure:      ${measure_name}`,
+      `Problem Type: ${problem_type}`,
+      ``,
+      `Description:`,
+      description,
+    ].join("\n");
+
+    await transporter.sendMail({
+      from: process.env.SMTP_USER,
+      to: req.tenant.contact_recipient || process.env.SMTP_USER,
+      subject: `User-reported problem on ${measure_name}`,
+      text: body,
+    });
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Report correction form error:", err);
+    res.status(500).json({ error: "Email failed to send" });
+  }
+});
+
+
 export default router;

@@ -97,11 +97,15 @@
                 <div class="info-block">
                   <div class="info-label">Number of Items</div>
                   <div class="info-value" data-field="Number of Items"></div>
-                                  <div class="info-block">
+                </div>
+                <div class="info-block">
                   <div class="info-label">Original Language(s)</div>
                   <div class="info-value" data-field="Language(s)"></div>
                 </div>
-
+                <div class="info-block" id="report-correction">
+                  <div class="info-value" style="text-align: right; font-size: 0.875rem;">
+                    <a href="#" role="button" data-bs-toggle="modal" data-bs-target="#reportCorrectionModal" style="color: #aaa;">Report a Correction?</a>
+                  </div>
                 </div>
               </div>
             </div>
@@ -133,7 +137,142 @@
 
   </main>
 
+<!-- Report a Correction Modal -->
+<div class="modal fade" id="reportCorrectionModal" tabindex="-1" aria-labelledby="reportCorrectionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reportCorrectionModalLabel">Report a Correction</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="report-correction-form" class="php-email-form">
 
+          <div class="form-trap" aria-hidden="true">
+            <label for="report-website">Website</label>
+            <input type="text" name="website" id="report-website" tabindex="-1" autocomplete="off">
+          </div>
+          <input type="hidden" name="_t" id="report-t">
+
+          <div class="form-group">
+            <label>Measure</label>
+            <input type="text" name="measure_name" value="<%= record.fields['Measure Name'] %>" readonly>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Your Name</label>
+                <input type="text" name="name" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Problem Type</label>
+            <select name="problem_type" required>
+              <option value="" disabled selected>Select an issue…</option>
+              <option>Inaccurate or outdated content</option>
+              <option>Broken link or missing file</option>
+              <option>Copyright concern / takedown request</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" rows="4" required></textarea>
+          </div>
+
+          <div class="my-3">
+            <div class="loading" style="display:none">Loading</div>
+            <div class="error-message"></div>
+            <div class="sent-message fade">Thank you! We'll review this and follow up if needed.</div>
+          </div>
+
+          <button type="submit" class="submit-btn">
+            <span>Submit Report</span>
+            <i class="bi bi-arrow-right"></i>
+          </button>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// -- Report a Correction modal ------------------------------------------------
+(function () {
+  const modal     = document.getElementById("reportCorrectionModal");
+  const form      = document.getElementById("report-correction-form");
+  if (!modal || !form) return;
+
+  const loadingEl = form.querySelector(".loading");
+  const errorEl   = form.querySelector(".error-message");
+  const sentEl    = form.querySelector(".sent-message");
+  const submitBtn = form.querySelector("button[type='submit']");
+
+  // Stamp the timing token each time the modal opens
+  modal.addEventListener("show.bs.modal", () => {
+    document.getElementById("report-t").value = Date.now();
+  });
+
+  // Reset form state when modal closes. form.reset() restores the read-only Measure
+  // field to its server-rendered defaultValue (the current measure's name), not blank —
+  // that's intentional, since the field must always show the current measure.
+  modal.addEventListener("hidden.bs.modal", () => {
+    form.reset();
+    errorEl.classList.remove("d-block");
+    sentEl.classList.remove("show");
+    sentEl.style.display = "";
+    submitBtn.style.opacity = "";
+    submitBtn.disabled = false;
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    loadingEl.classList.add("d-block");
+    errorEl.classList.remove("d-block");
+    sentEl.classList.remove("show");
+
+    const formData = Object.fromEntries(new FormData(form).entries());
+
+    try {
+      const response = await fetch("<%= basePath %>/report-correction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+      const result = await response.json();
+      loadingEl.classList.remove("d-block");
+
+      if (result.success) {
+        submitBtn.style.transition = "opacity 0.5s";
+        submitBtn.style.opacity = 0;
+        submitBtn.disabled = true;
+        sentEl.style.display = "block";
+        sentEl.classList.add("show");
+        form.reset();
+        setTimeout(() => bootstrap.Modal.getInstance(modal).hide(), 2000);
+      } else {
+        errorEl.textContent = result.error || "Failed to send report.";
+        errorEl.classList.add("d-block");
+      }
+    } catch (err) {
+      loadingEl.classList.remove("d-block");
+      errorEl.textContent = err.message || "An error occurred.";
+      errorEl.classList.add("d-block");
+    }
+  });
+})();
+</script>
 
 <script>
 // testing things
