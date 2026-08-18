@@ -11,11 +11,20 @@ import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
 import { tenantCaches, lastRefreshTimes, resolveTableIDs, refreshTenant, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
+import { generateRobotsTxt } from "../lib/sitemap.js";
 import { generateCsrfToken } from "../lib/csrf.js";
 import { tenantOnboardingEmail } from "../lib/emails/onboarding.js";
 import { passwordChangedEmail } from "../lib/emails/passwordChanged.js";
 
 const router = Router();
+
+// Use instead of a bare writeJsonAtomic(TENANTS_FILE, _tenantsList) wherever a change can
+// affect who's active or externally-linked — robots.txt's Sitemap: lines are derived from
+// exactly that set, and must not go stale between refresh cycles.
+function saveTenantsList() {
+  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  generateRobotsTxt();
+}
 
 // Branding uploads (logo / social preview image) — saves to public/{tenant-slug}/branding/.
 // Filename is fixed per kind (logo.<ext> / meta.<ext>), not derived from the original
@@ -261,7 +270,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
   };
 
   _tenantsList.push(tenant);
-  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  saveTenantsList();
 
   updateEnvVar(patEnvVar, pat.trim());
   process.env[patEnvVar] = pat.trim();
@@ -385,7 +394,7 @@ router.post("/architect/tenants/:slug/link", requireArchitectAdmin, (req, res) =
   // search.
   if (trimmed) tenant.externalUrl = trimmed;
   else delete tenant.externalUrl;
-  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  saveTenantsList();
   req.session.architectFlash = { type: "ok", msg: trimmed ? `External link set for "${tenant.name}".` : `External link cleared for "${tenant.name}".` };
   res.redirect("/architect");
 });
@@ -399,7 +408,7 @@ router.post("/architect/tenants/:slug/toggle-active", requireArchitectAdmin, (re
   }
   const wasActive = tenant.active !== false;
   tenant.active = !wasActive;
-  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  saveTenantsList();
   req.session.architectFlash = { type: "ok", msg: `Tenant "${tenant.name}" ${tenant.active ? "activated" : "deactivated"}.` };
   res.redirect("/architect");
 });
@@ -517,7 +526,7 @@ router.post("/architect/tenants/:slug/delete", requireArchitectAdmin, (req, res)
     return res.redirect("/architect");
   }
   const [removed] = _tenantsList.splice(idx, 1);
-  writeJsonAtomic(TENANTS_FILE, _tenantsList);
+  saveTenantsList();
   tenantCaches.delete(slug);
   lastRefreshTimes.delete(slug);
   invalidateTenantContent(slug);

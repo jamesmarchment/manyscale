@@ -10,6 +10,7 @@ James Marchment and Samantha Joel
 
 import { PORT, _tenantsList } from "./config.js";
 import { resolveTableIDs, refreshTenant } from "./lib/airtable.js";
+import { generateRobotsTxt } from "./lib/sitemap.js";
 import app from "./lib/app.js";
 
 // Deployment-wide, editable from Architect Admin → Platform Settings → Airtable Refresh
@@ -49,6 +50,11 @@ async function refreshAllTenants() {
 }
 
 console.log("Starting ManyScale…");
+// robots.txt needs no Airtable data (just the tenant list already loaded by config.js),
+// so it's generated unconditionally here rather than waiting on a refresh cycle — with
+// AIRTABLE_REFRESH_ON_STARTUP=false it would otherwise be stale/missing for up to
+// AIRTABLE_REFRESH_INTERVAL_HOURS.
+generateRobotsTxt();
 if (REFRESH_ON_STARTUP) {
   refreshAllTenants().then(() => {
     setInterval(refreshAllTenants, REFRESH_INTERVAL_MS);
