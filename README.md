@@ -41,7 +41,11 @@ See [Environment Variables](#environment-variables) below for details.
 
 ### 3. Configure tenants
 
-Copy `tenants_example.json` to `tenants.json` and edit it:
+`tenants.json` is gitignored (it holds real secrets) and isn't required to exist before
+first run — if it's missing, the server creates it from `tenants_example.json`
+automatically and logs a warning. The server will start either way, but admin login and
+Airtable sync stay disabled until you edit it with real values, so do that now rather than
+waiting for something to fail:
 
 ```bash
 cp tenants_example.json tenants.json

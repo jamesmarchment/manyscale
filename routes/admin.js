@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 import { requireAdmin, requireTosAccepted, loginRateLimitOk, forgotPasswordRateLimitOk } from "../middleware.js";
-import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly } from "../lib/airtable.js";
+import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly, clearResolvedTableIDs } from "../lib/airtable.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar, SITE_URL } from "../config.js";
 import { verifyPassword, hashPassword, safeTokenEqual, createPasswordResetToken, verifyPasswordResetToken } from "../lib/auth.js";
 import { COLOR_PRESETS, TAG_COLOR_RECIPES, DEFAULT_RECIPE_FOR_PRESET } from "../lib/colorPresets.js";
@@ -273,8 +273,15 @@ router.post("/admin/config", requireAdmin, requireTosAccepted, (req, res) => {
   // (which always serializes the shared _tenantsList) would silently revert this save.
   try {
     if (name?.trim())               tenant.name               = name.trim();
-    if (baseId?.trim())             tenant.baseId             = baseId.trim();
+    const baseIdChanged = baseId?.trim() && baseId.trim() !== tenant.baseId;
+    if (baseIdChanged)               tenant.baseId             = baseId.trim();
     if (contact_recipient !== undefined) tenant.contact_recipient = contact_recipient.trim();
+    // A changed baseId points at a genuinely different base — its table ids are different
+    // too — so any previously-resolved ids are now wrong. A PAT change doesn't actually
+    // change which ids are correct (same base, new credential), but it happens rarely
+    // enough that re-resolving to double-check is simpler than reasoning about whether
+    // it's actually needed.
+    if (baseIdChanged || pat?.trim()) clearResolvedTableIDs(tenant);
     writeJsonAtomic(TENANTS_FILE, _tenantsList);
     if (pat?.trim()) {
       const patVar = tenant.patEnvVar || "AIRTABLE_PAT";

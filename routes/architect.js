@@ -8,7 +8,7 @@ import { requireArchitectAdmin, loginRateLimitOk } from "../middleware.js";
 import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar, SITE_URL } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
-import { tenantCaches, lastRefreshTimes, resolveTableIDs, refreshTenant, scaffoldTenantTables } from "../lib/airtable.js";
+import { tenantCaches, lastRefreshTimes, ensureTableIDs, refreshTenant, scaffoldTenantTables } from "../lib/airtable.js";
 import { transporter } from "../lib/email.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
 import { generateRobotsTxt } from "../lib/sitemap.js";
@@ -294,7 +294,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
 
   let airtableSyncOk = false;
   try {
-    const resolved = await resolveTableIDs(tenant);
+    const resolved = await ensureTableIDs(tenant);
     if (resolved) {
       await refreshTenant(tenant.slug);
       airtableSyncOk = true;

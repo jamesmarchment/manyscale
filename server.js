@@ -9,7 +9,7 @@ James Marchment and Samantha Joel
 */
 
 import { PORT, _tenantsList } from "./config.js";
-import { resolveTableIDs, refreshTenant } from "./lib/airtable.js";
+import { ensureTableIDs, refreshTenant } from "./lib/airtable.js";
 import { generateRobotsTxt } from "./lib/sitemap.js";
 import app from "./lib/app.js";
 
@@ -36,7 +36,7 @@ async function refreshAllTenants() {
       .map(async (tenant) => {
         const pfx = `[${tenant.slug}]`;
         try {
-          const resolved = await resolveTableIDs(tenant);
+          const resolved = await ensureTableIDs(tenant);
           if (resolved) {
             await refreshTenant(tenant.slug);
           } else {
