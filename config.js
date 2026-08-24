@@ -13,6 +13,12 @@ dotenv.config();
 
 export const PORT = process.env.PORT || 3007;
 export const MULTI_TENANT = process.env.MULTI_TENANT === "true";
+// Closed by default — a self-hoster running behind a TLS-terminating reverse proxy
+// (nginx, Caddy, Cloudflare, etc) opts in explicitly. Shared by lib/app.js (trust proxy
+// setting + HSTS), lib/csrf.js, and middleware.js (session cookie `secure` flag) so all
+// three cookie/TLS-related decisions come from one source instead of three copies of the
+// same env check.
+export const TRUST_PROXY = process.env.TRUST_PROXY === "true";
 // Canonical origin for links/images in outbound email (onboarding, password reset/changed).
 // Deliberately NOT derived from the request's Host header there — an unvalidated Host
 // header is attacker-influenceable and would let a forged request put an attacker's

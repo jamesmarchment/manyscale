@@ -8,6 +8,7 @@ data/
 *.log
 server.pid
 cache/
+sessions/
 public/*
 !public/assets/
 start-stop.sh

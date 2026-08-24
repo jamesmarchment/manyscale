@@ -4,12 +4,13 @@ import path from "path";
 import multer from "multer";
 import { JSDOM } from "jsdom";
 import DOMPurify from "dompurify";
-import { requireArchitectAdmin, loginRateLimitOk } from "../middleware.js";
+import { requireArchitectAdmin, loginRateLimitOk, accountLoginRateLimitOk } from "../middleware.js";
 import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList, TENANTS_FILE, primaryTenant, updateEnvVar, SITE_URL } from "../config.js";
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
 import { tenantCaches, lastRefreshTimes, ensureTableIDs, refreshTenant, scaffoldTenantTables } from "../lib/airtable.js";
 import { tenantLogPrefix } from "../lib/log.js";
+import { isHttpUrl } from "../lib/validators.js";
 import { transporter } from "../lib/email.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
 import { generateRobotsTxt } from "../lib/sitemap.js";
@@ -91,7 +92,7 @@ router.get("/architect/login", (req, res) => {
 });
 
 router.post("/architect/login", (req, res) => {
-  if (!loginRateLimitOk(req.ip)) {
+  if (!loginRateLimitOk(req.ip) || !accountLoginRateLimitOk("architect")) {
     return res.status(429).render("architect/login", { error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
   }
   if (!ARCHITECT_ADMIN_PASSWORD_HASH) {
@@ -169,11 +170,16 @@ router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
 
 router.post("/architect/settings/analytics", requireArchitectAdmin, (req, res) => {
   const { plausibleDomain, plausibleScriptSrc } = req.body;
+  const trimmedScriptSrc = (plausibleScriptSrc || "").trim();
+  if (trimmedScriptSrc && !isHttpUrl(trimmedScriptSrc)) {
+    req.session.architectFlash = { type: "err", msg: "Analytics script URL must start with http:// or https://." };
+    return res.redirect("/architect");
+  }
   try {
     // Blank domain intentionally disables the Plausible script tag (see header.ejs) —
     // there's no separate on/off toggle needed.
     updateEnvVar("PLAUSIBLE_DOMAIN", (plausibleDomain || "").trim());
-    updateEnvVar("PLAUSIBLE_SCRIPT_SRC", (plausibleScriptSrc || "").trim());
+    updateEnvVar("PLAUSIBLE_SCRIPT_SRC", trimmedScriptSrc);
     req.session.architectFlash = { type: "ok", msg: "Analytics settings saved. Restart the server to apply." };
   } catch (err) {
     console.error("Architect analytics settings error:", err);

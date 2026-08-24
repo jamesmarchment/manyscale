@@ -1,15 +1,34 @@
+import path from "path";
 import session from "express-session";
+import FileStoreFactory from "session-file-store";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
-import { primaryTenant, SESSION_SECRET, MULTI_TENANT, _tenantsList } from "./config.js";
+import { primaryTenant, SESSION_SECRET, MULTI_TENANT, TRUST_PROXY, PROJECT_ROOT, _tenantsList } from "./config.js";
 import { COLOR_PRESETS, DEFAULT_RECIPE_FOR_PRESET } from "./lib/colorPresets.js";
 import { getTenantContent } from "./lib/jsonStore.js";
 
+const FileStore = FileStoreFactory(session);
+
+// One JSON file per session under sessions/, instead of express-session's default
+// in-memory MemoryStore — sessions now survive a restart/crash, and MemoryStore is
+// explicitly documented as unfit for production (unbounded memory growth, no
+// persistence). logFn is silenced because the package otherwise logs every read/write to
+// the console, which would flood server.log. The store reaps its own expired files on an
+// interval — no separate cleanup job needed.
+const sessionStore = new FileStore({
+  path: path.join(PROJECT_ROOT, "sessions"),
+  logFn: () => {},
+});
+
 export const sessionMiddleware = session({
+  store: sessionStore,
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: "lax", maxAge: 8 * 60 * 60 * 1000 }
+  // secure tied to TRUST_PROXY (same signal lib/csrf.js's CSRF cookie already uses) —
+  // previously unset here, meaning the session cookie defaulted to being sent over plain
+  // HTTP even in deployments that are actually behind TLS.
+  cookie: { httpOnly: true, sameSite: "lax", secure: TRUST_PROXY, maxAge: 8 * 60 * 60 * 1000 }
 });
 
 // Expose tenant-level locals to all templates. Must run after resolveTenant so
@@ -108,6 +127,23 @@ export const contactRateLimitOk = createRateLimiter(5, 60 * 60 * 1000);
 export const forgotPasswordRateLimitOk = createRateLimiter(3, 60 * 60 * 1000);
 // Max 8 login attempts per key per 15 minutes.
 export const loginRateLimitOk = createRateLimiter(8, 15 * 60 * 1000);
+// Layered on top of loginRateLimitOk above (checked in addition to it, not instead of):
+// that one is keyed by IP (+tenant), so a distributed attacker spreading login attempts
+// across many source IPs against one account never trips it — no single IP's budget
+// gets exhausted. This one is keyed by account only (tenant slug, or "architect" for the
+// single global architect account), so it catches that case regardless of source IP.
+// Deliberately more generous than the IP-keyed limit (20 vs 8) since legitimate
+// shared-IP traffic (office/NAT) already hits the tighter one first.
+export const accountLoginRateLimitOk = createRateLimiter(20, 15 * 60 * 1000);
+// Guards GET/POST /admin/reset-password (token-validity check and token redemption).
+// Kept separate from forgotPasswordRateLimitOk on purpose — "request a new reset email"
+// and "redeem a reset token" are different actions, and sharing one budget would mean a
+// legitimate user's retry-typos on the reset form could exhaust the counter that gates
+// new reset emails. Not meaningfully brute-forceable at the reset token's current
+// entropy (see lib/auth.js's HMAC-SHA256 signing) — this exists for defense-in-depth
+// consistency with every other auth-adjacent route, not because it's closing an
+// exploitable gap today.
+export const resetPasswordRateLimitOk = createRateLimiter(10, 15 * 60 * 1000);
 
 export function resolveTenant(req, res, next) {
   if (!MULTI_TENANT) {

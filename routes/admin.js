@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
-import { requireAdmin, requireTosAccepted, loginRateLimitOk, forgotPasswordRateLimitOk } from "../middleware.js";
+import { requireAdmin, requireTosAccepted, loginRateLimitOk, accountLoginRateLimitOk, forgotPasswordRateLimitOk, resetPasswordRateLimitOk } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly, clearResolvedTableIDs } from "../lib/airtable.js";
 import { tenantLogPrefix } from "../lib/log.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar, SITE_URL } from "../config.js";
@@ -74,7 +74,7 @@ router.get("/admin/login", (req, res) => {
 });
 
 router.post("/admin/login", (req, res) => {
-  if (!loginRateLimitOk(`${req.ip}:${req.tenant.slug}`)) {
+  if (!loginRateLimitOk(`${req.ip}:${req.tenant.slug}`) || !accountLoginRateLimitOk(req.tenant.slug)) {
     return res.status(429).render("admin/login", { error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
   }
   const adminPasswordHash = req.tenant.adminPasswordHash;
@@ -136,6 +136,9 @@ router.post("/admin/forgot-password", async (req, res) => {
 
 router.get("/admin/reset-password", (req, res) => {
   const { token } = req.query;
+  if (!resetPasswordRateLimitOk(`${req.ip}:${req.tenant.slug}`)) {
+    return res.status(429).render("admin/reset-password", { token, valid: false, error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
+  }
   // Verified against req.tenant — the tenant resolveTenant already resolved from the
   // URL — not a tenant re-derived from the token itself. verifyPasswordResetToken checks
   // the token's embedded slug against tenant.slug internally, so this also guarantees a
@@ -149,6 +152,9 @@ router.get("/admin/reset-password", (req, res) => {
 router.post("/admin/reset-password", async (req, res) => {
   const { token, new_password, confirm_password } = req.body;
   const tenant = req.tenant;
+  if (!resetPasswordRateLimitOk(`${req.ip}:${tenant.slug}`)) {
+    return res.status(429).render("admin/reset-password", { token, valid: false, error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
+  }
   if (!verifyPasswordResetToken(token, tenant)) {
     return res.render("admin/reset-password", { token, valid: false, error: null, csrfToken: generateCsrfToken(req, res) });
   }

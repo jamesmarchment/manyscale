@@ -14,6 +14,17 @@ import { generateRobotsTxt } from "./lib/sitemap.js";
 import { tenantLogPrefix } from "./lib/log.js";
 import app from "./lib/app.js";
 
+// Secure by default: without this, Express's built-in error handler renders full stack
+// traces (including absolute file paths) whenever NODE_ENV isn't "production", and
+// nothing in this app otherwise sets it. lib/app.js's own catch-all error handler never
+// leaks a stack trace regardless of NODE_ENV, so this is defense-in-depth rather than
+// the primary fix — but other libraries (EJS caching, Express internals) also key off
+// this, so it's worth getting right. Only fills the gap if nothing set it already —
+// config.js's dotenv.config() (evaluated above, via the import) has already loaded any
+// NODE_ENV a developer put in their own .env, so set NODE_ENV=development there to opt
+// into verbose local error pages.
+if (!process.env.NODE_ENV) process.env.NODE_ENV = "production";
+
 // Deployment-wide, editable from Architect Admin → Platform Settings → Airtable Refresh
 // (routes/architect.js's POST /architect/settings/refresh) — read live from .env at
 // startup, same pattern as the other Platform Settings (SMTP, Plausible), so a change
