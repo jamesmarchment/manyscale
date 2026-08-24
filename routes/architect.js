@@ -9,6 +9,7 @@ import { ARCHITECT_ADMIN_PASSWORD_HASH, MULTI_TENANT, PROJECT_ROOT, _tenantsList
 import { verifyPassword, hashPassword } from "../lib/auth.js";
 import { RESERVED_SLUGS } from "../lib/reservedSlugs.js";
 import { tenantCaches, lastRefreshTimes, ensureTableIDs, refreshTenant, scaffoldTenantTables } from "../lib/airtable.js";
+import { tenantLogPrefix } from "../lib/log.js";
 import { transporter } from "../lib/email.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
 import { generateRobotsTxt } from "../lib/sitemap.js";
@@ -288,7 +289,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
     try {
       scaffoldResult = await scaffoldTenantTables(pat.trim(), tenant.baseId);
     } catch (err) {
-      console.error(`[${tenant.slug}] Table scaffolding failed:`, err);
+      console.error(`${tenantLogPrefix(tenant.slug)} Table scaffolding failed:`, err);
     }
   }
 
@@ -300,7 +301,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
       airtableSyncOk = true;
     }
   } catch (err) {
-    console.error(`[${tenant.slug}] Initial provisioning refresh failed:`, err);
+    console.error(`${tenantLogPrefix(tenant.slug)} Initial provisioning refresh failed:`, err);
   }
 
   const adminUrl = MULTI_TENANT ? `/${tenant.slug}/admin/login` : null;
@@ -317,7 +318,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
     });
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
-    console.error(`[${tenant.slug}] Onboarding email failed to send:`, err);
+    console.error(`${tenantLogPrefix(tenant.slug)} Onboarding email failed to send:`, err);
   }
 
   res.render("architect/tenant-created", {
@@ -341,7 +342,7 @@ router.post("/architect/tenants/:slug/refresh-cache", requireArchitectAdmin, asy
     const count = (tenantCaches.get(slug) || []).length;
     req.session.architectFlash = { type: "ok", msg: `Cache refreshed for "${tenant.name}" — ${count} records loaded.` };
   } catch (err) {
-    console.error(`[${slug}] Architect cache refresh error:`, err);
+    console.error(`${tenantLogPrefix(slug)} Architect cache refresh error:`, err);
     req.session.architectFlash = { type: "err", msg: `Cache refresh failed for "${tenant.name}": ${err.message}` };
   }
   res.redirect("/architect");
@@ -369,7 +370,7 @@ router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, as
     const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "by an administrator" });
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
-    console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+    console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
   }
   req.session.architectFlash = { type: "ok", msg: `Password reset for "${tenant.name}".` };
   res.redirect("/architect");
@@ -478,7 +479,7 @@ router.post("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, re
     });
     req.session.architectFlash = { type: "ok", msg: "Branding saved." };
   } catch (err) {
-    console.error(`[${slug}] Architect branding save error:`, err);
+    console.error(`${tenantLogPrefix(slug)} Architect branding save error:`, err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
   }
   res.redirect(`/architect/tenants/${slug}/branding`);
@@ -495,7 +496,7 @@ router.post("/architect/tenants/:slug/branding/upload-logo", requireArchitectAdm
         const raw = fs.readFileSync(req.file.path, "utf8");
         fs.writeFileSync(req.file.path, sanitizeSvg(raw), "utf8");
       } catch (err) {
-        console.error(`[${req.params.slug}] SVG sanitization error:`, err);
+        console.error(`${tenantLogPrefix(req.params.slug)} SVG sanitization error:`, err);
         return res.status(400).json({ error: "Could not process SVG file." });
       }
     }

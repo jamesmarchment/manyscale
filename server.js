@@ -3,7 +3,7 @@
 
 ManyScale Server
 v0.1.2
-2026-08-02
+2026-08-23
 James Marchment and Samantha Joel
 
 */
@@ -11,6 +11,7 @@ James Marchment and Samantha Joel
 import { PORT, _tenantsList } from "./config.js";
 import { ensureTableIDs, refreshTenant } from "./lib/airtable.js";
 import { generateRobotsTxt } from "./lib/sitemap.js";
+import { tenantLogPrefix } from "./lib/log.js";
 import app from "./lib/app.js";
 
 // Deployment-wide, editable from Architect Admin → Platform Settings → Airtable Refresh
@@ -34,7 +35,7 @@ async function refreshAllTenants() {
     _tenantsList
       .filter((tenant) => tenant.active !== false)
       .map(async (tenant) => {
-        const pfx = `[${tenant.slug}]`;
+        const pfx = tenantLogPrefix(tenant.slug);
         try {
           const resolved = await ensureTableIDs(tenant);
           if (resolved) {

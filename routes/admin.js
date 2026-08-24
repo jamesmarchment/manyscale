@@ -4,6 +4,7 @@ import path from "path";
 import multer from "multer";
 import { requireAdmin, requireTosAccepted, loginRateLimitOk, forgotPasswordRateLimitOk } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly, clearResolvedTableIDs } from "../lib/airtable.js";
+import { tenantLogPrefix } from "../lib/log.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar, SITE_URL } from "../config.js";
 import { verifyPassword, hashPassword, safeTokenEqual, createPasswordResetToken, verifyPasswordResetToken } from "../lib/auth.js";
 import { COLOR_PRESETS, TAG_COLOR_RECIPES, DEFAULT_RECIPE_FOR_PRESET } from "../lib/colorPresets.js";
@@ -128,7 +129,7 @@ router.post("/admin/forgot-password", async (req, res) => {
     const { subject, text, html } = passwordResetRequestEmail({ siteOrigin, tenant, resetUrl, expiresInMinutes: 60 });
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
-    console.error(`[${tenant.slug}] Password-reset email failed to send:`, err);
+    console.error(`${tenantLogPrefix(tenant.slug)} Password-reset email failed to send:`, err);
   }
   res.render("admin/forgot-password", { maskedEmail: maskEmail(tenant.contact_recipient), sent: true, csrfToken: generateCsrfToken(req, res) });
 });
@@ -164,7 +165,7 @@ router.post("/admin/reset-password", async (req, res) => {
     const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "via a password reset link" });
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
-    console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+    console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
   }
   req.session.notice = "Password reset. You can log in with your new password.";
   res.redirect(res.locals.basePath + "/admin/login");
@@ -214,7 +215,7 @@ router.post("/admin/set-password", requireAdmin, async (req, res) => {
     const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "during first login" });
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
-    console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+    console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
   }
   res.redirect(res.locals.basePath + "/admin");
 });
@@ -322,7 +323,7 @@ router.post("/admin/password", requireAdmin, requireTosAccepted, async (req, res
       const { subject, text, html } = passwordChangedEmail({ siteOrigin, tenant, reason: "from your account settings" });
       await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
     } catch (err) {
-      console.error(`[${tenant.slug}] Password-changed email failed to send:`, err);
+      console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
     }
   } catch (err) {
     console.error("Admin password change error:", err);
