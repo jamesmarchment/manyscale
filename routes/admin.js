@@ -2,7 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import multer from "multer";
-import { requireAdmin, requireTosAccepted, loginRateLimitOk, accountLoginRateLimitOk, forgotPasswordRateLimitOk, resetPasswordRateLimitOk } from "../middleware.js";
+import { requireAdmin, requireTosAccepted, loginRateLimitOk, accountLoginRateLimitOk, forgotPasswordRateLimitOk, resetPasswordRateLimitOk, createRateLimiter } from "../middleware.js";
 import { tenantCaches, lastRefreshTimes, refreshTenant, syncTenantPDFs, refreshTenantCacheOnly, clearResolvedTableIDs } from "../lib/airtable.js";
 import { tenantLogPrefix } from "../lib/log.js";
 import { TENANTS_FILE, PROJECT_ROOT, _tenantsList, updateEnvVar, SITE_URL } from "../config.js";
@@ -10,6 +10,7 @@ import { verifyPassword, hashPassword, safeTokenEqual, createPasswordResetToken,
 import { COLOR_PRESETS, TAG_COLOR_RECIPES, DEFAULT_RECIPE_FOR_PRESET } from "../lib/colorPresets.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent } from "../lib/jsonStore.js";
 import { generateCsrfToken } from "../lib/csrf.js";
+import { createNotification, listNotifications, markRead, notifyEmailFailure, notifyWriteFailure } from "../lib/notifications.js";
 import { transporter } from "../lib/email.js";
 import { passwordChangedEmail } from "../lib/emails/passwordChanged.js";
 import { passwordResetRequestEmail } from "../lib/emails/passwordReset.js";
@@ -34,6 +35,18 @@ function maskEmail(email) {
 }
 
 const router = Router();
+
+// Signal-only counter, not a request gate (resetPasswordRateLimitOk already gates the
+// route itself) — once invalid-token verifications for one tenant cross this budget
+// within the window, it's worth flagging to architect as possible token probing. A
+// single failure alone is normal (an expired or already-used link), so this
+// deliberately doesn't fire on every attempt.
+const resetTokenFailureBudget = createRateLimiter(5, 15 * 60 * 1000);
+function flagIfResetTokenProbing(tenant) {
+  if (!resetTokenFailureBudget(tenant.slug)) {
+    createNotification({ scope: "architect", type: "reset_token_probing", severity: "warn", message: `Repeated invalid password-reset token attempts for "${tenant.name}" (${tenant.slug}) — possible probing.`, dedupeKey: "reset_token_probing:" + tenant.slug });
+  }
+}
 
 // Photo upload — saves to public/{tenant-slug}/team/
 const photoStorage = multer.diskStorage({
@@ -74,7 +87,19 @@ router.get("/admin/login", (req, res) => {
 });
 
 router.post("/admin/login", (req, res) => {
-  if (!loginRateLimitOk(`${req.ip}:${req.tenant.slug}`) || !accountLoginRateLimitOk(req.tenant.slug)) {
+  // Preserves the original short-circuit exactly: accountLoginRateLimitOk (a shared,
+  // tenant-keyed budget) is only consumed when the per-IP check already passed, same as
+  // the original `!loginRateLimitOk(...) || !accountLoginRateLimitOk(...)`.
+  const ipOk = loginRateLimitOk(`${req.ip}:${req.tenant.slug}`);
+  const accountOk = ipOk ? accountLoginRateLimitOk(req.tenant.slug) : true;
+  if (!ipOk || !accountOk) {
+    if (ipOk && !accountOk) {
+      // accountLoginRateLimitOk is keyed by tenant alone (not IP) — tripping it while
+      // the IP-level check still passes means attempts are landing across many source
+      // IPs against this one account, the signature of a distributed brute-force rather
+      // than one person mistyping.
+      createNotification({ scope: "architect", type: "login_spike", severity: "warn", message: `Repeated failed logins for tenant "${req.tenant.name}" (${req.tenant.slug}) — possible brute-force attempt.`, dedupeKey: "login_spike:" + req.tenant.slug });
+    }
     return res.status(429).render("admin/login", { error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
   }
   const adminPasswordHash = req.tenant.adminPasswordHash;
@@ -130,6 +155,7 @@ router.post("/admin/forgot-password", async (req, res) => {
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
     console.error(`${tenantLogPrefix(tenant.slug)} Password-reset email failed to send:`, err);
+    notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Password-reset email to ${tenant.contact_recipient}` });
   }
   res.render("admin/forgot-password", { maskedEmail: maskEmail(tenant.contact_recipient), sent: true, csrfToken: generateCsrfToken(req, res) });
 });
@@ -145,6 +171,7 @@ router.get("/admin/reset-password", (req, res) => {
   // token can only ever be used under the URL of the exact tenant it was issued for; it
   // can't succeed while acting on a different tenant than resolveTenant put us on.
   const valid = verifyPasswordResetToken(token, req.tenant);
+  if (!valid) flagIfResetTokenProbing(req.tenant);
   req.session.csrfSeed = true;
   res.render("admin/reset-password", { token, valid, error: null, csrfToken: generateCsrfToken(req, res) });
 });
@@ -156,6 +183,7 @@ router.post("/admin/reset-password", async (req, res) => {
     return res.status(429).render("admin/reset-password", { token, valid: false, error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
   }
   if (!verifyPasswordResetToken(token, tenant)) {
+    flagIfResetTokenProbing(tenant);
     return res.render("admin/reset-password", { token, valid: false, error: null, csrfToken: generateCsrfToken(req, res) });
   }
   if (!new_password || new_password.length < 8) {
@@ -172,6 +200,7 @@ router.post("/admin/reset-password", async (req, res) => {
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
     console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
+    notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Password-changed email to ${tenant.contact_recipient}` });
   }
   req.session.notice = "Password reset. You can log in with your new password.";
   res.redirect(res.locals.basePath + "/admin/login");
@@ -222,6 +251,7 @@ router.post("/admin/set-password", requireAdmin, async (req, res) => {
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
     console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
+    notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Password-changed email to ${tenant.contact_recipient}` });
   }
   res.redirect(res.locals.basePath + "/admin");
 });
@@ -255,6 +285,11 @@ router.get("/admin", requireAdmin, requireTosAccepted, (req, res) => {
   } catch {}
   const flash = req.session.flash || null;
   delete req.session.flash;
+  // Uses req.tenant.slug (not req.session.adminTenantSlug) so this is scoped correctly
+  // even when an architect is impersonating this tenant's /admin panel — see
+  // requireAdmin's architect bypass in middleware.js.
+  const notifications = listNotifications({ scope: "tenant", tenantSlug: req.tenant.slug });
+  const unreadCount = notifications.filter(n => !n.readAt).length;
   res.render("admin/index", {
     tenant,
     hero,
@@ -267,8 +302,21 @@ router.get("/admin", requireAdmin, requireTosAccepted, (req, res) => {
     recordCount: (tenantCaches.get(req.tenant.slug) || []).length,
     lastRefresh: lastRefreshTimes.get(req.tenant.slug) || null,
     flash,
+    notifications,
+    unreadCount,
     csrfToken: generateCsrfToken(req, res),
   });
+});
+
+router.get("/admin/notifications", requireAdmin, requireTosAccepted, (req, res) => {
+  const notifications = listNotifications({ scope: "tenant", tenantSlug: req.tenant.slug });
+  res.json({ notifications, unreadCount: notifications.filter(n => !n.readAt).length });
+});
+
+router.post("/admin/notifications/:id/read", requireAdmin, requireTosAccepted, (req, res) => {
+  const ok = markRead(req.params.id, { scope: "tenant", tenantSlug: req.tenant.slug });
+  if (!ok) return res.status(404).json({ error: "Notification not found." });
+  res.json({ ok: true });
 });
 
 router.post("/admin/config", requireAdmin, requireTosAccepted, (req, res) => {
@@ -295,9 +343,13 @@ router.post("/admin/config", requireAdmin, requireTosAccepted, (req, res) => {
       updateEnvVar(patVar, pat.trim());
     }
     req.session.flash = { type: "ok", msg: "Configuration saved. Restart the server to apply PAT or Base ID changes." };
+    if (pat?.trim() || baseIdChanged) {
+      createNotification({ scope: "architect", type: "restart_required", severity: "warn", message: `Tenant "${tenant.name}" (${tenant.slug}) Airtable config saved — restart the server to apply PAT/Base ID changes.`, dedupeKey: "restart:airtable-config:" + tenant.slug });
+    }
   } catch (err) {
     console.error("Admin config error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+    notifyWriteFailure(err, { tenantSlug: tenant.slug, context: `Tenant "${tenant.name}" (${tenant.slug}) configuration` });
   }
   res.redirect(res.locals.basePath + "/admin");
 });
@@ -330,10 +382,12 @@ router.post("/admin/password", requireAdmin, requireTosAccepted, async (req, res
       await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
     } catch (err) {
       console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
+      notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Password-changed email to ${tenant.contact_recipient}` });
     }
   } catch (err) {
     console.error("Admin password change error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+    notifyWriteFailure(err, { tenantSlug: tenant.slug, context: `Tenant "${tenant.name}" (${tenant.slug}) password change` });
   }
   res.redirect(res.locals.basePath + "/admin");
 });
@@ -356,6 +410,7 @@ router.post("/admin/content", requireAdmin, requireTosAccepted, (req, res) => {
   } catch (err) {
     console.error("Admin content error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+    notifyWriteFailure(err, { tenantSlug: req.tenant.slug, context: `Tenant "${req.tenant.name}" (${req.tenant.slug}) site content` });
   }
   res.redirect(res.locals.basePath + "/admin");
 });
@@ -396,6 +451,7 @@ router.post("/admin/colors", requireAdmin, requireTosAccepted, (req, res) => {
   } catch (err) {
     console.error("Admin colors error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+    notifyWriteFailure(err, { tenantSlug: req.tenant.slug, context: `Tenant "${req.tenant.name}" (${req.tenant.slug}) colors` });
   }
   res.redirect(res.locals.basePath + "/admin");
 });
@@ -460,6 +516,7 @@ router.post("/admin/team", requireAdmin, requireTosAccepted, (req, res) => {
   } catch (err) {
     console.error("Admin team error:", err);
     req.session.flash = { type: "err", msg: "Save failed: " + err.message };
+    notifyWriteFailure(err, { tenantSlug: req.tenant.slug, context: `Tenant "${req.tenant.name}" (${req.tenant.slug}) team` });
   }
   res.redirect(res.locals.basePath + "/admin");
 });

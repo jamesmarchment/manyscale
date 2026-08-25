@@ -70,10 +70,13 @@
 
     <header>
       <h1><%= tenant.name %> Admin</h1>
-      <form method="POST" action="<%= basePath %>/admin/logout">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <button type="submit" class="btn btn-ghost">Log out</button>
-      </form>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <%- include('../partials/notificationsBell', { notifications, unreadCount, notificationsBaseUrl: basePath + '/admin' }) %>
+        <form method="POST" action="<%= basePath %>/admin/logout">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button type="submit" class="btn btn-ghost">Log out</button>
+        </form>
+      </div>
     </header>
 
     <% if (locals.flash) { %>

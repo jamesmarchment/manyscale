@@ -1,0 +1,118 @@
+<%
+// Expects locals: notifications (array), unreadCount (number), notificationsBaseUrl
+// (e.g. "/architect" or basePath + "/admin"), csrfToken.
+%>
+<style>
+  .ntf-bell-wrap { position: relative; display: inline-block; }
+  .ntf-bell-btn { position: relative; padding: .4rem .65rem; background: transparent; color: #52525b; border: 1px solid #d4d4d8; border-radius: 4px; font-size: .9rem; cursor: pointer; line-height: 1; }
+  .ntf-bell-btn:hover { background: #f4f4f5; }
+  .ntf-bell-badge { position: absolute; top: -.4rem; right: -.4rem; min-width: 1.1rem; height: 1.1rem; padding: 0 .3rem; border-radius: 999px; background: #b91c1c; color: #fff; font-size: .68rem; font-weight: 700; line-height: 1.1rem; text-align: center; }
+  .ntf-panel { position: absolute; right: 0; top: calc(100% + .4rem); width: 22rem; max-height: 22rem; overflow-y: auto; background: #fff; border: 1px solid #e4e4e7; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 20; }
+  .ntf-item { padding: .65rem .85rem; border-top: 1px solid #f1f1f1; display: flex; gap: .6rem; align-items: flex-start; }
+  .ntf-item:first-child { border-top: none; }
+  .ntf-dot { flex-shrink: 0; width: .55rem; height: .55rem; border-radius: 50%; margin-top: .3rem; }
+  .ntf-dot.info { background: #a1a1aa; }
+  .ntf-dot.warn { background: #d97706; }
+  .ntf-dot.error { background: #b91c1c; }
+  .ntf-body { flex: 1; min-width: 0; }
+  .ntf-msg { font-size: .82rem; color: #18181b; }
+  .ntf-meta { font-size: .7rem; color: #a1a1aa; margin-top: .2rem; }
+  .ntf-read-btn { flex-shrink: 0; background: transparent; border: none; color: #71717a; cursor: pointer; font-size: .72rem; padding: .1rem .3rem; }
+  .ntf-read-btn:hover { color: #18181b; text-decoration: underline; }
+  .ntf-empty { padding: 1rem .85rem; text-align: center; color: #a1a1aa; font-size: .82rem; }
+</style>
+<div class="ntf-bell-wrap" id="ntf-bell-wrap">
+  <button type="button" class="ntf-bell-btn" id="ntf-bell-btn" aria-expanded="false" aria-controls="ntf-panel">
+    🔔
+    <% if ((unreadCount || 0) > 0) { %><span class="ntf-bell-badge" id="ntf-bell-badge"><%= unreadCount %></span><% } %>
+  </button>
+  <div class="ntf-panel" id="ntf-panel" hidden></div>
+</div>
+<script type="application/json" id="ntf-initial-json"><%- JSON.stringify(notifications || []).replace(/<\//g, '<\\/') %></script>
+<script>
+(function () {
+  const baseUrl = <%- JSON.stringify(notificationsBaseUrl) %>;
+  const wrap  = document.getElementById('ntf-bell-wrap');
+  const btn   = document.getElementById('ntf-bell-btn');
+  const panel = document.getElementById('ntf-panel');
+  const badgeWrap = () => document.getElementById('ntf-bell-badge');
+  let items = JSON.parse(document.getElementById('ntf-initial-json').textContent);
+
+  function esc(s) {
+    return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function fmtTime(iso) {
+    const d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleString();
+  }
+
+  function renderPanel() {
+    if (!items.length) {
+      panel.innerHTML = '<div class="ntf-empty">No notifications.</div>';
+      return;
+    }
+    panel.innerHTML = items.map(n => `
+      <div class="ntf-item" data-id="${n.id}">
+        <span class="ntf-dot ${esc(n.severity)}"></span>
+        <div class="ntf-body">
+          <div class="ntf-msg">${esc(n.message)}${n.occurrences > 1 ? ` <span style="color:#a1a1aa">(x${n.occurrences})</span>` : ''}</div>
+          <div class="ntf-meta">${esc(fmtTime(n.updatedAt))}${n.tenantSlug ? ' · ' + esc(n.tenantSlug) : ''}</div>
+        </div>
+        ${n.readAt ? '' : '<button type="button" class="ntf-read-btn" data-id="' + n.id + '">Mark read</button>'}
+      </div>
+    `).join('');
+
+    panel.querySelectorAll('.ntf-read-btn').forEach(readBtn => {
+      readBtn.addEventListener('click', () => markRead(readBtn.dataset.id));
+    });
+  }
+
+  function updateBadge() {
+    const unread = items.filter(n => !n.readAt).length;
+    let badge = badgeWrap();
+    if (unread > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'ntf-bell-badge';
+        badge.id = 'ntf-bell-badge';
+        btn.appendChild(badge);
+      }
+      badge.textContent = unread;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  function markRead(id) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    fetch(baseUrl + '/notifications/' + id + '/read', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'x-csrf-token': csrfToken },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) return;
+        const item = items.find(n => n.id === id);
+        if (item) item.readAt = new Date().toISOString();
+        renderPanel();
+        updateBadge();
+      })
+      .catch(() => {});
+  }
+
+  btn.addEventListener('click', () => {
+    const wasOpen = !panel.hidden;
+    panel.hidden = !panel.hidden;
+    btn.setAttribute('aria-expanded', String(!wasOpen));
+    if (!wasOpen) renderPanel();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) {
+      panel.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+})();
+</script>

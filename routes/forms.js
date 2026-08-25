@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { transporter } from "../lib/email.js";
 import { antiSpamGuard } from "../lib/antispam.js";
+import { notifyEmailFailure } from "../lib/notifications.js";
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.post("/contact", antiSpamGuard, async (req, res) => {
     res.status(200).json({ success: true });
   } catch (err) {
     console.error("Contact form error:", err);
+    notifyEmailFailure(err, { tenantSlug: req.tenant.slug, context: `Contact-form email to ${req.tenant.contact_recipient || "the configured address"}` });
     res.status(500).json({ error: "Email failed to send" });
   }
 });
@@ -50,6 +52,7 @@ router.post("/suggest", antiSpamGuard, async (req, res) => {
     res.status(200).json({ success: true });
   } catch (err) {
     console.error("Suggest form error:", err);
+    notifyEmailFailure(err, { tenantSlug: req.tenant.slug, context: `Suggestion-form email to ${req.tenant.contact_recipient || "the configured address"}` });
     res.status(500).json({ error: "Email failed to send" });
   }
 });
@@ -80,6 +83,7 @@ router.post("/report-correction", antiSpamGuard, async (req, res) => {
     res.status(200).json({ success: true });
   } catch (err) {
     console.error("Report correction form error:", err);
+    notifyEmailFailure(err, { tenantSlug: req.tenant.slug, context: `Report-correction email to ${req.tenant.contact_recipient || "the configured address"}` });
     res.status(500).json({ error: "Email failed to send" });
   }
 });

@@ -13,6 +13,7 @@ public/*
 !public/assets/
 start-stop.sh
 tenants.json
+notifications.json
 TODO.md
 audit.md
 HANDOFF.md

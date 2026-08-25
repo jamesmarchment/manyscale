@@ -1,3 +1,4 @@
+import fs from "fs";
 import path from "path";
 import session from "express-session";
 import FileStoreFactory from "session-file-store";
@@ -6,19 +7,51 @@ import sanitizeHtml from "sanitize-html";
 import { primaryTenant, SESSION_SECRET, MULTI_TENANT, TRUST_PROXY, PROJECT_ROOT, _tenantsList } from "./config.js";
 import { COLOR_PRESETS, DEFAULT_RECIPE_FOR_PRESET } from "./lib/colorPresets.js";
 import { getTenantContent } from "./lib/jsonStore.js";
+import { createNotification } from "./lib/notifications.js";
 
 const FileStore = FileStoreFactory(session);
+const SESSIONS_DIR = path.join(PROJECT_ROOT, "sessions");
 
 // One JSON file per session under sessions/, instead of express-session's default
 // in-memory MemoryStore — sessions now survive a restart/crash, and MemoryStore is
 // explicitly documented as unfit for production (unbounded memory growth, no
-// persistence). logFn is silenced because the package otherwise logs every read/write to
-// the console, which would flood server.log. The store reaps its own expired files on an
-// interval — no separate cleanup job needed.
+// persistence). The store reaps its own expired files on an interval (default hourly) —
+// no separate cleanup job needed for that. logFn's routine "starting/deleting expired
+// sessions" lines are dropped (they'd otherwise flood server.log every reap cycle,
+// reapAsync defaults to false so this callback runs in-process and actually sees them);
+// anything else logFn reports — which in practice is only the package's own "will retry,
+// error on last attempt" reap-failure line — is a genuine problem worth surfacing.
 const sessionStore = new FileStore({
-  path: path.join(PROJECT_ROOT, "sessions"),
-  logFn: () => {},
+  path: SESSIONS_DIR,
+  logFn: (message) => {
+    if (/deleting expired sessions|starting reap worker/i.test(message)) return;
+    createNotification({
+      scope: "architect", type: "session_store_error", severity: "warn",
+      message: `Session store: ${message}`,
+      dedupeKey: "session_store_error",
+    });
+  },
 });
+
+// Best-effort growth check, piggybacked on the same reap interval (default hourly) —
+// under normal load (8h cookie maxAge, hourly reap) the sessions/ dir should never hold
+// more than a few hundred files; a much larger count suggests reap isn't keeping up or
+// something is generating sessions abnormally fast. readdir (not statfs) because this
+// project runs from a UNC/NAS path where filesystem-level stats are unreliable (see
+// HANDOFF.md) — a plain directory listing is not.
+const SESSION_COUNT_WARNING_THRESHOLD = 2000;
+setInterval(() => {
+  fs.readdir(SESSIONS_DIR, (err, files) => {
+    if (err) return; // sessions/ not created yet, or a transient NAS hiccup — not worth flagging
+    if (files.length >= SESSION_COUNT_WARNING_THRESHOLD) {
+      createNotification({
+        scope: "architect", type: "session_store_growth", severity: "warn",
+        message: `sessions/ contains ${files.length} files — growing much larger than expected under normal load. Reap may not be keeping up.`,
+        dedupeKey: "session_store_growth",
+      });
+    }
+  });
+}, 60 * 60 * 1000).unref();
 
 export const sessionMiddleware = session({
   store: sessionStore,

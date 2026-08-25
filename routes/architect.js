@@ -15,6 +15,7 @@ import { transporter } from "../lib/email.js";
 import { writeJsonAtomic, getTenantContent, updateTenantContent, invalidateTenantContent } from "../lib/jsonStore.js";
 import { generateRobotsTxt } from "../lib/sitemap.js";
 import { generateCsrfToken } from "../lib/csrf.js";
+import { createNotification, listNotifications, countUnread, markRead, notifyEmailFailure, notifyWriteFailure } from "../lib/notifications.js";
 import { tenantOnboardingEmail } from "../lib/emails/onboarding.js";
 import { passwordChangedEmail } from "../lib/emails/passwordChanged.js";
 
@@ -92,7 +93,15 @@ router.get("/architect/login", (req, res) => {
 });
 
 router.post("/architect/login", (req, res) => {
-  if (!loginRateLimitOk(req.ip) || !accountLoginRateLimitOk("architect")) {
+  // Same short-circuit-preserving structure as routes/admin.js's POST /admin/login —
+  // see the comment there for why accountLoginRateLimitOk is only consumed when the
+  // IP-level check already passed.
+  const ipOk = loginRateLimitOk(req.ip);
+  const accountOk = ipOk ? accountLoginRateLimitOk("architect") : true;
+  if (!ipOk || !accountOk) {
+    if (ipOk && !accountOk) {
+      createNotification({ scope: "architect", type: "login_spike", severity: "error", message: "Repeated failed logins for the architect account, across multiple source IPs — possible brute-force attempt.", dedupeKey: "login_spike:architect" });
+    }
     return res.status(429).render("architect/login", { error: "Too many attempts. Please try again in a few minutes.", csrfToken: generateCsrfToken(req, res) });
   }
   if (!ARCHITECT_ADMIN_PASSWORD_HASH) {
@@ -144,7 +153,23 @@ router.get("/architect", requireArchitectAdmin, (req, res) => {
     refreshOnStartup: process.env.AIRTABLE_REFRESH_ON_STARTUP !== "false",
     refreshIntervalHours: process.env.AIRTABLE_REFRESH_INTERVAL_HOURS || "6",
   };
-  res.render("architect/index", { tenants, flash, emailSettings, analyticsSettings, refreshSettings, csrfToken: generateCsrfToken(req, res) });
+  // Architect's inbox aggregates its own items plus every tenant's — architect can
+  // already view/impersonate any tenant's admin panel, so this surfaces no new
+  // information, just proactively.
+  const notifications = listNotifications({ scope: "architect", includeTenants: true });
+  const unreadCount = notifications.filter(n => !n.readAt).length;
+  res.render("architect/index", { tenants, flash, emailSettings, analyticsSettings, refreshSettings, notifications, unreadCount, csrfToken: generateCsrfToken(req, res) });
+});
+
+router.get("/architect/notifications", requireArchitectAdmin, (req, res) => {
+  const notifications = listNotifications({ scope: "architect", includeTenants: true });
+  res.json({ notifications, unreadCount: notifications.filter(n => !n.readAt).length });
+});
+
+router.post("/architect/notifications/:id/read", requireArchitectAdmin, (req, res) => {
+  const ok = markRead(req.params.id, { scope: "architect", allowTenantScoped: true });
+  if (!ok) return res.status(404).json({ error: "Notification not found." });
+  res.json({ ok: true });
 });
 
 router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
@@ -161,6 +186,7 @@ router.post("/architect/settings/email", requireArchitectAdmin, (req, res) => {
     if (networkContactEmail?.trim()) updateEnvVar("NETWORK_CONTACT_EMAIL", networkContactEmail.trim());
     updateEnvVar("SITE_URL", trimmedSiteUrl);
     req.session.architectFlash = { type: "ok", msg: "Email settings saved. Restart the server to apply." };
+    createNotification({ scope: "architect", type: "restart_required", severity: "warn", message: "Email settings saved — restart the server to apply.", dedupeKey: "restart:email-settings" });
   } catch (err) {
     console.error("Architect email settings error:", err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
@@ -181,6 +207,7 @@ router.post("/architect/settings/analytics", requireArchitectAdmin, (req, res) =
     updateEnvVar("PLAUSIBLE_DOMAIN", (plausibleDomain || "").trim());
     updateEnvVar("PLAUSIBLE_SCRIPT_SRC", trimmedScriptSrc);
     req.session.architectFlash = { type: "ok", msg: "Analytics settings saved. Restart the server to apply." };
+    createNotification({ scope: "architect", type: "restart_required", severity: "warn", message: "Analytics settings saved — restart the server to apply.", dedupeKey: "restart:analytics-settings" });
   } catch (err) {
     console.error("Architect analytics settings error:", err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
@@ -199,6 +226,7 @@ router.post("/architect/settings/refresh", requireArchitectAdmin, (req, res) => 
     updateEnvVar("AIRTABLE_REFRESH_ON_STARTUP", refreshOnStartup === "on" ? "true" : "false");
     updateEnvVar("AIRTABLE_REFRESH_INTERVAL_HOURS", String(hours));
     req.session.architectFlash = { type: "ok", msg: "Airtable refresh settings saved. Restart the server to apply." };
+    createNotification({ scope: "architect", type: "restart_required", severity: "warn", message: "Airtable refresh settings saved — restart the server to apply.", dedupeKey: "restart:refresh-settings" });
   } catch (err) {
     console.error("Architect refresh settings error:", err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
@@ -223,6 +251,7 @@ router.post("/architect/settings/password", requireArchitectAdmin, (req, res) =>
   try {
     updateEnvVar("ARCHITECT_ADMIN_PASSWORD_HASH", hashPassword(newPassword));
     req.session.architectFlash = { type: "ok", msg: "Architect password changed. Restart the server to apply — until then, the old password remains active." };
+    createNotification({ scope: "architect", type: "restart_required", severity: "error", message: "Architect password changed — restart the server to apply. Until then, the old password remains active.", dedupeKey: "restart:architect-password" });
   } catch (err) {
     console.error("Architect password change error:", err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
@@ -312,6 +341,11 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
 
   const adminUrl = MULTI_TENANT ? `/${tenant.slug}/admin/login` : null;
   const multiTenantNote = "This tenant won't be reachable until MULTI_TENANT=true is set in .env and the server is restarted.";
+  if (!MULTI_TENANT) {
+    // Only shown once, on this one-time confirmation page today — persist it so an
+    // architect who navigates away before restarting doesn't lose the reminder.
+    createNotification({ scope: "architect", type: "tenant_pending_multitenant", severity: "warn", message: `Tenant "${tenant.name}" won't be reachable until MULTI_TENANT=true is set in .env and the server is restarted.`, dedupeKey: "restart:multi-tenant-mode" });
+  }
 
   try {
     const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
@@ -325,6 +359,7 @@ router.post("/architect/tenants", requireArchitectAdmin, async (req, res) => {
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
     console.error(`${tenantLogPrefix(tenant.slug)} Onboarding email failed to send:`, err);
+    notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Onboarding email to ${tenant.contact_recipient}` });
   }
 
   res.render("architect/tenant-created", {
@@ -377,6 +412,7 @@ router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, as
     await transporter.sendMail({ from: process.env.SMTP_USER, to: tenant.contact_recipient, subject, text, html });
   } catch (err) {
     console.error(`${tenantLogPrefix(tenant.slug)} Password-changed email failed to send:`, err);
+    notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Password-changed email to ${tenant.contact_recipient}` });
   }
   req.session.architectFlash = { type: "ok", msg: `Password reset for "${tenant.name}".` };
   res.redirect("/architect");
@@ -487,6 +523,7 @@ router.post("/architect/tenants/:slug/branding", requireArchitectAdmin, (req, re
   } catch (err) {
     console.error(`${tenantLogPrefix(slug)} Architect branding save error:`, err);
     req.session.architectFlash = { type: "err", msg: "Save failed: " + err.message };
+    notifyWriteFailure(err, { tenantSlug: slug, context: `Tenant "${tenant.name}" (${slug}) branding` });
   }
   res.redirect(`/architect/tenants/${slug}/branding`);
 });

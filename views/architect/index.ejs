@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Architect Admin · ManyScale</title>
   <link rel="shortcut icon" href="/assets/img/admin/favicon.ico" type="image/x-icon" />
   <style>
@@ -55,6 +56,7 @@
     <header>
       <h1>ManyScale — Architect Admin</h1>
       <div style="display:flex;align-items:center;gap:.5rem">
+        <%- include('../partials/notificationsBell', { notifications, unreadCount, notificationsBaseUrl: '/architect' }) %>
         <a href="/architect/tenants/new" class="btn">+ New Tenant</a>
         <form method="POST" action="/architect/logout">
           <input type="hidden" name="_csrf" value="<%= csrfToken %>">
