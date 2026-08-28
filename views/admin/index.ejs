@@ -9,8 +9,23 @@
   <link rel="shortcut icon" href="/assets/img/admin/favicon.ico" type="image/x-icon" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0; padding: 1.5rem; color: #18181b; }
-    .wrap { max-width: 680px; margin: 0 auto; }
+    .layout { display: flex; align-items: flex-start; gap: 2rem; max-width: 980px; margin: 0 auto; }
+    .sidebar { position: sticky; top: 1.5rem; width: 190px; flex-shrink: 0; }
+    .sidebar-nav { display: flex; flex-direction: column; gap: .15rem; }
+    .sidebar-nav .nav-link { font-size: .82rem; color: #52525b; text-decoration: none; padding: .35rem .6rem; border-radius: 4px; border-left: 2px solid transparent; }
+    .sidebar-nav .nav-link:hover { background: #ececee; }
+    .sidebar-nav .nav-link.active { color: #18181b; font-weight: 600; border-left-color: #18181b; background: #ececee; }
+    .content { flex: 1; min-width: 0; max-width: 680px; }
+    .admin-section { scroll-margin-top: 1.5rem; }
+    @media (max-width: 860px) {
+      .layout { display: block; }
+      .sidebar { position: static; width: auto; margin-bottom: 1rem; }
+      .sidebar-nav { flex-direction: row; overflow-x: auto; gap: .4rem; padding-bottom: .5rem; border-bottom: 1px solid #e4e4e7; white-space: nowrap; }
+      .sidebar-nav .nav-link { flex-shrink: 0; border-left: none; border-bottom: 2px solid transparent; }
+      .sidebar-nav .nav-link.active { border-left: none; border-bottom-color: #18181b; }
+    }
     header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.5rem; }
     header h1 { font-size: 1.2rem; margin: 0; }
     h2 { font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #71717a; margin: 1.5rem 0 .5rem; }
@@ -63,10 +78,70 @@
     .swatch-editor { margin-top: .4rem; padding: .6rem; background: #fafafa; border: 1px solid #e4e4e7; border-radius: 6px; display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
     .swatch-editor-col { display: flex; flex-direction: column; gap: .25rem; }
     .swatch-editor-col .pickr-label { font-size: .72rem; color: #71717a; }
+    /* preview widgets */
+    .hero-preview { padding: 0.5rem .5rem 0.35rem 0.65rem;
+  border: 1px solid #f1f1f1;
+  border-radius: 11px;
+} 
+.hero-preview .hint {  font-size: .78rem;
+  color: #71717a;
+  margin: -.5rem;
+  position: relative;
+  bottom: .5rem;
+  left: .5rem;
+  font-style: italic;}
+    .hero-preview-heading { font-size: 2.25rem; font-weight: 300; line-height: 1.2; color: #18181b; min-height: 1.2em; font-family: "Montserrat", sans-serif; margin: 0.75rem 0 0 1rem;}
+    .hero-preview-sub {  font-size: 1.1rem;
+  color: #6c757d;
+  margin-top: .35rem;
+  min-height: 1.2em;
+  font-family: "Source Sans 3", sans-serif;
+  font-weight: lighter;
+  margin-left: 1rem;
+  margin-bottom: 1rem;
+  line-height: 1.4rem; }
+    .hero-preview-bubbles { position: relative; aspect-ratio: 1; margin-top: .25rem; float:right; max-width: 30% ;width:30%;}
+    .hero-bubble { position: absolute; border-radius: 50%; opacity: .88; aspect-ratio: 1; }
+    .admin-card-preview { padding: 1rem .85rem 0; border-bottom: 1px solid #f1f1f1; margin-bottom: 0; }
+    .admin-card-preview .repo-card-wrap { max-width: 260px; padding-bottom: 1rem; }
+    .admin-card-preview .repo-card { font-family: system-ui, sans-serif; background: #f5f5f0; border: 3px solid #0a0a0a; position: relative; overflow: hidden; }
+    .admin-card-preview .repo-photo { height: 30px; background: var(--header-color, #f5e642); border-bottom: 3px solid #0a0a0a; }
+    .admin-card-preview .repo-body { padding: 13px 14px 0; }
+    .admin-card-preview .repo-handle { font-size: .66rem; font-weight: 600; letter-spacing: .18em; color: #6a6a6a; text-transform: uppercase; margin-bottom: 6px; min-height: 1em; }
+    .admin-card-preview .repo-name { font-weight: 500; font-size: 2.15rem; line-height: .88; color: #0a0a0a; letter-spacing: -.01em; margin-bottom: 11px; }
+    .admin-card-preview .repo-bio { font-size: .78rem; font-weight: 500; color: #0a0a0a; border-left: 4px solid #e8180a; padding-left: 8px; line-height: 1.5; margin-bottom: 11px; }
+    .admin-card-preview .repo-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 2px solid #0a0a0a; }
+    .admin-card-preview .card-stat { padding: 9px 8px; border-right: 2px solid #0a0a0a; text-align: center; }
+    .admin-card-preview .card-stat:last-child { border-right: none; }
+    .admin-card-preview .card-stat .repo-value { font-size: 1.2rem; line-height: 1; color: #0a0a0a; display: block; }
+    .admin-card-preview .card-stat .repo-label { font-size: .5rem; font-weight: 700; letter-spacing: .13em; color: #a8a49a; text-transform: uppercase; display: block; margin-top: 2px; }
+    .admin-social-preview { max-width: 340px; border: 1px solid #d4d4d8; border-radius: 8px; overflow: hidden; margin: 1rem .85rem 0; }
+    .social-preview-image { aspect-ratio: 1.91 / 1; background: #e4e4e7; }
+    .social-preview-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .social-preview-body { padding: .6rem .75rem; }
+    .social-preview-title { font-weight: 700; font-size: .92rem; color: #050505; }
+    .social-preview-desc { font-size: .8rem; color: #65676b; margin-top: .15rem; }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="layout">
+
+    <aside class="sidebar">
+      <nav class="sidebar-nav" id="admin-nav">
+        <a href="#tenant" class="nav-link">Tenant</a>
+        <a href="#cache" class="nav-link">Cache</a>
+        <a href="#hero" class="nav-link">Homepage Hero</a>
+        <a href="#landing-card" class="nav-link">Landing Page Card</a>
+        <a href="#colors" class="nav-link">Colors</a>
+        <a href="#meta-social" class="nav-link">Meta &amp; Social Sharing</a>
+        <a href="#additional-content" class="nav-link">Additional Content</a>
+        <a href="#team" class="nav-link">Team</a>
+        <a href="#password" class="nav-link">Password</a>
+        <a href="#configuration" class="nav-link">Configuration</a>
+      </nav>
+    </aside>
+
+    <main class="content">
 
     <header>
       <h1><%= tenant.name %> Admin</h1>
@@ -83,341 +158,199 @@
       <div class="flash <%= flash.type %>"><%= flash.msg %></div>
     <% } %>
 
-    <h2>Tenant</h2>
-    <div class="card">
-      <table>
-        <tr><th>Slug</th><td><code><%= tenant.slug || "—" %></code></td></tr>
-        <tr><th>Name</th><td><%= tenant.name || "—" %></td></tr>
-        <tr><th>Base ID</th><td><code><%= tenant.baseId || "—" %></code></td></tr>
-        <tr><th>PAT variable</th><td><code><%= tenant.patEnvVar || "—" %></code></td></tr>
-        <tr><th>Contact Email</th><td><code><%= tenant.contact_recipient || "—" %></code></td></tr>
-      </table>
-    </div>
+    <!-- content-form has no visible fields of its own — every field/button that belongs
+         to it (hero, landing tagline, meta, additional content) uses the form="content-form"
+         attribute instead of DOM nesting, so those fields can live in any section/order on
+         the page without ever risking an invalid nested <form>. -->
+    <form id="content-form" method="POST" action="<%= basePath %>/admin/content"></form>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" form="content-form">
 
-    <h2>Cache</h2>
-    <div class="card">
-      <table>
-        <tr><th>Records in memory</th><td><%= recordCount %></td></tr>
-        <tr><th>Last refreshed</th><td><%= lastRefresh ? lastRefresh.toLocaleString() : "Not yet this session" %></td></tr>
-      </table>
-      <div class="actions">
-        <form method="POST" action="<%= basePath %>/admin/cache">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button type="submit" class="btn">Refresh Cache Now</button>
-        </form>
-        <form method="POST" action="<%= basePath %>/admin/sync-pdfs">
-          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-          <button type="submit" class="btn">Re-sync PDFs</button>
-        </form>
-      </div>
-    </div>
-
-    <h2>Site Content</h2>
-    <div class="card">
-      <form method="POST" action="<%= basePath %>/admin/content">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <section class="admin-section" id="tenant">
+      <h2>Tenant</h2>
+      <div class="card">
         <table>
-          <tr>
-            <th><label for="meta-tagline">Page title tagline</label></th>
-            <td>
-              <input type="text" id="meta-tagline" name="meta_tagline" value="<%= locals.siteTagline || '' %>">
-              <p class="hint">Browser tab shows: <em><%= tenant.name %> — [tagline]</em></p>
-            </td>
-          </tr>
-          <tr>
-            <th><label for="meta-desc">Meta description</label></th>
-            <td>
-              <input type="text" id="meta-desc" name="meta_description" value="<%= locals.siteDescription || '' %>">
-              <p class="hint">Used for search engines and social-share previews (og:description). Not shown on the network landing page — see "Landing page tagline" below.</p>
-            </td>
-          </tr>
-          <tr>
-            <th><label for="landing-tagline">Landing page tagline</label></th>
-            <td>
-              <input type="text" id="landing-tagline" name="landing_tagline" value="<%= locals.landingTagline || '' %>">
-              <p class="hint">Shown under <%= tenant.name %>'s card in the "Repositories" list on the main ManyScale network page. Separate from the meta description above — write it for a person browsing the list, not a search engine.</p>
-            </td>
-          </tr>
-          <tr>
-            <th><label for="why-markdown">Custom section</label></th>
-            <td>
-              <textarea id="why-markdown" name="why_markdown" rows="12" cols="55" placeholder="Optional section (currently blank)
---------------------
+          <tr><th>Slug</th><td><code><%= tenant.slug || "—" %></code></td></tr>
+          <tr><th>Name</th><td><%= tenant.name || "—" %></td></tr>
+          <tr><th>Base ID</th><td><code><%= tenant.baseId || "—" %></code></td></tr>
+          <tr><th>PAT variable</th><td><code><%= tenant.patEnvVar || "—" %></code></td></tr>
+          <tr><th>Contact Email</th><td><code><%= tenant.contact_recipient || "—" %></code></td></tr>
+        </table>
+      </div>
+    </section>
 
----
-
-Text here will render on the repo homepage. This features:
-- bullet lists
-- text in *bold* and _italic_
-- [Hyperlinks](http://manyscale.org)
-
-Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
-              <p class="hint"><a href="https://commonmark.org/help/" target="_blank">Markdown</a> supported (headings, bold, links, lists). Leave blank to hide this section entirely.</p>
-            </td>
-          </tr>
-          <tr>
-            <th><label for="submit-form-url">Submit form URL</label></th>
-            <td>
-              <input type="text" id="submit-form-url" name="submit_form_url" value="<%= locals.submitFormUrl || '' %>">
-              <p class="hint">The Airtable <code>shr…</code> share link for the measure submission form.</p>
-            </td>
-          </tr>
-          <tr>
-            <th><label for="hero-heading">Hero heading</label></th>
-            <td><input type="text" id="hero-heading" name="hero_heading" value="<%= locals.hero?.heading || '' %>"></td>
-          </tr>
-          <tr>
-            <th><label for="hero-sub">Hero subheading</label></th>
-            <td><input type="text" id="hero-sub" name="hero_subheading" value="<%= locals.hero?.subheading || '' %>"></td>
-          </tr>
+    <section class="admin-section" id="cache">
+      <h2>Cache</h2>
+      <div class="card">
+        <table>
+          <tr><th>Records in memory</th><td><%= recordCount %></td></tr>
+          <tr><th>Last refreshed</th><td><%= lastRefresh ? lastRefresh.toLocaleString() : "Not yet this session" %></td></tr>
         </table>
         <div class="actions">
-          <button type="submit" class="btn">Save Content</button>
+          <form method="POST" action="<%= basePath %>/admin/cache">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn">Refresh Cache Now</button>
+          </form>
+          <form method="POST" action="<%= basePath %>/admin/sync-pdfs">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="btn">Re-sync PDFs</button>
+          </form>
         </div>
-      </form>
-    </div>
+      </div>
+    </section>
 
-    <h2>Team</h2>
-    <div class="card">
-      <form method="POST" action="<%= basePath %>/admin/team" id="team-form">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <div id="team-members"></div>
-        <div class="actions" style="justify-content: space-between;">
-          <button type="button" class="btn btn-ghost" id="add-member-btn">+ Add Member</button>
-          <button type="submit" class="btn">Save Team</button>
+      <section class="admin-section" id="hero">
+        <h2>Homepage Hero</h2>
+        <div class="card">
+          <div class="hero-preview" style="margin: 8px; background-color: #f8f9fa;">
+          <div class="hero-preview-text" style="float:left;max-width: 70%">
+            <div class="hero-preview-heading" id="hero-preview-heading"><%= locals.hero?.heading || '' %></div>
+            <div class="hero-preview-sub" id="hero-preview-sub"><%= locals.hero?.subheading || '' %></div>
+            </div>
+            <div class="hero-preview-bubbles" id="hero-preview-bubbles" style=""></div>
+            <br style="clear:both">
+          
+            <p class="hint">Preview</p>
+          </div>
+          
+          <table>
+            <tr>
+              <th><label for="hero-heading">Hero heading</label></th>
+              <td><input type="text" id="hero-heading" name="hero_heading" value="<%= locals.hero?.heading || '' %>" form="content-form"></td>
+            </tr>
+            <tr>
+              <th><label for="hero-sub">Hero subheading</label></th>
+              <td><input type="text" id="hero-sub" name="hero_subheading" value="<%= locals.hero?.subheading || '' %>" form="content-form"></td>
+            </tr>
+          </table>
+          <div class="actions">
+            <button type="submit" class="btn" form="content-form">Save</button>
+            <span class="muted">Affects <%= tenant.name %>'s own homepage only.</span>
+          </div>
         </div>
-      </form>
-    </div>
+      </section>
 
-    <script type="application/json" id="team-json"><%- JSON.stringify(locals.team || []).replace(/<\//g, '<\\/') %></script>
-    <script>
-    (function () {
-      const initialTeam = JSON.parse(document.getElementById('team-json').textContent);
-
-      let teamData = initialTeam.length ? initialTeam : [];
-
-      function esc(s) {
-        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      }
-
-      function photoUrl(p) {
-        return p ? (p.startsWith('/') ? p : '/assets/img/person/' + p) : '/assets/img/person/person-blank.webp';
-      }
-
-      function memberBlock(i, m) {
-        const photoSrc = photoUrl(m.photo);
-        return `<div class="member-block" data-idx="${i}">
-          <div class="member-head">
-            <span class="member-label">Member ${i + 1}</span>
-            <button type="button" class="btn btn-danger btn-sm remove-member-btn" style="padding:.2rem .6rem;font-size:.8rem">− Remove</button>
+      <section class="admin-section" id="landing-card">
+        <h2>Landing Page Card</h2>
+        <div class="card">
+          <div class="admin-card-preview">
+            <div class="repo-card-wrap">
+              <div class="repo-card" id="card-preview" style="--header-color: <%= locals.landingHeaderColor || locals.logoColor || '#f5e642' %>">
+                <div class="repo-photo"></div>
+                <div class="repo-body">
+                  <div class="repo-handle" id="card-preview-tagline"><%= locals.landingTagline || '' %></div>
+                  <div class="repo-name"><%= tenant.name %></div>
+                  <div class="repo-bio" id="card-preview-bio" style="border-left-color: <%= locals.landingAccentColor || locals.logoColor || '#e8180a' %>">Sample Construct A, Sample Construct B, Sample Construct C</div>
+                </div>
+                <div class="repo-stats">
+                  <div class="card-stat"><span class="repo-value">12</span><span class="repo-label">Measures</span></div>
+                  <div class="card-stat"><span class="repo-value">8</span><span class="repo-label">Constructs</span></div>
+                  <div class="card-stat"><span class="repo-value">3</span><span class="repo-label">Translations</span></div>
+                </div>
+              </div>
+            </div>
+            <p class="hint">Simplified preview of <%= tenant.name %>'s card on the main ManyScale network page.</p>
           </div>
           <table>
             <tr>
-              <th>Photo</th>
+              <th><label for="landing-tagline">Landing page tagline</label></th>
               <td>
-                <div class="photo-row">
-                  <img class="photo-thumb" src="${photoSrc}" alt="">
-                  <div class="photo-meta">
-                    <input type="hidden" name="team[${i}][photo]" value="${esc(m.photo)}" class="photo-val">
-                    <label class="btn btn-ghost" style="padding:.3rem .7rem;font-size:.82rem;cursor:pointer;margin:0">
-                      Choose Photo
-                      <input type="file" class="photo-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
-                    </label>
-                    <span class="photo-name-display">${esc(m.photo) || 'No photo selected'}</span>
-                    <span class="photo-msg" style="display:none"></span>
+                <input type="text" id="landing-tagline" name="landing_tagline" value="<%= locals.landingTagline || '' %>" form="content-form">
+                <p class="hint">Shown under <%= tenant.name %>'s card in the "Repositories" list on the main ManyScale network page. Separate from the meta description below — write it for a person browsing the list, not a search engine.</p>
+              </td>
+            </tr>
+          </table>
+          <div class="color-block">
+            <div class="color-block-header">
+              <label>Card colors</label>
+            </div>
+            <p class="hint">Colors for the card above — the header bar and the construct-list border.</p>
+            <table>
+              <tr>
+                <th><label for="landing-header-color">Header color</label></th>
+                <td>
+                  <div style="display:flex;align-items:center;gap:.5rem">
+                    <span id="landing-header-color-pickr"></span>
+                    <input type="hidden" id="landing-header-color" name="landing_header_color" value="<%= locals.landingHeaderColor || locals.logoColor || '#f5e642' %>" form="colors-form">
+                    <input type="text" id="landing-header-color-hex" value="<%= locals.landingHeaderColor || locals.logoColor || '#f5e642' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
                   </div>
-                </div>
-              </td>
-            </tr>
-            <tr><th><label>Name</label></th><td><input type="text" name="team[${i}][name]" value="${esc(m.name)}"></td></tr>
-            <tr><th><label>Title</label></th><td><input type="text" name="team[${i}][title]" value="${esc(m.title)}"></td></tr>
-            <tr><th><label>Bio</label></th><td><textarea name="team[${i}][bio]" class="field">${esc(m.bio)}</textarea></td></tr>
-            <tr><th>LinkedIn</th><td><input type="text" name="team[${i}][linkedin]" value="${esc(m.linkedin)}" placeholder="https://www.linkedin.com/in/…"></td></tr>
-            <tr><th>Twitter / X</th><td><input type="text" name="team[${i}][twitter]" value="${esc(m.twitter)}" placeholder="https://x.com/…"></td></tr>
-            <tr><th>GitHub</th><td><input type="text" name="team[${i}][github]" value="${esc(m.github)}" placeholder="https://github.com/…"></td></tr>
-            <tr><th>Instagram</th><td><input type="text" name="team[${i}][instagram]" value="${esc(m.instagram)}" placeholder="https://www.instagram.com/…"></td></tr>
-            <tr><th>Website</th><td><input type="text" name="team[${i}][website]" value="${esc(m.website)}" placeholder="https://…"></td></tr>
-            <tr><th>Google Scholar</th><td><input type="text" name="team[${i}][scholar]" value="${esc(m.scholar)}" placeholder="https://scholar.google.com/citations?user=…"></td></tr>
-            <tr><th>Bluesky</th><td><input type="text" name="team[${i}][bluesky]" value="${esc(m.bluesky)}" placeholder="https://bsky.app/profile/…"></td></tr>
-          </table>
-        </div>`;
-      }
-
-      function syncTeamDataFromDOM() {
-        const container = document.getElementById('team-members');
-        container.querySelectorAll('.member-block').forEach((block, i) => {
-          const idx = parseInt(block.dataset.idx);
-          teamData[idx] = teamData[idx] || {};
-          const get = sel => (block.querySelector(sel) || {}).value || '';
-          teamData[idx].name      = get('input[name$="[name]"]');
-          teamData[idx].title     = get('input[name$="[title]"]');
-          teamData[idx].bio       = get('textarea[name$="[bio]"]');
-          teamData[idx].linkedin  = get('input[name$="[linkedin]"]');
-          teamData[idx].twitter   = get('input[name$="[twitter]"]');
-          teamData[idx].github    = get('input[name$="[github]"]');
-          teamData[idx].instagram = get('input[name$="[instagram]"]');
-          teamData[idx].website   = get('input[name$="[website]"]');
-          teamData[idx].scholar   = get('input[name$="[scholar]"]');
-          teamData[idx].bluesky   = get('input[name$="[bluesky]"]');
-        });
-      }
-
-      function render() {
-        const container = document.getElementById('team-members');
-        container.innerHTML = teamData.length
-          ? teamData.map((m, i) => memberBlock(i, m)).join('')
-          : '<p class="muted" style="padding:.85rem">No team members yet. Click "+ Add Member" to add one.</p>';
-
-        container.querySelectorAll('.remove-member-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-            syncTeamDataFromDOM();
-            const idx = parseInt(btn.closest('.member-block').dataset.idx);
-            teamData.splice(idx, 1);
-            render();
-          });
-        });
-
-        container.querySelectorAll('.photo-file').forEach(input => {
-          input.addEventListener('change', () => handlePhotoUpload(input));
-        });
-      }
-
-      function handlePhotoUpload(input) {
-        const file = input.files[0];
-        if (!file) return;
-        const block    = input.closest('.member-block');
-        const msgEl    = block.querySelector('.photo-msg');
-        const nameEl   = block.querySelector('.photo-name-display');
-        const imgEl    = block.querySelector('.photo-thumb');
-        const hiddenEl = block.querySelector('.photo-val');
-        const idx      = parseInt(block.dataset.idx);
-
-        msgEl.style.color   = '#52525b';
-        msgEl.textContent   = 'Uploading…';
-        msgEl.style.display = 'block';
-
-        const fd = new FormData();
-        fd.append('photo', file);
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        fetch('<%= basePath %>/admin/team/upload-photo', { method: 'POST', headers: { 'Accept': 'application/json', 'x-csrf-token': csrfToken }, body: fd })
-          .then(r => r.json())
-          .then(data => {
-            if (data.error) {
-              msgEl.style.color = '#b91c1c';
-              msgEl.textContent = data.error;
-              return;
-            }
-            hiddenEl.value      = data.path;
-            nameEl.textContent  = data.path;
-            imgEl.src           = data.path;
-            imgEl.style.display = 'block';
-            teamData[idx].photo = data.path;
-            msgEl.style.color   = '#15803d';
-            msgEl.textContent   = 'Uploaded.';
-            setTimeout(() => { msgEl.style.display = 'none'; }, 2500);
-          })
-          .catch(err => {
-            msgEl.style.color = '#b91c1c';
-            msgEl.textContent = 'Upload failed: ' + err.message;
-          });
-      }
-
-      document.getElementById('add-member-btn').addEventListener('click', () => {
-        syncTeamDataFromDOM();
-        teamData.push({ name: '', title: '', photo: '', bio: '', linkedin: '', twitter: '', github: '', instagram: '', website: '', scholar: '', bluesky: '' });
-        render();
-        // Scroll new card into view
-        const blocks = document.querySelectorAll('.member-block');
-        if (blocks.length) blocks[blocks.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-
-      render();
-    })();
-    </script>
-
-    <h2>Colors</h2>
-    <div class="card">
-      <form method="POST" action="<%= basePath %>/admin/colors" id="colors-form">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-
-        <div class="color-block">
-          <div class="color-block-header">
-            <label for="logo-color-hex">Logo color</label>
+                  <p class="hint">Background of the card's top photo/header bar.</p>
+                </td>
+              </tr>
+              <tr>
+                <th><label for="landing-accent-color">Accent border color</label></th>
+                <td>
+                  <div style="display:flex;align-items:center;gap:.5rem">
+                    <span id="landing-accent-color-pickr"></span>
+                    <input type="hidden" id="landing-accent-color" name="landing_accent_color" value="<%= locals.landingAccentColor || locals.logoColor || '#e8180a' %>" form="colors-form">
+                    <input type="text" id="landing-accent-color-hex" value="<%= locals.landingAccentColor || locals.logoColor || '#e8180a' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
+                  </div>
+                  <p class="hint">Left border on the card's construct list.</p>
+                </td>
+              </tr>
+            </table>
           </div>
-          <p class="hint">Fill color of the SVG logo in the nav. Defaults to black.</p>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <span id="logo-color-pickr"></span>
-            <input type="hidden" id="logo-color" name="logo_color" value="<%= locals.logoColor || '#000000' %>">
-            <input type="text" id="logo-color-hex" value="<%= locals.logoColor || '#000000' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
+          <div class="actions">
+            <button type="submit" class="btn" form="content-form">Save</button>
+            <button type="submit" class="btn btn-ghost" form="colors-form">Save Colors</button>
+            <span class="muted">Affects the network landing page card only.</span>
           </div>
         </div>
+      </section>
 
-        <div class="color-block">
-          <div class="color-block-header">
-            <label for="bubble-preset-select">Bubble chart palette</label>
-            <select id="bubble-preset-select" name="bubbleChartPreset"></select>
+    <section class="admin-section" id="colors">
+      <h2>Colors</h2>
+      <div class="card">
+        <form method="POST" action="<%= basePath %>/admin/colors" id="colors-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+          <div class="color-block">
+            <div class="color-block-header">
+              <label for="logo-color-hex">Logo color</label>
+            </div>
+            <p class="hint">Fill color of the SVG logo in the nav. Defaults to black.</p>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <span id="logo-color-pickr"></span>
+              <input type="hidden" id="logo-color" name="logo_color" value="<%= locals.logoColor || '#000000' %>">
+              <input type="text" id="logo-color-hex" value="<%= locals.logoColor || '#000000' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
+            </div>
           </div>
-          <p class="hint">Colors for the homepage's construct bubble chart. Click a swatch to edit it.</p>
-          <div class="swatch-row" id="bubble-swatches"></div>
-        </div>
 
-        <div class="color-block">
-          <div class="color-block-header">
-            <label for="gradient-preset-select">Construct card gradients</label>
-            <select id="gradient-preset-select" name="cardGradientsPreset"></select>
+          <div class="color-block">
+            <div class="color-block-header">
+              <label for="bubble-preset-select">Bubble chart palette</label>
+              <select id="bubble-preset-select" name="bubbleChartPreset"></select>
+            </div>
+            <p class="hint">Colors for the homepage's construct bubble chart. Click a swatch to edit it. Also shown in the Homepage Hero preview above.</p>
+            <div class="swatch-row" id="bubble-swatches"></div>
           </div>
-          <p class="hint">Accent gradients on the left edge of each measure card.</p>
-          <div class="swatch-row" id="gradient-swatches"></div>
-        </div>
 
-        <div class="color-block">
-          <div class="color-block-header">
-            <label for="tag-preset-select">Construct tag colors</label>
-            <select id="tag-preset-select" name="tagColorsPreset"></select>
-            <label for="tag-recipe-select">Style</label>
-            <select id="tag-recipe-select" name="tagRecipe"></select>
+          <div class="color-block">
+            <div class="color-block-header">
+              <label for="gradient-preset-select">Construct card gradients</label>
+              <select id="gradient-preset-select" name="cardGradientsPreset"></select>
+            </div>
+            <p class="hint">Accent gradients on the left edge of each measure card.</p>
+            <div class="swatch-row" id="gradient-swatches"></div>
           </div>
-          <p class="hint">Palette picks the hues; Style picks the rendering look (pastel, dark, vibrant, solid) — independent choices. Background/border/text are derived automatically from each accent color.</p>
-          <div class="swatch-row" id="tag-swatches"></div>
-        </div>
 
-        <div class="color-block">
-          <div class="color-block-header">
-            <label>Landing page card</label>
+          <div class="color-block">
+            <div class="color-block-header">
+              <label for="tag-preset-select">Construct tag colors</label>
+              <select id="tag-preset-select" name="tagColorsPreset"></select>
+              <label for="tag-recipe-select">Style</label>
+              <select id="tag-recipe-select" name="tagRecipe"></select>
+            </div>
+            <p class="hint">Palette picks the hues; Style picks the rendering look (pastel, dark, vibrant, solid) — independent choices. Background/border/text are derived automatically from each accent color.</p>
+            <div class="swatch-row" id="tag-swatches"></div>
           </div>
-          <p class="hint">Colors for <%= tenant.name %>'s repository card on the main ManyScale network page.</p>
-          <table>
-            <tr>
-              <th><label for="landing-header-color">Header color</label></th>
-              <td>
-                <div style="display:flex;align-items:center;gap:.5rem">
-                  <span id="landing-header-color-pickr"></span>
-                  <input type="hidden" id="landing-header-color" name="landing_header_color" value="<%= locals.landingHeaderColor || locals.logoColor || '#f5e642' %>">
-                  <input type="text" id="landing-header-color-hex" value="<%= locals.landingHeaderColor || locals.logoColor || '#f5e642' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
-                </div>
-                <p class="hint">Background of the card's top photo/header bar.</p>
-              </td>
-            </tr>
-            <tr>
-              <th><label for="landing-accent-color">Accent border color</label></th>
-              <td>
-                <div style="display:flex;align-items:center;gap:.5rem">
-                  <span id="landing-accent-color-pickr"></span>
-                  <input type="hidden" id="landing-accent-color" name="landing_accent_color" value="<%= locals.landingAccentColor || locals.logoColor || '#e8180a' %>">
-                  <input type="text" id="landing-accent-color-hex" value="<%= locals.landingAccentColor || locals.logoColor || '#e8180a' %>" maxlength="7" style="width:7rem;font-family:monospace" aria-label="Hex color code">
-                </div>
-                <p class="hint">Left border on the card's construct list.</p>
-              </td>
-            </tr>
-          </table>
-        </div>
 
-        <div class="actions">
-          <button type="submit" class="btn">Save Colors</button>
-        </div>
-      </form>
-    </div>
+          <div class="actions">
+            <button type="submit" class="btn">Save Colors</button>
+            <span class="muted"></span>
+          </div>
+        </form>
+      </div>
+    </section>
 
     <script type="application/json" id="color-presets-json"><%- JSON.stringify(locals.colorPresets || {}).replace(/<\//g, '<\\/') %></script>
     <script type="application/json" id="current-colors-json"><%- JSON.stringify({
@@ -645,6 +578,9 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
                 summaryEl.style.background = hex;
               }
               markCustom(sectionKey);
+              // Bubble-chart swatches double as the source colors for the Homepage Hero
+              // preview above — keep it in sync as individual swatches are edited.
+              if (sectionKey === 'bubble' && window.updateHeroBubblePreview) window.updateHeroBubblePreview(values);
             });
           });
         });
@@ -694,6 +630,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
         if (sectionKey === 'bubble') {
           state.bubble.values = COLOR_PRESETS.bubbleChart[presetName].slice();
           renderSingleColorSection('bubble', 'bubbleColors', false, document.getElementById('bubble-swatches'));
+          if (window.updateHeroBubblePreview) window.updateHeroBubblePreview(state.bubble.values);
         } else if (sectionKey === 'gradient') {
           state.gradient.values = COLOR_PRESETS.cardGradients[presetName].map(g => ({ from: g.from, to: g.to }));
           renderGradientSection(document.getElementById('gradient-swatches'));
@@ -717,69 +654,303 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
       renderSingleColorSection('tag', 'tagColors', true, document.getElementById('tag-swatches'));
     })();
     </script>
-
-    <h2>Password</h2>
-    <div class="card">
-      <form method="POST" action="<%= basePath %>/admin/password">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <table>
-          <tr>
-            <th><label for="pw-current">Current password</label></th>
-            <td><input type="password" id="pw-current" name="current_password" autocomplete="current-password" required></td>
-          </tr>
-          <tr>
-            <th><label for="pw-new">New password</label></th>
-            <td><input type="password" id="pw-new" name="new_password" autocomplete="new-password" minlength="8" required></td>
-          </tr>
-          <tr>
-            <th><label for="pw-confirm">Confirm new password</label></th>
-            <td><input type="password" id="pw-confirm" name="confirm_password" autocomplete="new-password" minlength="8" required></td>
-          </tr>
-        </table>
-        <div class="actions">
-          <button type="submit" class="btn">Change Password</button>
-          <span class="muted">Takes effect immediately — no restart needed.</span>
+      <section class="admin-section" id="meta-social">
+        <h2>Meta &amp; Social Sharing</h2>
+        <div class="card">
+          <div class="admin-social-preview">
+            <div class="social-preview-image"><img src="<%= locals.metaImagePath || '/assets/img/manyscale_meta.jpg' %>" alt=""></div>
+            <div class="social-preview-body">
+              <div class="social-preview-title" id="social-preview-title"><%= tenant.name %><% if (locals.siteTagline) { %> · <%= locals.siteTagline %><% } %></div>
+              <div class="social-preview-desc" id="social-preview-desc"><%= locals.siteDescription || '' %></div>
+            </div>
+          </div>
+          <p class="hint" style="padding: 0 .85rem 1rem">Preview of how this page looks when shared on Slack/Facebook/Twitter/etc. The share image itself is set on the Branding page (architect-only) — not editable here.</p>
+          <table>
+            <tr>
+              <th><label for="meta-tagline">Page title tagline</label></th>
+              <td>
+                <input type="text" id="meta-tagline" name="meta_tagline" value="<%= locals.siteTagline || '' %>" form="content-form">
+                <p class="hint">Browser tab shows: <em><%= tenant.name %> · [tagline]</em></p>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="meta-desc">Meta description</label></th>
+              <td>
+                <input type="text" id="meta-desc" name="meta_description" value="<%= locals.siteDescription || '' %>" form="content-form">
+                <p class="hint">Used for search engines and social-share previews (og:description).</p>
+              </td>
+            </tr>
+          </table>
+          <div class="actions">
+            <button type="submit" class="btn" form="content-form">Save</button>
+            <span class="muted">Affects search results and link-share previews only.</span>
+          </div>
         </div>
-      </form>
-    </div>
+      </section>
 
-    <h2>Configuration</h2>
-    <div class="card">
-      <div class="actions" style="border-top: none; border-bottom: 1px solid #f1f1f1;">
-        <label style="display: flex; align-items: center; gap: .5rem; cursor: pointer; font-size: .875rem; color: #52525b;">
-          <input type="checkbox" id="cfg-unlock" style="width: auto; margin: 0;">
-          Unlock to enable editing
-        </label>
+      <section class="admin-section" id="additional-content">
+        <h2>Additional Content</h2>
+        <div class="card">
+          <table>
+            <tr>
+              <th><label for="why-markdown">Custom section</label></th>
+              <td>
+                <textarea id="why-markdown" name="why_markdown" rows="12" cols="55" placeholder="Optional section (currently blank)
+--------------------
+
+---
+
+Text here will render on the repo homepage. This features:
+- bullet lists
+- text in *bold* and _italic_
+- [Hyperlinks](http://manyscale.org)
+
+Use markdown syntax for formatting." form="content-form"><%= locals.whyMarkdown || '' %></textarea>
+                <p class="hint"><a href="https://commonmark.org/help/" target="_blank">Markdown</a> supported (headings, bold, links, lists). Leave blank to hide this section entirely.</p>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="submit-form-url">Submit form URL</label></th>
+              <td>
+                <input type="text" id="submit-form-url" name="submit_form_url" value="<%= locals.submitFormUrl || '' %>" form="content-form">
+                <p class="hint">The Airtable <code>shr…</code> share link for the measure submission form.</p>
+              </td>
+            </tr>
+          </table>
+          <div class="actions">
+            <button type="submit" class="btn" form="content-form">Save</button>
+          </div>
+        </div>
+      </section>
+
+    <section class="admin-section" id="team">
+      <h2>Team</h2>
+      <div class="card">
+        <form method="POST" action="<%= basePath %>/admin/team" id="team-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div id="team-members"></div>
+          <div class="actions" style="justify-content: space-between;">
+            <button type="button" class="btn btn-ghost" id="add-member-btn">+ Add Member</button>
+            <button type="submit" class="btn">Save Team</button>
+          </div>
+        </form>
       </div>
-      <form method="POST" action="<%= basePath %>/admin/config" id="cfg-form">
-        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-        <table>
-          <tr>
-            <th><label for="cfg-name">Name</label></th>
-            <td><input type="text" id="cfg-name" name="name" value="<%= tenant.name || '' %>" disabled></td>
-          </tr>
-          <tr>
-            <th><label for="cfg-contact_recipient">Email</label></th>
-            <td><input type="text" id="cfg-contact_recipient" name="contact_recipient" value="<%= tenant.contact_recipient || '' %>" disabled></td>
-          </tr>
-          <tr>
-            <th><label for="cfg-base">Base ID</label></th>
-            <td><input type="text" id="cfg-base" name="baseId" value="<%= tenant.baseId || '' %>" disabled></td>
-          </tr>
-          <tr>
-            <th><label for="cfg-pat">PAT</label></th>
-            <td>
-              <input type="password" id="cfg-pat" name="pat" placeholder="Leave blank to keep current" autocomplete="new-password" disabled>
-              <p class="hint">Stored in <code>.env</code> under <code><%= tenant.patEnvVar || "AIRTABLE_PAT" %></code>. Changes take effect after a server restart.</p>
-            </td>
-          </tr>
-        </table>
-        <div class="actions">
-          <button type="submit" class="btn" id="cfg-submit" disabled>Save Configuration</button>
-          <span class="muted">Base ID and PAT changes require a server restart.</span>
+    </section>
+
+    <script type="application/json" id="team-json"><%- JSON.stringify(locals.team || []).replace(/<\//g, '<\\/') %></script>
+    <script>
+    (function () {
+      const initialTeam = JSON.parse(document.getElementById('team-json').textContent);
+
+      let teamData = initialTeam.length ? initialTeam : [];
+
+      function esc(s) {
+        return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      function photoUrl(p) {
+        return p ? (p.startsWith('/') ? p : '/assets/img/person/' + p) : '/assets/img/person/person-blank.webp';
+      }
+
+      function memberBlock(i, m) {
+        const photoSrc = photoUrl(m.photo);
+        return `<div class="member-block" data-idx="${i}">
+          <div class="member-head">
+            <span class="member-label">Member ${i + 1}</span>
+            <button type="button" class="btn btn-danger btn-sm remove-member-btn" style="padding:.2rem .6rem;font-size:.8rem">− Remove</button>
+          </div>
+          <table>
+            <tr>
+              <th>Photo</th>
+              <td>
+                <div class="photo-row">
+                  <img class="photo-thumb" src="${photoSrc}" alt="">
+                  <div class="photo-meta">
+                    <input type="hidden" name="team[${i}][photo]" value="${esc(m.photo)}" class="photo-val">
+                    <label class="btn btn-ghost" style="padding:.3rem .7rem;font-size:.82rem;cursor:pointer;margin:0">
+                      Choose Photo
+                      <input type="file" class="photo-file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+                    </label>
+                    <span class="photo-name-display">${esc(m.photo) || 'No photo selected'}</span>
+                    <span class="photo-msg" style="display:none"></span>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr><th><label>Name</label></th><td><input type="text" name="team[${i}][name]" value="${esc(m.name)}"></td></tr>
+            <tr><th><label>Title</label></th><td><input type="text" name="team[${i}][title]" value="${esc(m.title)}"></td></tr>
+            <tr><th><label>Bio</label></th><td><textarea name="team[${i}][bio]" class="field">${esc(m.bio)}</textarea></td></tr>
+            <tr><th>LinkedIn</th><td><input type="text" name="team[${i}][linkedin]" value="${esc(m.linkedin)}" placeholder="https://www.linkedin.com/in/…"></td></tr>
+            <tr><th>Twitter / X</th><td><input type="text" name="team[${i}][twitter]" value="${esc(m.twitter)}" placeholder="https://x.com/…"></td></tr>
+            <tr><th>GitHub</th><td><input type="text" name="team[${i}][github]" value="${esc(m.github)}" placeholder="https://github.com/…"></td></tr>
+            <tr><th>Instagram</th><td><input type="text" name="team[${i}][instagram]" value="${esc(m.instagram)}" placeholder="https://www.instagram.com/…"></td></tr>
+            <tr><th>Website</th><td><input type="text" name="team[${i}][website]" value="${esc(m.website)}" placeholder="https://…"></td></tr>
+            <tr><th>Google Scholar</th><td><input type="text" name="team[${i}][scholar]" value="${esc(m.scholar)}" placeholder="https://scholar.google.com/citations?user=…"></td></tr>
+            <tr><th>Bluesky</th><td><input type="text" name="team[${i}][bluesky]" value="${esc(m.bluesky)}" placeholder="https://bsky.app/profile/…"></td></tr>
+          </table>
+        </div>`;
+      }
+
+      function syncTeamDataFromDOM() {
+        const container = document.getElementById('team-members');
+        container.querySelectorAll('.member-block').forEach((block, i) => {
+          const idx = parseInt(block.dataset.idx);
+          teamData[idx] = teamData[idx] || {};
+          const get = sel => (block.querySelector(sel) || {}).value || '';
+          teamData[idx].name      = get('input[name$="[name]"]');
+          teamData[idx].title     = get('input[name$="[title]"]');
+          teamData[idx].bio       = get('textarea[name$="[bio]"]');
+          teamData[idx].linkedin  = get('input[name$="[linkedin]"]');
+          teamData[idx].twitter   = get('input[name$="[twitter]"]');
+          teamData[idx].github    = get('input[name$="[github]"]');
+          teamData[idx].instagram = get('input[name$="[instagram]"]');
+          teamData[idx].website   = get('input[name$="[website]"]');
+          teamData[idx].scholar   = get('input[name$="[scholar]"]');
+          teamData[idx].bluesky   = get('input[name$="[bluesky]"]');
+        });
+      }
+
+      function render() {
+        const container = document.getElementById('team-members');
+        container.innerHTML = teamData.length
+          ? teamData.map((m, i) => memberBlock(i, m)).join('')
+          : '<p class="muted" style="padding:.85rem">No team members yet. Click "+ Add Member" to add one.</p>';
+
+        container.querySelectorAll('.remove-member-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            syncTeamDataFromDOM();
+            const idx = parseInt(btn.closest('.member-block').dataset.idx);
+            teamData.splice(idx, 1);
+            render();
+          });
+        });
+
+        container.querySelectorAll('.photo-file').forEach(input => {
+          input.addEventListener('change', () => handlePhotoUpload(input));
+        });
+      }
+
+      function handlePhotoUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const block    = input.closest('.member-block');
+        const msgEl    = block.querySelector('.photo-msg');
+        const nameEl   = block.querySelector('.photo-name-display');
+        const imgEl    = block.querySelector('.photo-thumb');
+        const hiddenEl = block.querySelector('.photo-val');
+        const idx      = parseInt(block.dataset.idx);
+
+        msgEl.style.color   = '#52525b';
+        msgEl.textContent   = 'Uploading…';
+        msgEl.style.display = 'block';
+
+        const fd = new FormData();
+        fd.append('photo', file);
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        fetch('<%= basePath %>/admin/team/upload-photo', { method: 'POST', headers: { 'Accept': 'application/json', 'x-csrf-token': csrfToken }, body: fd })
+          .then(r => r.json())
+          .then(data => {
+            if (data.error) {
+              msgEl.style.color = '#b91c1c';
+              msgEl.textContent = data.error;
+              return;
+            }
+            hiddenEl.value      = data.path;
+            nameEl.textContent  = data.path;
+            imgEl.src           = data.path;
+            imgEl.style.display = 'block';
+            teamData[idx].photo = data.path;
+            msgEl.style.color   = '#15803d';
+            msgEl.textContent   = 'Uploaded.';
+            setTimeout(() => { msgEl.style.display = 'none'; }, 2500);
+          })
+          .catch(err => {
+            msgEl.style.color = '#b91c1c';
+            msgEl.textContent = 'Upload failed: ' + err.message;
+          });
+      }
+
+      document.getElementById('add-member-btn').addEventListener('click', () => {
+        syncTeamDataFromDOM();
+        teamData.push({ name: '', title: '', photo: '', bio: '', linkedin: '', twitter: '', github: '', instagram: '', website: '', scholar: '', bluesky: '' });
+        render();
+        // Scroll new card into view
+        const blocks = document.querySelectorAll('.member-block');
+        if (blocks.length) blocks[blocks.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      render();
+    })();
+    </script>
+
+
+    <section class="admin-section" id="password">
+      <h2>Password</h2>
+      <div class="card">
+        <form method="POST" action="<%= basePath %>/admin/password">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <table>
+            <tr>
+              <th><label for="pw-current">Current password</label></th>
+              <td><input type="password" id="pw-current" name="current_password" autocomplete="current-password" required></td>
+            </tr>
+            <tr>
+              <th><label for="pw-new">New password</label></th>
+              <td><input type="password" id="pw-new" name="new_password" autocomplete="new-password" minlength="8" required></td>
+            </tr>
+            <tr>
+              <th><label for="pw-confirm">Confirm new password</label></th>
+              <td><input type="password" id="pw-confirm" name="confirm_password" autocomplete="new-password" minlength="8" required></td>
+            </tr>
+          </table>
+          <div class="actions">
+            <button type="submit" class="btn">Change Password</button>
+            <span class="muted">Takes effect immediately — no restart needed.</span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section class="admin-section" id="configuration">
+      <h2>Configuration</h2>
+      <div class="card">
+        <div class="actions" style="border-top: none; border-bottom: 1px solid #f1f1f1;">
+          <label style="display: flex; align-items: center; gap: .5rem; cursor: pointer; font-size: .875rem; color: #52525b;">
+            <input type="checkbox" id="cfg-unlock" style="width: auto; margin: 0;">
+            Unlock to enable editing
+          </label>
         </div>
-      </form>
-    </div>
+        <form method="POST" action="<%= basePath %>/admin/config" id="cfg-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <table>
+            <tr>
+              <th><label for="cfg-name">Name</label></th>
+              <td><input type="text" id="cfg-name" name="name" value="<%= tenant.name || '' %>" disabled></td>
+            </tr>
+            <tr>
+              <th><label for="cfg-contact_recipient">Email</label></th>
+              <td><input type="text" id="cfg-contact_recipient" name="contact_recipient" value="<%= tenant.contact_recipient || '' %>" disabled></td>
+            </tr>
+            <tr>
+              <th><label for="cfg-base">Base ID</label></th>
+              <td><input type="text" id="cfg-base" name="baseId" value="<%= tenant.baseId || '' %>" disabled></td>
+            </tr>
+            <tr>
+              <th><label for="cfg-pat">PAT</label></th>
+              <td>
+                <input type="password" id="cfg-pat" name="pat" placeholder="Leave blank to keep current" autocomplete="new-password" disabled>
+                <p class="hint">Stored in <code>.env</code> under <code><%= tenant.patEnvVar || "AIRTABLE_PAT" %></code>. Changes take effect after a server restart.</p>
+              </td>
+            </tr>
+          </table>
+          <div class="actions">
+            <button type="submit" class="btn" id="cfg-submit" disabled>Save Configuration</button>
+            <span class="muted">Base ID and PAT changes require a server restart.</span>
+          </div>
+        </form>
+      </div>
+    </section>
     <script>
       document.getElementById('cfg-unlock').addEventListener('change', function () {
         const locked = !this.checked;
@@ -790,7 +961,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
     </script>
     <script>
       (function () {
-        function initHexPicker(hiddenId, hexInputId, pickrSelector, fallback) {
+        function initHexPicker(hiddenId, hexInputId, pickrSelector, fallback, onUpdate) {
           const hidden   = document.getElementById(hiddenId);
           const hexInput = document.getElementById(hexInputId);
 
@@ -802,7 +973,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
             components: {
               preview: true,
               opacity: false,
-              hue: true, 
+              hue: true,
               interaction: { hex: true, input: true }
             }
           });
@@ -811,6 +982,7 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
             const hex = color.toHEXA().toString().substring(0, 7).toLowerCase();
             hidden.value   = hex;
             hexInput.value = hex;
+            if (onUpdate) onUpdate(hex);
           });
 
           hexInput.addEventListener('input', () => {
@@ -818,17 +990,137 @@ Use markdown syntax for formatting."><%= locals.whyMarkdown || '' %></textarea>
             if (/^#[0-9a-f]{6}$/i.test(v)) {
               hidden.value = v;
               pickr.setColor(v);
+              if (onUpdate) onUpdate(v);
             }
           });
           hexInput.addEventListener('blur', () => { hexInput.value = hidden.value; });
         }
 
         initHexPicker('logo-color', 'logo-color-hex', '#logo-color-pickr', '#000000');
-        initHexPicker('landing-header-color', 'landing-header-color-hex', '#landing-header-color-pickr', '#f5e642');
-        initHexPicker('landing-accent-color', 'landing-accent-color-hex', '#landing-accent-color-pickr', '#e8180a');
+        initHexPicker('landing-header-color', 'landing-header-color-hex', '#landing-header-color-pickr', '#f5e642', (hex) => {
+          const el = document.getElementById('card-preview');
+          if (el) el.style.setProperty('--header-color', hex);
+        });
+        initHexPicker('landing-accent-color', 'landing-accent-color-hex', '#landing-accent-color-pickr', '#e8180a', (hex) => {
+          const el = document.getElementById('card-preview-bio');
+          if (el) el.style.borderLeftColor = hex;
+        });
       })();
     </script>
 
+    <script>
+      // Homepage Hero preview: live text mirroring + a decorative (non-data-driven)
+      // bubble cluster colored from the tenant's current bubbleChartColors.
+      (function () {
+        // Pre-computed circle-pack layout (rejection-sampled so none of these overlap —
+        // largest to smallest, each new circle rejected against every already-placed one
+        // until it clears a small gap). size/left/top are all percentages of the
+        // container: size is diameter as % of container width (paired with
+        // aspect-ratio:1 on .hero-bubble so height always matches), left/top are the
+        // circle's top-left corner as % of container width/height respectively — NOT
+        // percentages of a 12-item index, so this scales cleanly at any container size,
+        // unlike the earlier px-based layout that only worked at the width it was tuned for.
+        const BUBBLE_LAYOUT = [
+          { size: 34, left: 33.0, top: 32.6 },
+          { size: 28, left: 34.9, top: 69.6 },
+          { size: 24, left: 9.5,  top: 52.3 },
+          { size: 21, left: 69.9, top: 42.4 },
+          { size: 18, left: 18.4, top: 22.2 },
+          { size: 16, left: 62.7, top: 22.7 },
+          { size: 14, left: 42.4, top: 15.6 },
+          { size: 13, left: 63.4, top: 65.6 },
+          { size: 12, left: 8.0,  top: 37.8 },
+          { size: 11, left: 56.4, top: 7.9  },
+          { size: 10, left: 31.3, top: 10.2 },
+          { size: 9,  left: 82.1, top: 30.9 },
+        ];
+
+        function renderBubbles(colors) {
+          const container = document.getElementById('hero-preview-bubbles');
+          if (!container) return;
+          const palette = (colors && colors.length) ? colors : ['#ccc'];
+          container.innerHTML = BUBBLE_LAYOUT.map((b, i) => {
+            const color = palette[i % palette.length];
+            return `<div class="hero-bubble" style="width:${b.size}%;left:${b.left}%;top:${b.top}%;background:${color}"></div>`;
+          }).join('');
+        }
+
+        window.updateHeroBubblePreview = renderBubbles;
+
+        let initialColors = [];
+        try {
+          const currentColorsEl = document.getElementById('current-colors-json');
+          if (currentColorsEl) initialColors = JSON.parse(currentColorsEl.textContent).bubbleChartColors || [];
+        } catch {}
+        renderBubbles(initialColors);
+
+        const headingInput = document.getElementById('hero-heading');
+        const subInput = document.getElementById('hero-sub');
+        const headingPreview = document.getElementById('hero-preview-heading');
+        const subPreview = document.getElementById('hero-preview-sub');
+        if (headingInput && headingPreview) headingInput.addEventListener('input', (e) => { headingPreview.textContent = e.target.value; });
+        if (subInput && subPreview) subInput.addEventListener('input', (e) => { subPreview.textContent = e.target.value; });
+      })();
+    </script>
+
+    <script>
+      // Landing Page Card preview: live tagline text (colors are wired from the
+      // Colors-section initHexPicker() calls above).
+      (function () {
+        const taglineInput = document.getElementById('landing-tagline');
+        const taglinePreview = document.getElementById('card-preview-tagline');
+        if (taglineInput && taglinePreview) {
+          taglineInput.addEventListener('input', (e) => { taglinePreview.textContent = e.target.value; });
+        }
+      })();
+    </script>
+
+    <script>
+      // Social-share-card preview: mirrors the real og:title/og:description fallback
+      // formulas from views/partials/header.ejs.
+      (function () {
+        const tenantName = <%- JSON.stringify(tenant.name || '') %>;
+        const savedDescription = <%- JSON.stringify(locals.siteDescription || '') %>;
+        const titleEl = document.getElementById('social-preview-title');
+        const descEl = document.getElementById('social-preview-desc');
+        const tagInput = document.getElementById('meta-tagline');
+        const descInput = document.getElementById('meta-desc');
+        if (tagInput && titleEl) {
+          tagInput.addEventListener('input', (e) => {
+            const tag = e.target.value.trim();
+            titleEl.textContent = tenantName + (tag ? ' · ' + tag : '');
+          });
+        }
+        if (descInput && descEl) {
+          descInput.addEventListener('input', (e) => {
+            descEl.textContent = e.target.value.trim() || savedDescription;
+          });
+        }
+      })();
+    </script>
+
+    <script>
+      // Sidebar scroll-spy: highlights the nav link for whichever .admin-section is
+      // currently crossing a thin band near vertical-center of the viewport.
+      (function () {
+        const sections = Array.from(document.querySelectorAll('.admin-section'));
+        const links = Array.from(document.querySelectorAll('.sidebar-nav .nav-link'));
+        const linkFor = (id) => links.find(a => a.getAttribute('href') === '#' + id);
+
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            links.forEach(a => a.classList.remove('active'));
+            const active = linkFor(entry.target.id);
+            if (active) active.classList.add('active');
+          });
+        }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+
+        sections.forEach(s => observer.observe(s));
+      })();
+    </script>
+
+    </main>
   </div>
 </body>
 </html>
