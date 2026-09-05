@@ -21,8 +21,26 @@ const SESSIONS_DIR = path.join(PROJECT_ROOT, "sessions");
 // reapAsync defaults to false so this callback runs in-process and actually sees them);
 // anything else logFn reports — which in practice is only the package's own "will retry,
 // error on last attempt" reap-failure line — is a genuine problem worth surfacing.
+//
+// retries/minTimeout/maxTimeout are raised well above the package's defaults (5 tries,
+// 50-100ms) because reads race against the reap worker's deletes and other requests'
+// writes on the NAS this runs on — that filesystem is slower and less consistent than
+// local disk, so the default ~0.5s retry budget isn't always enough for a raced file to
+// reappear, producing spurious ENOENT here even though the session is fine a moment
+// later. fallbackSessionFn covers the case where retries are still exhausted: without it,
+// any error other than ENOENT (e.g. an EPERM mid-rename) is passed to express-session's
+// callback and turns into a 500 for that one request; express-session already treats a
+// bare ENOENT as "no session, start fresh" (see its store.get callback), so returning a
+// fresh session here for every exhausted-retry case just extends that same graceful
+// fallback to the other transient filesystem errors too — worst case is an unwanted
+// logout, never a 500.
 const sessionStore = new FileStore({
   path: SESSIONS_DIR,
+  retries: 10,
+  minTimeout: 100,
+  maxTimeout: 1000,
+  factor: 2,
+  fallbackSessionFn: () => ({}),
   logFn: (message) => {
     if (/deleting expired sessions|starting reap worker/i.test(message)) return;
     createNotification({
