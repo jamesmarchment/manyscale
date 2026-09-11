@@ -23,6 +23,7 @@
   "author": "James Marchment and Samantha Joel",
   "license": "MIT",
   "dependencies": {
+    "compression": "^1.8.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "csrf-csrf": "^4.0.3",
