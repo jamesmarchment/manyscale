@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { tenantCaches, refreshTenantCacheOnly } from "../lib/airtable.js";
+import { tenantCaches, refreshTenantCacheOnly, readCacheStats } from "../lib/airtable.js";
 
 const router = Router();
 
@@ -76,27 +76,11 @@ router.get("/api/search", async (req, res) => {
 });
 
 
-router.get("/api/construct-stats", async (req, res) => {
-  let cache = tenantCaches.get(req.tenant.slug) || [];
-  if (cache.length === 0) {
-    await refreshTenantCacheOnly(req.tenant.slug);
-    cache = tenantCaches.get(req.tenant.slug) || [];
-  }
-
-  const counts = {};
-
-  cache.forEach(rec => {
-    const constructs = rec.fields["Construct(s)"];
-    if (!constructs) return;
-
-    const list = Array.isArray(constructs) ? constructs : [constructs];
-
-    list.forEach(c => {
-      counts[c] = (counts[c] || 0) + 1;
-    });
-  });
-
-  res.json(counts);
+// refreshCounts() (lib/airtable.js) already tallies this exact {constructName: count}
+// map into cache-stats.json's "constructs" field once per scheduled Airtable refresh —
+// read that instead of rescanning tenantCaches on every request.
+router.get("/api/construct-stats", (req, res) => {
+  res.json(readCacheStats(req.tenant.slug)?.constructs || {});
 });
 
 

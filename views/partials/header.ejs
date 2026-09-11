@@ -6,6 +6,13 @@
 <base href="/">
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <% if (locals.cacheStatsUrl) { %>
+  <!-- Bubble chart (index page only): kick off the stats fetch and the d3 bundle load
+       immediately, in parallel with the render-blocking CSS below, instead of waiting
+       for it to finish first. See the paired DOMContentLoaded listener in index.ejs. -->
+  <script>window.__cacheStatsPromise = fetch("<%= cacheStatsUrl %>").then(r => r.json());</script>
+  <script defer src="/assets/vendor/d3/d3-custom.min.js"></script>
+  <% } %>
   <title><%= locals.title || (locals.siteName + (locals.siteTagline ? ' · ' + locals.siteTagline : '')) %></title>
   <!-- metaDescription/metaKeywords let a specific page (e.g. views/details.ejs, via
        lib/seo.js) override the generic tenant-wide description/empty keywords below

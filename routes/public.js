@@ -1,7 +1,7 @@
 import { Router } from "express";
 import fs from "fs";
 import path from "path";
-import { tenantCaches, refreshTenantCacheOnly, contributorsCache, getSubmitFormUrl } from "../lib/airtable.js";
+import { tenantCaches, tenantMeasureIndex, contributorsCache, getSubmitFormUrl, readGroupIndex } from "../lib/airtable.js";
 import { recordMatchesSearch, getSuggestions } from "../lib/search.js";
 import { measureMetaDescription, measureKeywords } from "../lib/seo.js";
 import { PROJECT_ROOT } from "../config.js";
@@ -43,7 +43,7 @@ router.get("/details/:id", async (req, res) => {
   const recordId = req.params.id;
 
   const cache = tenantCaches.get(req.tenant.slug) || [];
-  const index = cache.findIndex(r => r.fields["MeasureID"] === recordId);
+  const index = tenantMeasureIndex.get(req.tenant.slug)?.get(recordId) ?? -1;
 
   if (index === -1) {
     return res.status(404).send("Record not found");
@@ -82,23 +82,14 @@ router.get("/search/suggestions", (req, res) => {
   res.json({ suggestions: getSuggestions(cache, query) });
 });
 
-router.get("/constructs", async (req, res) => {
-  let cache = tenantCaches.get(req.tenant.slug) || [];
-  if (cache.length === 0) {
-    await refreshTenantCacheOnly(req.tenant.slug);
-    cache = tenantCaches.get(req.tenant.slug) || [];
-  }
+// The five routes below used to rebuild an identical construct/topic/language grouping
+// map by looping the full tenantCaches array on every request — nothing in that grouping
+// changes between Airtable refreshes, so it's precomputed once per refresh instead (see
+// refreshGroupIndexes() in lib/airtable.js). Same cold-start caveat as cache-stats.json:
+// a brand-new tenant can briefly 404 here before its first full refresh completes.
 
-  const constructMap = {};
-  for (const record of cache) {
-    const constructs = record.fields["Construct(s)"];
-    if (!constructs) continue;
-    constructs.forEach(c => {
-      const key = c.trim();
-      if (!constructMap[key]) constructMap[key] = [];
-      constructMap[key].push(record);
-    });
-  }
+router.get("/constructs", (req, res) => {
+  const constructMap = readGroupIndex(req.tenant.slug)?.constructs || {};
 
   const constructsList = Object.keys(constructMap)
     .sort((a, b) => a.localeCompare(b))
@@ -107,26 +98,10 @@ router.get("/constructs", async (req, res) => {
   res.render("constructs", { constructs: constructsList });
 });
 
-router.get("/constructs/:name", async (req, res) => {
+router.get("/constructs/:name", (req, res) => {
   const name = req.params.name.trim();
 
-  let cache = tenantCaches.get(req.tenant.slug) || [];
-  if (cache.length === 0) {
-    await refreshTenantCacheOnly(req.tenant.slug);
-    cache = tenantCaches.get(req.tenant.slug) || [];
-  }
-
-  const constructMap = {};
-  for (const record of cache) {
-    const constructs = record.fields["Construct(s)"];
-    if (!constructs) continue;
-    constructs.forEach(c => {
-      const key = c.trim();
-      if (!constructMap[key]) constructMap[key] = [];
-      constructMap[key].push(record);
-    });
-  }
-
+  const constructMap = readGroupIndex(req.tenant.slug)?.constructs || {};
   const list = constructMap[name];
   if (!list) {
     return res.status(404).send("Construct not found");
@@ -135,26 +110,10 @@ router.get("/constructs/:name", async (req, res) => {
   res.render("construct-details", { name, items: list });
 });
 
-router.get("/topics/:name", async (req, res) => {
+router.get("/topics/:name", (req, res) => {
   const name = req.params.name.trim();
 
-  let cache = tenantCaches.get(req.tenant.slug) || [];
-  if (cache.length === 0) {
-    await refreshTenantCacheOnly(req.tenant.slug);
-    cache = tenantCaches.get(req.tenant.slug) || [];
-  }
-
-  const topicMap = {};
-  for (const record of cache) {
-    const topics = record.fields["Topic(s)"];
-    if (!topics) continue;
-    topics.forEach(t => {
-      const key = t.trim();
-      if (!topicMap[key]) topicMap[key] = [];
-      topicMap[key].push(record);
-    });
-  }
-
+  const topicMap = readGroupIndex(req.tenant.slug)?.topics || {};
   const list = topicMap[name];
   if (!list) {
     return res.status(404).send("Topic not found");
@@ -163,22 +122,8 @@ router.get("/topics/:name", async (req, res) => {
   res.render("topic-details", { name, items: list });
 });
 
-router.get("/languages", async (req, res) => {
-  let cache = tenantCaches.get(req.tenant.slug) || [];
-  if (cache.length === 0) {
-    await refreshTenantCacheOnly(req.tenant.slug);
-    cache = tenantCaches.get(req.tenant.slug) || [];
-  }
-
-  const languageMap = {};
-  for (const record of cache) {
-    for (const tr of (record.fields.translations || [])) {
-      const lang = (tr["Language"] || "").trim();
-      if (!lang) continue;
-      if (!languageMap[lang]) languageMap[lang] = [];
-      languageMap[lang].push(record);
-    }
-  }
+router.get("/languages", (req, res) => {
+  const languageMap = readGroupIndex(req.tenant.slug)?.languages || {};
 
   const languagesList = Object.keys(languageMap)
     .sort((a, b) => a.localeCompare(b))
@@ -187,25 +132,10 @@ router.get("/languages", async (req, res) => {
   res.render("languages", { languages: languagesList });
 });
 
-router.get("/languages/:name", async (req, res) => {
+router.get("/languages/:name", (req, res) => {
   const name = req.params.name.trim();
 
-  let cache = tenantCaches.get(req.tenant.slug) || [];
-  if (cache.length === 0) {
-    await refreshTenantCacheOnly(req.tenant.slug);
-    cache = tenantCaches.get(req.tenant.slug) || [];
-  }
-
-  const languageMap = {};
-  for (const record of cache) {
-    for (const tr of (record.fields.translations || [])) {
-      const lang = (tr["Language"] || "").trim();
-      if (!lang) continue;
-      if (!languageMap[lang]) languageMap[lang] = [];
-      languageMap[lang].push(record);
-    }
-  }
-
+  const languageMap = readGroupIndex(req.tenant.slug)?.languages || {};
   const list = languageMap[name];
   if (!list) {
     return res.status(404).send("Language not found");
