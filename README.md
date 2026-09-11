@@ -17,7 +17,7 @@ The intended use is for subfield experts to run their own named instances — Re
 | Email | Nodemailer (SMTP) |
 | Auth | express-session (admin panel) |
 | File uploads | Multer |
-| Frontend | Bootstrap 5, AOS, GLightbox, Swiper, Isotope, D3 |
+| Frontend | Bootstrap 5, AOS, PureCounter, D3 |
 
 ---
 
@@ -350,7 +350,7 @@ without it, generation is skipped and a warning is logged.
     │   ├── css/               # Site stylesheets
     │   ├── js/                # Site scripts
     │   ├── img/               # Images
-    │   └── vendor/            # Bootstrap, AOS, GLightbox, Swiper, Isotope, D3
+    │   └── vendor/            # Bootstrap, AOS, PureCounter, D3
     ├── robots.txt             # Generated — see Sitemap & robots.txt (gitignored)
     ├── sitemap.xml            # Generated, single-tenant mode only (gitignored)
     └── {slug}/
