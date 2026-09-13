@@ -43,6 +43,7 @@ router.post("/request-repo", antiSpamGuard, async (req, res) => {
     await transporter.sendMail({
       from: process.env.SMTP_USER,
       to: process.env.NETWORK_CONTACT_EMAIL || process.env.SMTP_USER,
+      replyTo: { name, address: email },
       subject: `New Repo Request from ${name}`,
       text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
     });

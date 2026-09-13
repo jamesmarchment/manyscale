@@ -12,6 +12,7 @@ router.post("/contact", antiSpamGuard, async (req, res) => {
     const mailOptions = {
       from: process.env.SMTP_USER,
       to: req.tenant.contact_recipient || process.env.SMTP_USER,
+      replyTo: { name, address: email },
       subject: `New Contact Form Message from ${name}`,
       text: `Name: ${name}\nEmail: ${email}\n\nSubject: ${subject}\n\nMessage:\n${message}`
     };
@@ -45,6 +46,7 @@ router.post("/suggest", antiSpamGuard, async (req, res) => {
     await transporter.sendMail({
       from: process.env.SMTP_USER,
       to: req.tenant.contact_recipient || process.env.SMTP_USER,
+      replyTo: { name, address: email },
       subject: `Measure Suggestion: ${measure_name}`,
       text: body,
     });
@@ -76,6 +78,7 @@ router.post("/report-correction", antiSpamGuard, async (req, res) => {
     await transporter.sendMail({
       from: process.env.SMTP_USER,
       to: req.tenant.contact_recipient || process.env.SMTP_USER,
+      replyTo: { name, address: email },
       subject: `User-reported problem on ${measure_name}`,
       text: body,
     });
