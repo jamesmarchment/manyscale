@@ -139,6 +139,14 @@
                         <button type="submit" class="btn btn-ghost btn-sm">Set</button>
                       </form>
                     </details>
+                    <details class="detail-toggle">
+                      <summary class="btn btn-ghost btn-sm" title="Change admin email and send a new temporary password" aria-label="Re-issue admin login">New Admin</summary>
+                      <form method="POST" action="/architect/tenants/<%= t.slug %>/reissue-admin" onsubmit="return confirm('Send a new temporary password for &quot;<%= t.slug %>&quot; to this address? The old password stops working and current admin sessions are logged out.');">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <input type="email" name="contactEmail" value="<%= t.contact_recipient || '' %>" placeholder="admin email" required aria-label="Admin email">
+                        <button type="submit" class="btn btn-ghost btn-sm">Send</button>
+                      </form>
+                    </details>
                     <details class="detail-toggle delete-toggle">
                       <summary class="btn btn-ghost btn-sm" title="Delete tenant" aria-label="Delete tenant">&times;</summary>
                       <form method="POST" action="/architect/tenants/<%= t.slug %>/delete" onsubmit="return confirm('Delete tenant &quot;<%= t.slug %>&quot;? This cannot be undone from this UI.');">

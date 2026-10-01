@@ -131,7 +131,10 @@ export function tenantLocalsMiddleware(req, res, next) {
 
 export function requireAdmin(req, res, next) {
   if (req.session?.architectLoggedIn) return next();
-  if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug) return next();
+  // adminCredVersion is bumped by the architect's "re-issue admin login" action, so a
+  // session opened before the admin contact/credentials were replaced stops working.
+  if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug
+      && (req.session.adminCredVersion || 0) === (req.tenant.adminCredVersion || 0)) return next();
   // fetch-based admin calls (e.g. photo upload) ask for JSON explicitly — a redirect
   // to the login page's HTML would otherwise fail client-side JSON parsing with a
   // cryptic error instead of a clear "session expired" message.

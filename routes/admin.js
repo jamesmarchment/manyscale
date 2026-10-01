@@ -73,7 +73,8 @@ const photoUpload = multer({
 
 
 router.get("/admin/login", (req, res) => {
-  if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug) {
+  if (req.session?.adminLoggedIn && req.session?.adminTenantSlug === req.tenant.slug
+      && (req.session.adminCredVersion || 0) === (req.tenant.adminCredVersion || 0)) {
     return res.redirect(res.locals.basePath + "/admin");
   }
   // With saveUninitialized:false, express-session won't persist (or keep a stable id
@@ -117,6 +118,7 @@ router.post("/admin/login", (req, res) => {
       }
       req.session.adminLoggedIn = true;
       req.session.adminTenantSlug = tenantSlug;
+      req.session.adminCredVersion = req.tenant.adminCredVersion || 0;
       res.redirect(basePath + "/admin");
     });
   }

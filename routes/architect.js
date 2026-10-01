@@ -1,5 +1,6 @@
 import { Router } from "express";
 import fs from "fs";
+import crypto from "crypto";
 import path from "path";
 import multer from "multer";
 import { JSDOM } from "jsdom";
@@ -415,6 +416,61 @@ router.post("/architect/tenants/:slug/reset-password", requireArchitectAdmin, as
     notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Password-changed email to ${tenant.contact_recipient}` });
   }
   req.session.architectFlash = { type: "ok", msg: `Password reset for "${tenant.name}".` };
+  res.redirect("/architect");
+});
+
+// Unambiguous characters only (no 0/O, 1/l/I) — this gets read out of an email and typed in.
+const TEMP_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+function generateTempPassword(length = 14) {
+  return Array.from(crypto.randomBytes(length), b => TEMP_PASSWORD_ALPHABET[b % TEMP_PASSWORD_ALPHABET.length]).join("");
+}
+
+// Changes the tenant's admin contact email and emails a fresh temporary password to it. The
+// temp password is an ordinary password (no expiry, unlike the forgot-password link), but
+// clearing tosAcceptedAt puts the next login back through /admin/accept-terms →
+// /admin/set-password, so the admin has to choose their own before reaching anything else.
+// adminCredVersion is bumped so sessions opened by the previous admin are logged out —
+// otherwise they could reach /admin/set-password (which needs no current password) first.
+router.post("/architect/tenants/:slug/reissue-admin", requireArchitectAdmin, async (req, res) => {
+  const { slug } = req.params;
+  const tenant = _tenantsList.find(t => t.slug === slug);
+  if (!tenant) {
+    req.session.architectFlash = { type: "err", msg: `No tenant found with slug "${slug}".` };
+    return res.redirect("/architect");
+  }
+  const email = (req.body.contactEmail || "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    req.session.architectFlash = { type: "err", msg: "Enter a valid email address." };
+    return res.redirect("/architect");
+  }
+
+  const tempPassword = generateTempPassword();
+  const siteOrigin = SITE_URL || `${req.protocol}://${req.get("host")}`;
+  const adminPath = MULTI_TENANT ? `/${tenant.slug}/admin/login` : "/admin/login";
+  const { subject, text, html } = tenantOnboardingEmail({
+    siteOrigin,
+    tenant: { ...tenant, contact_recipient: email },
+    adminUrl: siteOrigin + adminPath,
+    adminPassword: tempPassword,
+    reissue: true,
+  });
+  // Send before changing anything: if the mail fails, the old email/password stay in place
+  // rather than leaving a password nobody was told.
+  try {
+    await transporter.sendMail({ from: process.env.SMTP_USER, to: email, subject, text, html });
+  } catch (err) {
+    console.error(`${tenantLogPrefix(tenant.slug)} Re-issued admin login email failed to send:`, err);
+    notifyEmailFailure(err, { tenantSlug: tenant.slug, context: `Re-issued admin login email to ${email}` });
+    req.session.architectFlash = { type: "err", msg: `Email to ${email} failed to send — nothing was changed.` };
+    return res.redirect("/architect");
+  }
+
+  tenant.contact_recipient = email;
+  tenant.adminPasswordHash = hashPassword(tempPassword);
+  delete tenant.tosAcceptedAt;
+  tenant.adminCredVersion = (tenant.adminCredVersion || 0) + 1;
+  saveTenantsList();
+  req.session.architectFlash = { type: "ok", msg: `New admin login sent to ${email} for "${tenant.name}". They'll be asked to accept the Terms and set their own password on first login.` };
   res.redirect("/architect");
 });
 
