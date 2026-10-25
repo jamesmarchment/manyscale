@@ -17,6 +17,4 @@ notifications.json
 TODO.md
 audit.md
 HANDOFF.md
-public/assets/img/Thumbs.db
-public/assets/img/person/Thumbs.db
-public/assets/img/admin/Thumbs.db
+**/Thumbs.db
